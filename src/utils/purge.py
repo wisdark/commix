@@ -24,18 +24,17 @@ import stat
 import random
 import shutil
 import string
-
 from src.utils import menu
 from src.utils import settings
+from src.core.compat import xrange
 from src.thirdparty.colorama import Fore, Back, Style, init
 
 def purge():
   directory = settings.OUTPUT_DIR
   if not os.path.isdir(directory):
     warn_msg = "Skipping purging of directory '" + directory + "' as it does not exist."
-    print settings.print_warning_msg(warn_msg)
+    print(settings.print_warning_msg(warn_msg))
     return
-
   info_msg = "Purging content of directory '" + directory + "'"
   if not menu.options.verbose >= 1: 
     info_msg += "... "
@@ -65,9 +64,9 @@ def purge():
       pass
   if menu.options.verbose >= 1:    
     if not failed:  
-      print "[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
     else:
-      print "[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
 
   # Writing random data to files.
   if menu.options.verbose >= 1:
@@ -85,9 +84,9 @@ def purge():
       pass
   if menu.options.verbose >= 1:    
     if not failed:  
-      print "[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
     else:
-      print "[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
 
   # Truncating files.
   if menu.options.verbose >= 1:
@@ -104,9 +103,9 @@ def purge():
       pass
   if menu.options.verbose >= 1:    
     if not failed:  
-      print "[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
     else:
-      print "[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
 
   # Renaming filenames to random values.
   if menu.options.verbose >= 1:
@@ -122,9 +121,9 @@ def purge():
       pass
   if menu.options.verbose >= 1:    
     if not failed:  
-      print "[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
     else:
-      print "[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
 
   # Renaming directory names to random values.
   if menu.options.verbose >= 1:
@@ -141,25 +140,25 @@ def purge():
       pass
   if menu.options.verbose >= 1:    
     if not failed:  
-      print "[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
     else:
-      print "[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]"
+      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
 
   # Deleting the whole directory tree. 
   if menu.options.verbose >= 1:
     info_msg = "Deleting the whole directory tree... "
     sys.stdout.write(settings.print_info_msg(info_msg))
-  os.chdir(os.path.join(directory, ".."))
-  failed = False
   try:
+    failed = False
+    os.chdir(os.path.join(directory, ".."))
     shutil.rmtree(directory)
-  except OSError, ex:
+  except OSError as ex:
     failed = True  
   if not failed:  
-    print "[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]"
+    print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
   else:
-    print "[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]"    
+    print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")    
     err_msg = "Problem occurred while removing directory '" + directory + "'."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
 
 # eof

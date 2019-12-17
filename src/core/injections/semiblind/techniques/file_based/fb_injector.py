@@ -12,7 +12,6 @@ the Free Software Foundation, either version 3 of the License, or
  
 For more see the file 'readme/COPYING' for copying permission.
 """
-
 import re
 import os
 import sys
@@ -21,21 +20,16 @@ import json
 import string
 import random
 import base64
-import urllib
-import urllib2
-import urlparse
-
 from src.utils import menu
 from src.utils import settings
-from src.thirdparty.colorama import Fore, Back, Style, init
-
 from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
 from src.core.requests import requests
 from src.core.requests import parameters
-
 from src.core.injections.controller import checks
+from src.thirdparty.six.moves import urllib as _urllib
+from src.thirdparty.colorama import Fore, Back, Style, init
 from src.core.injections.semiblind.techniques.file_based import fb_payloads
 
 """
@@ -60,7 +54,7 @@ def injection_test(payload, http_request_method, url):
     vuln_parameter = parameters.vuln_GET_param(url)
     
     target = url.replace(settings.INJECT_TAG, payload)
-    request = urllib2.Request(target)
+    request = _urllib.request.Request(target)
     
     # Check if defined extra headers.
     headers.do_check(request)
@@ -74,22 +68,22 @@ def injection_test(payload, http_request_method, url):
   # Check if defined method is POST.
   else:
     parameter = menu.options.data
-    parameter = urllib2.unquote(parameter)
+    parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
     parameter = parameters.do_POST_check(parameter)
-    parameter = parameter.replace("+","%2B")
+    parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
     # Define the POST data    
     if settings.IS_JSON:
-      data = parameter.replace(settings.INJECT_TAG, urllib.unquote(payload.replace("\"", "\\\"")))
+      data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
       try:
         data = checks.json_data(data)
       except ValueError:
         pass
     elif settings.IS_XML:
-      data = parameter.replace(settings.INJECT_TAG, urllib.unquote(payload)) 
+      data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload)) 
     else:
       data = parameter.replace(settings.INJECT_TAG, payload)
-    request = urllib2.Request(url, data)
+    request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
 
     # Check if defined extra headers.
     headers.do_check(request)
@@ -200,7 +194,7 @@ def injection(separator, payload, TAG, cmd, prefix, suffix, whitespace, http_req
         payload = payload.replace(" ","%20")
         target = url.replace(settings.INJECT_TAG, payload)
         vuln_parameter = ''.join(vuln_parameter)
-        request = urllib2.Request(target)
+        request = _urllib.request.Request(target)
         # Check if defined extra headers.
         headers.do_check(request)        
         # Get the response of the request
@@ -209,21 +203,21 @@ def injection(separator, payload, TAG, cmd, prefix, suffix, whitespace, http_req
       else :
         # Check if defined method is POST.
         parameter = menu.options.data
-        parameter = urllib2.unquote(parameter)
+        parameter = _urllib.parse.unquote(parameter)
         # Check if its not specified the 'INJECT_HERE' tag
         parameter = parameters.do_POST_check(parameter)
         # Define the POST data  
         if settings.IS_JSON:
-          data = parameter.replace(settings.INJECT_TAG, urllib.unquote(payload.replace("\"", "\\\"")))
+          data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
           try:
             data = checks.json_data(data)
           except ValueError:
             pass
         elif settings.IS_XML:
-          data = parameter.replace(settings.INJECT_TAG, urllib.unquote(payload)) 
+          data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload)) 
         else:
           data = parameter.replace(settings.INJECT_TAG, payload)
-        request = urllib2.Request(url, data)
+        request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
           
         # Check if defined extra headers.
         headers.do_check(request)        
@@ -242,11 +236,11 @@ Find the URL directory.
 def injection_output(url, OUTPUT_TEXTFILE, timesec):
 
   def custom_web_root(url, OUTPUT_TEXTFILE):
-    path = urlparse.urlparse(url).path
+    path = _urllib.parse.urlparse(url).path
     if path.endswith('/'):
       # Contract again the url.
-      scheme = urlparse.urlparse(url).scheme
-      netloc = urlparse.urlparse(url).netloc
+      scheme = _urllib.parse.urlparse(url).scheme
+      netloc = _urllib.parse.urlparse(url).netloc
       output = scheme + "://" + netloc + path + OUTPUT_TEXTFILE
     else:
       try:
@@ -274,8 +268,8 @@ def injection_output(url, OUTPUT_TEXTFILE, timesec):
       if "html/" in menu.options.web_root:
         path = path.replace("html/", "")
       # Contract again the url. 
-      scheme = urlparse.urlparse(url).scheme
-      netloc = urlparse.urlparse(url).netloc
+      scheme = _urllib.parse.urlparse(url).scheme
+      netloc = _urllib.parse.urlparse(url).netloc
       output = scheme + "://" + netloc + path + OUTPUT_TEXTFILE
     # Check for Nginx server root directory.  
     elif "/usr/share/" in menu.options.web_root:
@@ -285,8 +279,8 @@ def injection_output(url, OUTPUT_TEXTFILE, timesec):
       elif "www/" in menu.options.web_root:
         path = path.replace("www/", "")
       # Contract again the url. 
-      scheme = urlparse.urlparse(url).scheme
-      netloc = urlparse.urlparse(url).netloc
+      scheme = _urllib.parse.urlparse(url).scheme
+      netloc = _urllib.parse.urlparse(url).netloc
       output = scheme + "://" + netloc + path + OUTPUT_TEXTFILE
     else:
       output = custom_web_root(url, OUTPUT_TEXTFILE)
@@ -304,19 +298,19 @@ def injection_results(url, OUTPUT_TEXTFILE, timesec):
   output = injection_output(url, OUTPUT_TEXTFILE, timesec)
 
   # Check if defined extra headers.
-  request = urllib2.Request(output)
+  request = _urllib.request.Request(output)
   headers.do_check(request)
 
   # Evaluate test results.
   try:
-    output = urllib2.urlopen(request)
+    output = _urllib.request.urlopen(request)
     shell = output.read().rstrip().lstrip()
     #shell = [newline.replace("\n"," ") for newline in shell]
     if settings.TARGET_OS == "win":
       shell = [newline.replace("\r","") for newline in shell]
       #shell = [space.strip() for space in shell]
       shell = [empty for empty in shell if empty]
-  except urllib2.HTTPError, e:
+  except _urllib.error.HTTPError as e:
     if str(e.getcode()) == settings.NOT_FOUND_ERROR:
       shell = ""
   return shell

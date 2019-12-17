@@ -16,11 +16,10 @@ For more see the file 'readme/COPYING' for copying permission.
 import re
 import os
 import sys
-
 from src.utils import menu
-from urlparse import urlparse
 from src.utils import settings
 from src.core.injections.controller import checks
+from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.colorama import Fore, Back, Style, init
 
 """
@@ -28,7 +27,7 @@ Get the URL part of the defined URL.
 """
 def get_url_part(url):
   # Find the URL part (scheme:[//host[:port]][/]path)
-  o = urlparse(url)
+  o = _urllib.parse.urlparse(url)
   url_part = o.scheme + "://" + o.netloc + o.path
 
   return url_part
@@ -44,7 +43,7 @@ def do_GET_check(url):
   # Check for REST-ful URLs format. 
   if "?" not in url:
     if settings.INJECT_TAG not in url and not menu.options.shellshock:
-      if menu.options.level == 3 or menu.options.headers:
+      if menu.options.level == 3 or menu.options.header or menu.options.headers:
         return False
       if menu.options.level == 2 :
         return False
@@ -52,7 +51,7 @@ def do_GET_check(url):
         err_msg = "No parameter(s) found for testing in the provided data. "
         err_msg += "You must specify the testable parameter or "
         err_msg += "try to increase '--level' values to perform more tests." 
-        print settings.print_critical_msg(err_msg)
+        print(settings.print_critical_msg(err_msg))
         raise SystemExit()
     elif menu.options.shellshock:
       return False
@@ -232,8 +231,8 @@ def do_POST_check(parameter):
     try:
       multi_parameters = parameter.split(settings.PARAMETER_DELIMITER)
       multi_parameters = [x for x in multi_parameters if x]
-    except ValueError, err_msg:
-      print settings.print_critical_msg(err_msg)
+    except ValueError as err_msg:
+      print(settings.print_critical_msg(err_msg))
       raise SystemExit()
   # Check for inappropriate format in provided parameter(s).
   if len([s for s in multi_parameters if "=" in s]) != (len(multi_parameters)) and \

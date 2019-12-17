@@ -17,10 +17,11 @@ import re
 import os
 import sys
 import time
-import urllib
 import random
 import string
-        
+from src.core.compat import xrange
+from src.thirdparty.six.moves import urllib as _urllib
+from src.thirdparty.six.moves import reload_module as _reload_module
 from src.thirdparty.colorama import Fore, Back, Style, init
 
 # Status Signs
@@ -125,23 +126,23 @@ def sys_argv_checks():
 
 # argv input errors
 def sys_argv_errors():
-  reload(sys)  
-  sys.setdefaultencoding('utf8')
+  _reload_module(sys) 
+  #sys.setdefaultencoding('utf8')
   for i in xrange(len(sys.argv)):
     # Check for illegal (non-console) quote characters.
     if len(sys.argv[i]) > 1 and all(ord(_) in xrange(0x2018, 0x2020) for _ in ((sys.argv[i].split('=', 1)[-1].strip() or ' ')[0], sys.argv[i][-1])):
         err_msg = "Illegal (non-console) quote characters ('" + sys.argv[i] + "')."
-        print print_critical_msg(err_msg)
+        print(print_critical_msg(err_msg))
         raise SystemExit()
     # Check for illegal (non-console) comma characters.
     if len(sys.argv[i]) > 1 and u"\uff0c" in sys.argv[i].split('=', 1)[-1]:
         err_msg = "Illegal (non-console) comma character ('" + sys.argv[i] + "')."
-        print print_critical_msg(err_msg)
+        print(print_critical_msg(err_msg))
         raise SystemExit()
     # Check for potentially miswritten (illegal '=') short option.
     if re.search(r"\A-\w=.+", sys.argv[i]):
         err_msg = "Potentially miswritten (illegal '=') short option detected ('" + sys.argv[i] + "')."
-        print print_critical_msg(err_msg)
+        print(print_critical_msg(err_msg))
         raise SystemExit()
 
 # argv checks
@@ -155,8 +156,8 @@ APPLICATION = "commix"
 DESCRIPTION_FULL = "Automated All-in-One OS Command Injection and Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
-VERSION_NUM = "2.9.39"
-STABLE_VERSION = False
+VERSION_NUM = "3.0.66"
+STABLE_VERSION = True
 if STABLE_VERSION:
   VERSION = "v" + VERSION_NUM[:3] + "-stable"
 else:
@@ -497,8 +498,11 @@ PARAMETER_DELIMITER = "&"
 ENCODING = ""
 
 DEFAULT_ENCODING = "utf-8"
+# Encoding used for Unicode data
+UNICODE_ENCODING = "utf-8"
 try:
-  unicode(DEFAULT_ENCODING, DEFAULT_ENCODING)
+  pass
+  #unicode(DEFAULT_ENCODING, DEFAULT_ENCODING)
 except LookupError:
   # Reference: http://en.wikipedia.org/wiki/ISO/IEC_8859-1
   DEFAULT_ENCODING = "iso-8859-1"
@@ -802,6 +806,8 @@ NOT_FOUND_ERROR = "404"
 NOT_ACCEPTABLE_ERROR = "406"
 INTERNAL_SERVER_ERROR = "500"
 
+HTTP_ERROR_CODES = [ BAD_REQUEST, UNAUTHORIZED_ERROR, FORBIDDEN_ERROR, NOT_FOUND_ERROR, NOT_ACCEPTABLE_ERROR, INTERNAL_SERVER_ERROR ]
+
 # End line
 END_LINE = ["\r", "\n", "\r\n"]
 
@@ -851,7 +857,7 @@ CHECK_BOTH_OS = False
 OS_CHECKS_NUM = 2
 
 # Options to explicitly mask in anonymous (unhandled exception) reports.
-SENSITIVE_OPTIONS = ["--data", "-d", "--cookie", "-p", "--url", "-u", "-x", "--auth-cred"]
+SENSITIVE_OPTIONS = ["--data", "-d", "--cookie", "-p", "--url", "-u", "-x", "--auth-cred", "-r", "-l"]
 
 # Github OAuth token used for creating an automatic issue for unhandled exceptions.
 GITHUB_REPORT_OAUTH_TOKEN = "YjNiYjdhZDBlYzM2MmM2NGEzYTAzZTc4ZDg1NmYwZTUyZGZlN2EyZQ=="
@@ -871,6 +877,9 @@ GOOGLE_ANALYTICS_COOKIE_PREFIX = "__UTM"
 
 # Default path for tamper scripts
 TAMPER_SCRIPTS_PATH = "src/core/tamper/"
+
+# Default path for settings.py file
+SETTINGS_PATH = os.path.join("src", "utils", "settings.py")
 
 # HTTP Headers
 COOKIE = "Cookie"

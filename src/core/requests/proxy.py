@@ -14,14 +14,12 @@ For more see the file 'readme/COPYING' for copying permission.
 """
 
 import sys
-import urllib2
-import httplib
-
 from src.utils import menu
 from src.utils import settings
-
 from src.core.requests import headers
+from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.colorama import Fore, Back, Style, init
+from src.thirdparty.six.moves import http_client as _http_client
 
 """
  Check if HTTP Proxy is defined.
@@ -31,18 +29,18 @@ def do_check(url):
   try:
     if settings.VERBOSITY_LEVEL >= 1:
       info_msg = "Setting the HTTP proxy for all HTTP requests... "
-      print settings.print_info_msg(info_msg) 
+      print(settings.print_info_msg(info_msg))
     # Check if defined POST data
     if menu.options.data:
-      request = urllib2.Request(url, menu.options.data)
+      request = _urllib.request.Request(url, menu.options.data.encode(settings.UNICODE_ENCODING))
     else:
-       request = urllib2.Request(url)
+       request = _urllib.request.Request(url)
     # Check if defined extra headers.
     headers.do_check(request)
     request.set_proxy(menu.options.proxy,settings.PROXY_SCHEME)
     try:
-      check = urllib2.urlopen(request)
-    except urllib2.HTTPError, error:
+      check = _urllib.request.urlopen(request)
+    except _urllib.error.HTTPError as error:
       check = error
   except:
     check_proxy = False
@@ -51,9 +49,9 @@ def do_check(url):
     pass
   else:
     err_msg = "Unable to connect to the target URL or proxy ("
-    err_msg += menu.options.proxy
+    err_msg += str(menu.options.proxy)
     err_msg += ")."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit()
     
 """
@@ -63,14 +61,14 @@ def use_proxy(request):
   headers.do_check(request)
   request.set_proxy(menu.options.proxy,settings.PROXY_SCHEME)
   try:
-    response = urllib2.urlopen(request)
+    response = _urllib.request.urlopen(request)
     return response
 
-  except httplib.BadStatusLine, e:
+  except _http_client.BadStatusLine as e:
     err_msg = "Unable to connect to the target URL or proxy ("
-    err_msg += menu.options.proxy
+    err_msg += str(menu.options.proxy)
     err_msg += ")."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit() 
 
   except Exception as err_msg:
@@ -78,7 +76,7 @@ def use_proxy(request):
       error_msg = str(err_msg.args[0]).split("] ")[1] + "."
     except IndexError:
       error_msg = str(err_msg).replace(": "," (") + ")."
-    print settings.print_critical_msg(error_msg)
+    print(settings.print_critical_msg(error_msg))
     raise SystemExit()
 
 # eof 

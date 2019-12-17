@@ -17,12 +17,12 @@ import re
 import os
 import sys
 import time
-import urllib2
 import subprocess
-
 from src.utils import menu
+from src.utils import common
 from src.utils import settings
 from src.utils import requirments
+from src.thirdparty.six.moves import input as _input
 from src.thirdparty.colorama import Fore, Back, Style, init
 
 """
@@ -51,38 +51,37 @@ def revision_num():
       match = re.search(r"(?i)[0-9a-f]{32}", stdout or "")
       rev_num = match.group(0) if match else None
       info_msg += " the latest revision '" + str(rev_num[:7]) + "'."
-      print "[" + Fore.GREEN + " SUCCEED " + Style.RESET_ALL + "]"
+      print("[" + Fore.GREEN + " SUCCEED " + Style.RESET_ALL + "]")
     else:
       sys.stdout.write(Fore.MAGENTA + "\n" + stdout + Style.RESET_ALL)
       end  = time.time()
       how_long = int(end - start)
       info_msg = "Finished in " + time.strftime('%H:%M:%S', time.gmtime(how_long)) + "."
-    print settings.print_info_msg(info_msg) 
+    print(settings.print_info_msg(info_msg))
   except:
-    print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]" 
+    print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]") 
     raise SystemExit()
 
 """
 The commix's updater.
 """
 def updater():
-  
   time.sleep(1)
   info_msg = "Checking requirements to update " 
   info_msg += settings.APPLICATION + " from GitHub repo... "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   if menu.options.offline:  
-    print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+    print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
     err_msg = "You cannot update commix via GitHub without access on the Internet."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit()
   # Check if windows
   if settings.IS_WINDOWS:
-    print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+    print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
     err_msg = "For updating purposes on Windows platform, it's recommended "
     err_msg += "to use a GitHub client for Windows (http://windows.github.com/)."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit()
   else:
     try:
@@ -99,50 +98,49 @@ def updater():
           sys.stdout.write(settings.print_info_msg(info_msg))
           sys.stdout.flush()
           revision_num()
-          print ""
+          print("")
           os._exit(0)
         else:
-          print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+          print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
           err_msg = "The '.git' directory not found. Do it manually: " 
           err_msg += Style.BRIGHT + "'git clone " + settings.GIT_URL 
           err_msg += " " + settings.APPLICATION + "' "
-          print settings.print_critical_msg(err_msg)    
+          print(settings.print_critical_msg(err_msg))    
           raise SystemExit()
       else:
-          print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+          print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
           err_msg = requirment + " not found."
-          print settings.print_critical_msg(err_msg)
+          print(settings.print_critical_msg(err_msg))
           raise SystemExit()
 
     except Exception as err_msg:
-      print "\n" + settings.print_critical_msg(err_msg)
+      print("\n" + settings.print_critical_msg(err_msg))
     raise SystemExit()
-
 
 """
 Check for new version of commix
 """
 def check_for_update():
   try:
-    response = urllib2.urlopen('https://raw.githubusercontent.com/commixproject/commix/master/src/utils/settings.py', timeout=1)
+    response = _urllib.request.urlopen('https://raw.githubusercontent.com/commixproject/commix/master/src/utils/settings.py', timeout=1)
     version_check = response.readlines()
     for line in version_check:
       line = line.rstrip()
       if "VERSION_NUM = " in line:
         update_version = line.replace("VERSION_NUM = ", "").replace("\"", "")
         break 
-
     if (int(settings.VERSION_NUM.replace(".","")[:2]) < int(update_version.replace(".","")[:2])) or \
        ((int(settings.VERSION_NUM.replace(".","")[:2]) == int(update_version.replace(".","")[:2])) and \
          int(settings.VERSION_NUM.replace(".","")[2:]) < int(update_version.replace(".","")[2:])):
-
-      warn_msg = "Current version seems to be out-of-date."
-      print settings.print_warning_msg(warn_msg)
+      # Get total number of days from last update 
+      if common.days_from_last_update() >= 1 :
+        _ = common.days_from_last_update()
+        warn_msg = "Current version seems to be out-of-date (more than " + str(_) + " day" + "s"[_ == 1:] + ")."
+        print(settings.print_warning_msg(warn_msg))
       while True:
         if not menu.options.batch:
           question_msg = "Do you want to update to the latest version now? [Y/n] > "
-          sys.stdout.write(settings.print_question_msg(question_msg))
-          do_update = sys.stdin.readline().replace("\n","").lower()
+          do_update = _input(settings.print_question_msg(question_msg))
         else:
           do_update = ""
         if len(do_update) == 0:
@@ -153,7 +151,7 @@ def check_for_update():
           break
         else:
           err_msg = "'" + do_update + "' is not a valid answer."  
-          print settings.print_error_msg(err_msg)
+          print(settings.print_error_msg(err_msg))
           pass
   except KeyboardInterrupt:
     raise
@@ -170,17 +168,17 @@ def unicorn_updater(current_version):
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   if menu.options.offline:  
-    print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+    print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
     err_msg = "You cannot update TrustedSec's Magic Unicorn "
     err_msg += "via GitHub without access on the Internet."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit()
   # Check if windows
   if settings.IS_WINDOWS:
-    print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+    print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
     err_msg = "For updating purposes on Windows platform, it's recommended "
     err_msg += "to use a GitHub client for Windows (http://windows.github.com/)."
-    print settings.print_critical_msg(err_msg)
+    print(settings.print_critical_msg(err_msg))
     raise SystemExit()
   else:
     try:
@@ -204,13 +202,13 @@ def unicorn_updater(current_version):
         sys.stdout.flush()
         revision_num()
       else:
-        print "[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]"
+        print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
         err_msg = requirment + " not found."
-        print settings.print_critical_msg(err_msg)
+        print(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
     except Exception as err_msg:
-      print settings.print_critical_msg(err_msg)
+      print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
 """
@@ -219,7 +217,7 @@ Check the latest version of unicorn
 def check_unicorn_version(current_version):
   try:
     if len(current_version) != 0: 
-      response = urllib2.urlopen('https://raw.githubusercontent.com/trustedsec/unicorn/master/unicorn.py', timeout=1)
+      response = _urllib.request.urlopen('https://raw.githubusercontent.com/trustedsec/unicorn/master/unicorn.py', timeout=1)
       latest_version = response.readlines()
       for line in latest_version:
         line = line.rstrip()
@@ -234,10 +232,10 @@ def check_unicorn_version(current_version):
 
       if len(current_version) != 0:
         warn_msg = "Current version of TrustedSec's Magic Unicorn (" + current_version + ") seems to be out-of-date."
-        print settings.print_warning_msg(warn_msg)
+        print(settings.print_warning_msg(warn_msg))
       else:
         warn_msg = "TrustedSec's Magic Unicorn seems to be not installed."
-        print settings.print_warning_msg(warn_msg) 
+        print(settings.print_warning_msg(warn_msg)) 
       while True:
         if not menu.options.batch:
           if len(current_version) == 0:
@@ -245,8 +243,7 @@ def check_unicorn_version(current_version):
           else:
             action = "update to"
           question_msg = "Do you want to " + action + " the latest version now? [Y/n] > "
-          sys.stdout.write(settings.print_question_msg(question_msg))
-          do_update = sys.stdin.readline().replace("\n","").lower()
+          do_update = _input(settings.print_question_msg(question_msg))
         else:
           do_update = ""
         if len(do_update) == 0:
@@ -257,7 +254,7 @@ def check_unicorn_version(current_version):
           break
         else:
           err_msg = "'" + do_update + "' is not a valid answer."  
-          print settings.print_error_msg(err_msg)
+          print(settings.print_error_msg(err_msg))
           pass
 
   except KeyboardInterrupt:

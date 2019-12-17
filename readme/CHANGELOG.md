@@ -1,4 +1,18 @@
-## Version 2.9 (upcoming)
+## Version 3.0 (2019-11-11)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Revised: Improvement regarding identifying the indicated web-page charset.
+* Added: Support for Python 3.x
+* Updated: Beautiful Soup (third party) module has been updated.
+* Added: Six (third party) module has been added.
+* Revised: Improvement regarding parsing nested JSON objects that contain boolean values.
+* Replaced: The `--ignore-401` option has been replaced with `--ignore-code` option.
+* Added: New option ( `--ignore-code`) for ignoring (problematic) HTTP error code (e.g. 401).
+
+## Version 2.9 (2019-06-26)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Fixed: Bug-fix regarding parsing hostname and port from URL.
+* Revised: Improvement regarding automatically decoding "deflate" and "gzip" HTTP responses.
+* Fixed: Bug-fix regarding parsing HTTP header values that contain multiple ":".
 * Revised: Improvement regarding updating "Content-Length" HTTP header, in case it's provided by user (i.e. `-r`, `--header`, `--header` options).
 * Revised: Improvement regarding parsing raw HTTP headers from a file (i.e. `-r` option).
 * Revised: Improvement regarding parsing nested JSON objects.

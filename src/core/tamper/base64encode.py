@@ -15,7 +15,7 @@ For more see the file 'readme/COPYING' for copying permission.
 
 import sys
 import base64
-import urllib
+from src.thirdparty.six.moves import urllib as _urllib
 from src.utils import settings
 
 """
@@ -32,12 +32,12 @@ def tamper(payload):
   if settings.WHITESPACE[0] == "+":
     err_msg = "Tamper script '" +  __tamper__  + "' is unlikely to work combined with the tamper script 'space2plus'."
     if settings.VERBOSITY_LEVEL == 0:
-      print ""
-    print settings.print_critical_msg(err_msg) 
+      print("")
+    print(settings.print_critical_msg(err_msg)) 
     raise SystemExit()
 
   else:
-    payload = urllib.unquote(payload)
+    payload = _urllib.parse.unquote(payload)
     payload = base64.b64encode(payload)
     return payload
 
