@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2019 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,8 +25,10 @@ else:
 import sys
 import gzip
 import time
+import errno
 import base64
 import socket
+from socket import error as SocketError
 from src.thirdparty.six.moves import http_client as _http_client
 from src.utils import logs
 from src.utils import menu
@@ -137,7 +139,7 @@ def check_http_traffic(request):
     opener = _urllib.request.build_opener(connection_handler())
     response = False
     current_attempt = 0
-    while not response and current_attempt <= settings.MAX_RETRIES:
+    while not response and current_attempt <= settings.MAX_RETRIES and not settings.UNAUTHORIZED:
       try:
         if settings.VERBOSITY_LEVEL >= 2:
           info_msg = "The target's request HTTP headers:"
@@ -149,11 +151,17 @@ def check_http_traffic(request):
             info_msg = "Checking connection to the target URL... "
             sys.stdout.write(settings.print_info_msg(info_msg))
             sys.stdout.flush()
-          if settings.INIT_TEST == True:  
+          if settings.INIT_TEST == True:
             print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
             if not settings.CHECK_INTERNET:
               settings.INIT_TEST = False
-              
+
+      except _urllib.error.HTTPError as err_msg:
+        if "Unauthorized" in str(err_msg):
+          if settings.VERBOSITY_LEVEL < 2 and not settings.UNAUTHORIZED:
+            print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+          settings.UNAUTHORIZED = True
+
       except _urllib.error.URLError as err_msg: 
         if current_attempt == 0:
           if settings.VERBOSITY_LEVEL < 2:
@@ -268,6 +276,16 @@ def check_http_traffic(request):
   except LookupError as err_msg:
     print(settings.print_critical_msg(str(err_msg)))
     raise SystemExit()
+
+  # Raise exception regarding existing connection was forcibly closed by the remote host.
+  except SocketError as err:
+    if err.errno == errno.ECONNRESET:
+      error_msg = "Connection reset by peer."
+      print(settings.print_critical_msg(error_msg))
+    elif err.errno == errno.ECONNREFUSED:
+      error_msg = "Connection refused."
+      print(settings.print_critical_msg(error_msg))
+    raise SystemExit()
     
 """
 Check for added headers.
@@ -304,7 +322,7 @@ def do_check(request):
     try:
       settings.SUPPORTED_HTTP_AUTH_TYPES.index(menu.options.auth_type)
       if menu.options.auth_type == "basic":
-        b64_string = base64.encodestring(menu.options.auth_cred).replace('\n', '')
+        b64_string = base64.encodestring(menu.options.auth_cred.encode(settings.UNICODE_ENCODING)).decode().replace('\n', '')
         request.add_header("Authorization", "Basic " + b64_string + "")
       elif menu.options.auth_type == "digest":
         try:

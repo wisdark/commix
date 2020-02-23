@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2019 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -126,8 +126,12 @@ def sys_argv_checks():
 
 # argv input errors
 def sys_argv_errors():
-  _reload_module(sys) 
-  #sys.setdefaultencoding('utf8')
+  _reload_module(sys)
+  try:
+    # Fix for Python 2.7
+    sys.setdefaultencoding('utf8')
+  except AttributeError:
+    pass
   for i in xrange(len(sys.argv)):
     # Check for illegal (non-console) quote characters.
     if len(sys.argv[i]) > 1 and all(ord(_) in xrange(0x2018, 0x2020) for _ in ((sys.argv[i].split('=', 1)[-1].strip() or ' ')[0], sys.argv[i][-1])):
@@ -135,12 +139,12 @@ def sys_argv_errors():
         print(print_critical_msg(err_msg))
         raise SystemExit()
     # Check for illegal (non-console) comma characters.
-    if len(sys.argv[i]) > 1 and u"\uff0c" in sys.argv[i].split('=', 1)[-1]:
+    elif len(sys.argv[i]) > 1 and u"\uff0c" in sys.argv[i].split('=', 1)[-1]:
         err_msg = "Illegal (non-console) comma character ('" + sys.argv[i] + "')."
         print(print_critical_msg(err_msg))
         raise SystemExit()
     # Check for potentially miswritten (illegal '=') short option.
-    if re.search(r"\A-\w=.+", sys.argv[i]):
+    elif re.search(r"\A-\w=.+", sys.argv[i]):
         err_msg = "Potentially miswritten (illegal '=') short option detected ('" + sys.argv[i] + "')."
         print(print_critical_msg(err_msg))
         raise SystemExit()
@@ -156,13 +160,13 @@ APPLICATION = "commix"
 DESCRIPTION_FULL = "Automated All-in-One OS Command Injection and Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
-VERSION_NUM = "3.0.66"
-STABLE_VERSION = True
+VERSION_NUM = "3.1.14"
+STABLE_VERSION = False
 if STABLE_VERSION:
   VERSION = "v" + VERSION_NUM[:3] + "-stable"
 else:
   VERSION = "v" + VERSION_NUM[:3] + "-dev#" + VERSION_NUM[4:]
-YEAR = "2014-2019"
+YEAR = "2014-2020"
 AUTHOR_TWITTER = "@ancst" 
 APPLICATION_URL = "https://commixproject.com" 
 APPLICATION_TWITTER = "@commixproject" 
@@ -851,6 +855,8 @@ CHECK_INTERNET_ADDRESS = "http://ipinfo.io"
 
 # Check internet connection.
 CHECK_INTERNET = False
+
+UNAUTHORIZED = False
 
 # Multiple OS checks
 CHECK_BOTH_OS = False
