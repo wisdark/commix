@@ -32,6 +32,26 @@ from src.utils import simple_http_server
 from src.thirdparty.flatten_json.flatten_json import flatten, unflatten_list
 from src.thirdparty.colorama import Fore, Back, Style, init
 
+# If the value has boundaries.
+def value_boundaries(value):
+  if not menu.options.batch:
+    question_msg =  "It appears that the value '" + value + "' has boundaries. "
+    question_msg += "Do you want to inject inside? [Y/n] > "
+    procced_option = _input(settings.print_question_msg(question_msg))
+  else:
+    procced_option = ""
+  if procced_option in settings.CHOICE_YES or len(procced_option) == 0:
+    value = value.replace(re.search(settings.VALUE_BOUNDARIES, value).group(0), "")
+  elif procced_option in settings.CHOICE_NO:
+    pass
+  elif procced_option in settings.CHOICE_QUIT:
+    raise SystemExit()
+  else:
+    err_msg = "'" + procced_option + "' is not a valid answer."  
+    print(settings.print_error_msg(err_msg))
+    pass
+  return value
+
 # Ignoring the anti-CSRF parameter(s).
 def ignore_anticsrf_parameter(parameter):
   if any(parameter.lower().count(token) for token in settings.CSRF_TOKEN_PARAMETER_INFIXES):
@@ -114,9 +134,9 @@ def captcha_check(page):
 Counting the total of HTTP(S) requests for the identified injection point(s), during the detection phase.
 """
 def total_of_requests():
-  info_msg = "Identified the following injection point with "
-  info_msg += "a total of " + str(settings.TOTAL_OF_REQUESTS) + " HTTP(S) requests."
-  print(settings.print_info_msg(info_msg))
+  debug_msg = "Identified the following injection point with "
+  debug_msg += "a total of " + str(settings.TOTAL_OF_REQUESTS) + " HTTP(S) requests."
+  print(settings.print_bold_debug_msg(debug_msg))
 
 """
 Url decode specific chars of the provided payload.
@@ -193,7 +213,7 @@ def next_attack_vector(technique, go_back):
     else:
       next_attack_vector = ""
     if len(next_attack_vector) == 0:
-       next_attack_vector = "y"
+       next_attack_vector = "Y"
     if next_attack_vector in settings.CHOICE_YES:
       # Check injection state
       assessment_phase()
@@ -260,7 +280,7 @@ def procced_with_file_based_technique():
     else:
       enable_fb = ""
     if len(enable_fb) == 0:
-       enable_fb = "y"
+       enable_fb = "Y"
     if enable_fb in settings.CHOICE_YES:
       return True
     elif enable_fb in settings.CHOICE_NO:
@@ -328,7 +348,7 @@ def continue_tests(err):
       else:
         continue_tests = ""
       if len(continue_tests) == 0:
-         continue_tests = "y"
+         continue_tests = "Y"
       if continue_tests in settings.CHOICE_YES:
         return True
       elif continue_tests in settings.CHOICE_NO:
@@ -402,7 +422,7 @@ def ps_check():
       else:
         ps_check = ""
       if len(ps_check) == 0:
-         ps_check = "y"
+         ps_check = "Y"
       if ps_check in settings.CHOICE_YES:
         menu.options.ps_version = True
         break
@@ -428,7 +448,7 @@ def ps_check_failed():
     else:
       ps_check = ""
     if len(ps_check) == 0:
-       ps_check = "y"
+       ps_check = "Y"
     if ps_check in settings.CHOICE_YES:
       break
     elif ps_check in settings.CHOICE_NO:
@@ -474,7 +494,7 @@ def check_CGI_scripts(url):
         else:
           shellshock_check = ""   
         if len(shellshock_check) == 0:
-           shellshock_check = "y"
+           shellshock_check = "Y"
         if shellshock_check in settings.CHOICE_YES:
           menu.options.shellshock = True
           break
@@ -561,14 +581,14 @@ def identified_os():
 Check for third-party (non-core) libraries.
 """
 def third_party_dependencies():
-  info_msg = "Checking for third-party (non-core) libraries... "
+  info_msg = "Checking for third-party (non-core) libraries. "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   
   try:
     import sqlite3
   except ImportError:
-    print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
+    print(settings.FAIL_STATUS)
     err_msg = settings.APPLICATION + " requires 'sqlite3' third-party library "
     err_msg += "in order to store previous injection points and commands. "
     print(settings.print_critical_msg(err_msg))
@@ -581,7 +601,7 @@ def third_party_dependencies():
       try:
         import pyreadline
       except ImportError:
-        print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
+        print(settings.FAIL_STATUS)
         err_msg = settings.APPLICATION + " requires 'pyreadline' third-party library "
         err_msg += "in order to be able to take advantage of the TAB "
         err_msg += "completion and history support features. "
@@ -591,16 +611,16 @@ def third_party_dependencies():
       try:
         import gnureadline
       except ImportError:
-        print("[" + Fore.RED + " FAILED " + Style.RESET_ALL + "]")
+        print(settings.FAIL_STATUS)
         err_msg = settings.APPLICATION + " requires 'gnureadline' third-party library "
         err_msg += "in order to be able to take advantage of the TAB "
         err_msg += "completion and history support features. "
         print(settings.print_critical_msg(err_msg))
     pass
 
-  print("[" + Fore.GREEN + " SUCCEED " + Style.RESET_ALL + "]")
-  success_msg = "All required third-party (non-core) libraries are seems to be installed."
-  print(settings.print_success_msg(success_msg))
+  print(settings.SUCCESS_STATUS)
+  info_msg = "All required third-party (non-core) libraries are seems to be installed."
+  print(settings.print_bold_info_msg(info_msg))
 
 """
 Print the authentiation error message.
@@ -671,9 +691,14 @@ Do replacement with the 'INJECT_HERE' tag,
 if the wildcard char is provided.
 """
 def wildcard_character(data):
-  if settings.WILDCARD_CHAR in data:
-    data = data.replace(settings.WILDCARD_CHAR, settings.INJECT_TAG)
-  if data.count(settings.WILDCARD_CHAR) + data.count(settings.INJECT_TAG) > 1:
+  _ = ""
+  for data in data.split("\\n"):
+    # Ignore the Accept HTTP Header
+    if not data.startswith("Accept: ") and settings.WILDCARD_CHAR in data :
+      data = data.replace(settings.WILDCARD_CHAR, settings.INJECT_TAG)
+    _ = _ + data + "\\n"
+  data = _.rstrip("\\n")
+  if data.count(settings.INJECT_TAG) > 1:
     err_msg = "You specified more than one injecton markers. " 
     err_msg += "Use the '-p' option to define them (i.e -p \"id1,id2\"). "
     print(settings.print_critical_msg(err_msg)) 
@@ -753,7 +778,8 @@ def list_tamper_scripts():
       match = re.search(r"About:(.*)\n", content)
       if match:
         comment = match.group(1).strip()
-        print(settings.SUB_CONTENT_SIGN + Fore.MAGENTA + os.path.basename(script) + Style.RESET_ALL +  " - " + comment)
+        sub_content = Fore.MAGENTA + os.path.basename(script) + Style.RESET_ALL +  " - " + comment
+        print(settings.print_sub_content(sub_content))
 
 """
 Tamper script checker
@@ -793,9 +819,15 @@ def tamper_scripts():
         pass
 
     # Using too many tamper scripts is usually not a good idea. :P
+    _ = False
     if len(provided_scripts) >= 3 and not settings.LOAD_SESSION:
       warn_msg = "Using too many tamper scripts "
-      warn_msg += "is usually not a good idea."
+      _ = True
+    elif len([x for x in provided_scripts if any(y in x for y in ["nested", "doublequotes"])]) == 2 and not settings.LOAD_SESSION:
+      _ = True
+      warn_msg = "The combination of the provided tamper scripts "
+    if _:
+      warn_msg += "is not a good idea (may cause false positive results)."
       print(settings.print_warning_msg(warn_msg))
 
 """
@@ -930,7 +962,17 @@ def check_quotes(payload):
     from src.core.tamper import nested
     payload = nested.tamper(payload)
 
-  # Check for (multiple) added quotes between the characters of the generated payloads.
+  # Check for (multiple) added double-quotes between the characters of the generated payloads.
+  if payload.count("\"") >= 10:
+    if not settings.TAMPER_SCRIPTS['doublequotes']:
+      if menu.options.tamper:
+        menu.options.tamper = menu.options.tamper + ",doublequotes"
+      else:
+        menu.options.tamper = "doublequotes"  
+    from src.core.tamper import doublequotes
+    payload = doublequotes.tamper(payload)
+
+  # Check for (multiple) added single-quotes between the characters of the generated payloads.
   if payload.count("''") >= 10:
     if not settings.TAMPER_SCRIPTS['singlequotes']:
       if menu.options.tamper:
@@ -1019,7 +1061,11 @@ def perform_payload_modification(payload):
     if encode_type == 'sleep2usleep':
       from src.core.tamper import sleep2usleep
       payload = sleep2usleep.tamper(payload)
-    # Add single quotes.
+    # Add double-quotes.
+    if encode_type == 'doublequotes':
+      from src.core.tamper import doublequotes
+      payload = doublequotes.tamper(payload)
+    # Add single-quotes.
     if encode_type == 'singlequotes':
       from src.core.tamper import singlequotes
       payload = singlequotes.tamper(payload)
@@ -1132,17 +1178,17 @@ def is_XML_check(parameter):
 # Process with SOAP/XML data
 def process_xml_data():
   while True:
-    success_msg = "SOAP/XML data found in POST data."
+    info_msg = "SOAP/XML data found in POST data."
     if not menu.options.batch:
-      question_msg = success_msg
+      question_msg = info_msg
       question_msg += " Do you want to process it? [Y/n] > "
       xml_process = _input(settings.print_question_msg(question_msg))
     else:
       if settings.VERBOSITY_LEVEL >= 1:
-        print(settings.print_success_msg(success_msg))
+        print(settings.print_bold_info_msg(info_msg))
       xml_process = ""
     if len(xml_process) == 0:
-       xml_process = "y"              
+       xml_process = "Y"              
     if xml_process in settings.CHOICE_YES:
       settings.IS_XML = True
       break
@@ -1154,6 +1200,12 @@ def process_xml_data():
       err_msg = "'" + xml_process + "' is not a valid answer."  
       print(settings.print_error_msg(err_msg))
       pass
+
+#Check if INJECT_TAG is enclosed in quotes (in json data)
+def check_quotes_json_data(data):
+  if not json.dumps(settings.INJECT_TAG) in data:
+    data = data.replace(settings.INJECT_TAG, json.dumps(settings.INJECT_TAG))
+  return data
 
 # Check if valid JSON
 def is_JSON_check(parameter):
@@ -1173,17 +1225,17 @@ def is_JSON_check(parameter):
 # Process with JSON data
 def process_json_data():
   while True:
-    success_msg = "JSON data found in POST data."
+    info_msg = "JSON data found in POST data."
     if not menu.options.batch:
-      question_msg = success_msg
+      question_msg = info_msg
       question_msg += " Do you want to process it? [Y/n] > "
       json_process = _input(settings.print_question_msg(question_msg))
     else:
       if settings.VERBOSITY_LEVEL >= 1:
-        print(settings.print_success_msg(success_msg))
+        print(settings.print_bold_info_msg(info_msg))
       json_process = ""
     if len(json_process) == 0:
-       json_process = "y"              
+       json_process = "Y"              
     if json_process in settings.CHOICE_YES:
       settings.IS_JSON = True
       break
@@ -1264,7 +1316,7 @@ def file_upload():
       else:
         enable_HTTP_server = ""
       if len(enable_HTTP_server) == 0:
-         enable_HTTP_server = "y"              
+         enable_HTTP_server = "Y"              
       if enable_HTTP_server in settings.CHOICE_YES:
 
         # Check if file exists
@@ -1350,7 +1402,7 @@ def define_py_working_dir():
       else:
         python_dir = ""  
       if len(python_dir) == 0:
-         python_dir = "y" 
+         python_dir = "Y" 
       if python_dir in settings.CHOICE_YES:
         break
       elif python_dir in settings.CHOICE_NO:

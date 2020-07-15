@@ -78,8 +78,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
   settings.EVAL_PREFIXES = settings.EVAL_PREFIXES + settings.EXECUTION_FUNCTIONS
 
   if not settings.LOAD_SESSION:
-    url = eb_injector.warning_detection(url, http_request_method)
-    info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... "
+    info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
     if settings.VERBOSITY_LEVEL >= 1:
@@ -163,9 +162,9 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               # Check if defined "--verbose" option.
               if settings.VERBOSITY_LEVEL == 1:
                 print(settings.print_payload(payload))
-              elif settings.VERBOSITY_LEVEL > 1:
-                info_msg = "Generating a payload for injection..."
-                print(settings.print_info_msg(info_msg))
+              elif settings.VERBOSITY_LEVEL >= 2:
+                debug_msg = "Generating payload for the injection."
+                print(settings.print_debug_msg(debug_msg))
                 print(settings.print_payload(payload)) 
 
               # Cookie header injection
@@ -210,26 +209,26 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               shell = eb_injector.injection_test_results(response, TAG, randvcalc)
               time.sleep(timesec)
 
-              if not settings.VERBOSITY_LEVEL >= 1:
+              if settings.VERBOSITY_LEVEL == 0:
                 percent = ((i*100)/total)
                 float_percent = "{0:.1f}".format(round(((i*100)/(total * 1.0)),2))
 
                 if shell == False:
-                  info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... " +  "[ " + float_percent + "%" + " ]"
+                  info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." +  " (" + str(float_percent) + "%)"
                   sys.stdout.write("\r" + settings.print_info_msg(info_msg))  
                   sys.stdout.flush()
 
                 if str(float_percent) == "100.0":
                   if no_result == True:
-                    percent = Fore.RED + "FAILED" + Style.RESET_ALL
+                    percent = settings.FAIL_STATUS
                   else:
-                    percent = str(float_percent)+ "%"
+                    percent = ".. (" + str(float_percent) + "%)"
                 elif len(shell) != 0:
-                  percent = Fore.GREEN + "SUCCEED" + Style.RESET_ALL
+                  percent = settings.info_msg
                 else:
-                  percent = str(float_percent)+ "%"
+                  percent = ".. (" + str(float_percent) + "%)"
 
-                info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... " +  "[ " + percent + " ]"
+                info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                 sys.stdout.write("\r" + settings.print_info_msg(info_msg))  
                 sys.stdout.flush()
                 
@@ -300,20 +299,21 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
             counter = counter + 1
 
             if not settings.LOAD_SESSION:
-              if not settings.VERBOSITY_LEVEL >= 1:
+              if settings.VERBOSITY_LEVEL == 0:
                 print("")
               else:
                 checks.total_of_requests()
 
             # Print the findings to terminal.
-            success_msg = "The"
+            info_msg = "The"
             if len(found_vuln_parameter) > 0 and not "cookie" in header_name : 
-              success_msg += " " + http_request_method 
-            success_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
-            success_msg += found_vuln_parameter + " seems injectable via "
-            success_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
-            print(settings.print_success_msg(success_msg))
-            print(settings.SUB_CONTENT_SIGN + "Payload: " + str(checks.url_decode(payload)) + Style.RESET_ALL)
+              info_msg += " " + http_request_method 
+            info_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
+            info_msg += found_vuln_parameter + " seems injectable via "
+            info_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
+            print(settings.print_bold_info_msg(info_msg))
+            sub_content = str(checks.url_decode(payload))
+            print(settings.print_sub_content(sub_content))
             # Export session
             if not settings.LOAD_SESSION:
               session_handler.injection_point_importation(url, technique, injection_type, separator, shell[0], vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response=0, timesec=0, how_long=0, output_length=0, is_vulnerable=menu.options.level)
@@ -331,7 +331,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                 else:
                   enumerate_again = ""  
                 if len(enumerate_again) == 0:
-                  enumerate_again = "y"
+                  enumerate_again = "Y"
                 if enumerate_again in settings.CHOICE_YES:
                   eb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
                   # print("")
@@ -363,7 +363,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                 else:
                   file_access_again = ""
                 if len(file_access_again) == 0:
-                   file_access_again = "y"
+                   file_access_again = "Y"
                 if file_access_again in settings.CHOICE_YES:
                   eb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
                   print("")
@@ -401,7 +401,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               else:
                 gotshell = ""
               if len(gotshell) == 0:
-                 gotshell = "y"
+                 gotshell = "Y"
               if gotshell in settings.CHOICE_YES:
                 if not menu.options.batch:
                   print("")

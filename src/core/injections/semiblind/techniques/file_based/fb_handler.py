@@ -68,7 +68,7 @@ then use the "/tmp/" directory for tempfile-based technique.
 def tfb_controller(no_result, url, timesec, filename, tmp_path, http_request_method, url_time_response):
   if no_result == True:
     info_msg = "Trying to create a file, in temporary "
-    info_msg += "directory (" + tmp_path + ") for command execution results...\n"
+    info_msg += "directory (" + tmp_path + ") for command execution results.\n"
     sys.stdout.write(settings.print_info_msg(info_msg))
     call_tfb = tfb_handler.exploitation(url, timesec, filename, tmp_path, http_request_method, url_time_response)   
     return call_tfb
@@ -82,8 +82,8 @@ Delete previous shells outputs.
 def delete_previous_shell(separator, payload, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename):
   if settings.FILE_BASED_STATE != None:
     if settings.VERBOSITY_LEVEL >= 1:
-      info_msg = "Deleting the created (" + OUTPUT_TEXTFILE + ") file...\n"
-      sys.stdout.write(settings.print_info_msg(info_msg))
+      debug_msg = "Deleting the created (" + OUTPUT_TEXTFILE + ") file.\n"
+      sys.stdout.write(settings.print_debug_msg(debug_msg))
     if settings.TARGET_OS == "win":
       cmd = settings.WIN_DEL + OUTPUT_TEXTFILE
     else:  
@@ -207,7 +207,7 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
   if not settings.LOAD_SESSION or settings.RETEST == True: 
     TAG = ''.join(random.choice(string.ascii_uppercase) for i in range(6)) 
     info_msg = "Trying to create a file in '" + settings.WEB_ROOT 
-    info_msg += "' for command execution results... "
+    info_msg += "' for command execution results. "
     print(settings.print_info_msg(info_msg))
 
   i = 0
@@ -278,9 +278,9 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 payload_msg = payload.replace("\n", "\\n")
                 print(settings.print_payload(payload_msg))
               # Check if defined "--verbose" option.
-              elif settings.VERBOSITY_LEVEL > 1:
-                info_msg = "Generating a payload for injection..."
-                print(settings.print_info_msg(info_msg))
+              elif settings.VERBOSITY_LEVEL >= 2:
+                debug_msg = "Generating payload for the injection."
+                print(settings.print_debug_msg(debug_msg))
                 print(settings.print_payload(payload)) 
 
               # Cookie Injection
@@ -330,11 +330,11 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 # Evaluate test results.
                 output = _urllib.request.urlopen(request)
                 html_data = output.read()
-                shell = re.findall(r"" + TAG + "", html_data)
+                shell = re.findall(r"" + TAG + "", str(html_data))
 
                 if len(shell) != 0 and shell[0] == TAG and not settings.VERBOSITY_LEVEL >= 1:
-                  percent = Fore.GREEN + "SUCCEED" + Style.RESET_ALL
-                  info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... [ " + percent + " ]"
+                  percent = settings.info_msg
+                  info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                   sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                   sys.stdout.flush()
 
@@ -367,7 +367,7 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                       else:
                         tmp_upload = ""
                       if len(tmp_upload) == 0:
-                         tmp_upload = "y"
+                         tmp_upload = "Y"
                       if tmp_upload in settings.CHOICE_YES:
                         exit_loops = True
                         settings.TEMPFILE_BASED_STATE = True
@@ -392,16 +392,16 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                   
                   else:
                     if exit_loops == False:
-                      if not settings.VERBOSITY_LEVEL >= 1:
+                      if settings.VERBOSITY_LEVEL == 0:
                         if str(float_percent) == "100.0":
                           if no_result == True:
-                            percent = Fore.RED + "FAILED" + Style.RESET_ALL
+                            percent = settings.FAIL_STATUS
                           else:
-                            percent = str(float_percent)+ "%"
+                            percent = ".. (" + str(float_percent) + "%)"
                         else:
-                          percent = str(float_percent)+ "%"
+                          percent = ".. (" + str(float_percent) + "%)"
 
-                        info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... [ " + percent + " ]"
+                        info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                         sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                         sys.stdout.flush()
                         continue
@@ -505,20 +505,21 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
             counter = counter + 1
 
             if not settings.LOAD_SESSION:
-              if not settings.VERBOSITY_LEVEL >= 1:
+              if settings.VERBOSITY_LEVEL == 0:
                 print("")
               else:
                 checks.total_of_requests()
 
             # Print the findings to terminal.
-            success_msg = "The"
+            info_msg = "The"
             if len(found_vuln_parameter) > 0 and not "cookie" in header_name : 
-              success_msg += " " + http_request_method 
-            success_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
-            success_msg += found_vuln_parameter + " seems injectable via "
-            success_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
-            print(settings.print_success_msg(success_msg))
-            print(settings.SUB_CONTENT_SIGN + "Payload: " + str(checks.url_decode(payload)) + Style.RESET_ALL)
+              info_msg += " " + http_request_method 
+            info_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
+            info_msg += found_vuln_parameter + " seems injectable via "
+            info_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
+            print(settings.print_bold_info_msg(info_msg))
+            sub_content = str(checks.url_decode(payload))
+            print(settings.print_sub_content(sub_content))
             # Export session
             if not settings.LOAD_SESSION:
               session_handler.injection_point_importation(url, technique, injection_type, separator, shell[0], vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response=0, timesec=0, how_long=0, output_length=0, is_vulnerable=menu.options.level)
@@ -536,7 +537,7 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 else:
                   enumerate_again = ""  
                 if len(enumerate_again) == 0:
-                  enumerate_again = "y"
+                  enumerate_again = "Y"
                 if enumerate_again in settings.CHOICE_YES:
                   fb_enumeration.do_check(separator, payload, TAG, timesec, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename)
                   # print("")
@@ -571,7 +572,7 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 else:
                   file_access_again = ""
                 if len(file_access_again) == 0:
-                   file_access_again= "y"
+                   file_access_again= "Y"
                 if file_access_again in settings.CHOICE_YES:
                   fb_file_access.do_check(separator, payload, TAG, timesec, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename)
                   print("")
@@ -621,7 +622,7 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 else:
                   gotshell = ""
                 if len(gotshell) == 0:
-                   gotshell = "y"
+                   gotshell = "Y"
                 if gotshell in settings.CHOICE_YES:
                   if not menu.options.batch:
                     print("")

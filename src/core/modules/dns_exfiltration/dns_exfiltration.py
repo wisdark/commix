@@ -76,9 +76,9 @@ def signal_handler(signal, frame):
   os._exit(0)
 
 def snif(dns_server):
-  success_msg = "Started the sniffer between you and the DNS server '"
-  success_msg += Style.BRIGHT + Fore.YELLOW + dns_server + Style.RESET_ALL + "'."
-  print(settings.print_success_msg(success_msg))
+  info_msg = "Started the sniffer between you and the DNS server '"
+  info_msg += Style.BRIGHT + Fore.YELLOW + dns_server + Style.RESET_ALL + "'."
+  print(settings.print_bold_info_msg(info_msg))
   while True:
     sniff(filter="port 53", prn=querysniff, store = 0)
  
@@ -132,7 +132,7 @@ def input_cmd(dns_server, http_request_method, url, vuln_parameter, technique):
     else:
       gotshell = ""  
     if len(gotshell) == 0:
-       gotshell= "y"
+       gotshell= "Y"
     if gotshell in settings.CHOICE_YES:
       print("\nPseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
       if readline_error:

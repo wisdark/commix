@@ -28,7 +28,7 @@ def do_check(url):
   check_proxy = True
   try:
     if settings.VERBOSITY_LEVEL >= 1:
-      info_msg = "Setting the HTTP proxy for all HTTP requests... "
+      info_msg = "Setting the HTTP proxy for all HTTP requests. "
       print(settings.print_info_msg(info_msg))
     # Check if defined POST data
     if menu.options.data:
@@ -72,11 +72,14 @@ def use_proxy(request):
     raise SystemExit() 
 
   except Exception as err_msg:
-    try:
-      error_msg = str(err_msg.args[0]).split("] ")[1] + "."
-    except IndexError:
-      error_msg = str(err_msg).replace(": "," (") + ")."
-    print(settings.print_critical_msg(error_msg))
-    raise SystemExit()
+    if settings.UNAUTHORIZED_ERROR in str(err_msg).lower():
+      pass
+    else:
+      try:
+        error_msg = str(err_msg.args[0]).split("] ")[1] + "."
+      except IndexError:
+        error_msg = str(err_msg).replace(": "," (") + ")."
+      print(settings.print_critical_msg(error_msg))
+      raise SystemExit()
 
 # eof 

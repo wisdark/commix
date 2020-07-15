@@ -70,8 +70,8 @@ Delete previous shells outputs.
 """
 def delete_previous_shell(separator, payload, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename):
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg = "Deleting the created (" + OUTPUT_TEXTFILE + ") file...\n"
-    sys.stdout.write(settings.print_info_msg(info_msg))
+    debug_msg = "Deleting the created (" + OUTPUT_TEXTFILE + ") file.\n"
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
   if settings.TARGET_OS == "win":
     cmd = settings.WIN_DEL + OUTPUT_TEXTFILE
   else:
@@ -110,7 +110,7 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
     TAG = ''.join(random.choice(string.ascii_uppercase) for num_of_chars in range(6)) 
 
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg ="Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... "
+    info_msg ="Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
     print(settings.print_info_msg(info_msg))
 
   #whitespace = checks.check_whitespaces()
@@ -175,9 +175,9 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                 if settings.VERBOSITY_LEVEL == 1:
                   payload_msg = payload.replace("\n", "\\n")
                   print(settings.print_payload(payload_msg))
-                elif settings.VERBOSITY_LEVEL > 1:
-                  info_msg = "Generating a payload for injection..."
-                  print(settings.print_info_msg(info_msg))
+                elif settings.VERBOSITY_LEVEL >= 2:
+                  debug_msg = "Generating payload for the injection."
+                  print(settings.print_debug_msg(debug_msg))
                   print(settings.print_payload(payload)) 
                   
                 # Cookie header injection
@@ -222,8 +222,8 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                 float_percent = "{0:.1f}".format(round(((num_of_chars*100)/(total*1.0)),2))
 
                 if percent == 100 and no_result == True:
-                  if not settings.VERBOSITY_LEVEL >= 1:
-                    percent = Fore.RED + "FAILED" + Style.RESET_ALL
+                  if settings.VERBOSITY_LEVEL == 0:
+                    percent = settings.FAIL_STATUS
                   else:
                     percent = ""
                 else:
@@ -275,6 +275,12 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                           print(settings.print_error_msg(err_msg))
                           pass
 
+                    if settings.VERBOSITY_LEVEL == 0:
+                      percent = ".. (" + str(float_percent) + "%)"
+                      info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
+                      sys.stdout.write("\r" + settings.print_info_msg(info_msg))
+                      sys.stdout.flush()
+
                     # Check if false positive fixation is True.
                     if false_positive_fixation:
                       false_positive_fixation = False
@@ -307,8 +313,8 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                         if str(output) == str(randvcalc) and len(TAG) == output_length:
                           possibly_vulnerable = True
                           how_long_statistic = 0
-                          if not settings.VERBOSITY_LEVEL >= 1:
-                            percent = Fore.GREEN + "SUCCEED" + Style.RESET_ALL
+                          if settings.VERBOSITY_LEVEL == 0:
+                            percent = settings.info_msg
                           else:
                             percent = ""
                           #break  
@@ -316,21 +322,21 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                         break
                     # False positive
                     else:
-                      if not settings.VERBOSITY_LEVEL >= 1:
-                        percent = str(float_percent)+ "%"
-                        info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... " +  "[ " + percent + " ]"
+                      if settings.VERBOSITY_LEVEL == 0:
+                        percent = ".. (" + str(float_percent) + "%)"
+                        info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                         sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                         sys.stdout.flush()
                       continue    
                   else:
-                    if not settings.VERBOSITY_LEVEL >= 1:
-                      percent = str(float_percent)+ "%"
-                      info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... " +  "[ " + percent + " ]"
+                    if settings.VERBOSITY_LEVEL == 0:
+                      percent = ".. (" + str(float_percent) + "%)"
+                      info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                       sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                       sys.stdout.flush()
                     continue
-                if not settings.VERBOSITY_LEVEL >= 1:
-                  info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... " +  "[ " + percent + " ]"
+                if settings.VERBOSITY_LEVEL == 0:
+                  info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                   sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                   sys.stdout.flush()
                   
@@ -361,21 +367,21 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                 float_percent = "{0:.1f}".format(round(((num_of_chars*100)/(total*1.0)),2))
                 if str(float_percent) == "100.0":
                   if no_result == True:
-                    if not settings.VERBOSITY_LEVEL >= 1:
-                      percent = Fore.RED + "FAILED" + Style.RESET_ALL
-                      info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "... " +  "[ " + percent + " ]"
+                    if settings.VERBOSITY_LEVEL == 0:
+                      percent = settings.FAIL_STATUS
+                      info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
                       sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                       sys.stdout.flush()
                     else:
                       percent = ""
                   else:
-                    percent = str(float_percent) + "%"
+                    percent = ".. (" + str(float_percent) + "%)"
                     print("")
                     # Print logs notification message
                     logs.logs_notification(filename)
                   #raise
                 else:
-                  percent = str(float_percent) + "%"
+                  percent = ".. (" + str(float_percent) + "%)"
               break
           # Yaw, got shellz! 
           # Do some magic tricks!
@@ -441,20 +447,21 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
               counter = counter + 1
 
               if not settings.LOAD_SESSION:
-                if not settings.VERBOSITY_LEVEL >= 1:
+                if settings.VERBOSITY_LEVEL == 0:
                   print("")
                 else:
                   checks.total_of_requests()
 
               # Print the findings to terminal.
-              success_msg = "The"
+              info_msg = "The"
               if len(found_vuln_parameter) > 0 and not "cookie" in header_name : 
-                success_msg += " " + http_request_method 
-              success_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
-              success_msg += found_vuln_parameter + " seems injectable via "
-              success_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
-              print(settings.print_success_msg(success_msg))
-              print(settings.SUB_CONTENT_SIGN + "Payload: " + str(checks.url_decode(payload)) + Style.RESET_ALL)
+                info_msg += " " + http_request_method 
+              info_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
+              info_msg += found_vuln_parameter + " seems injectable via "
+              info_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
+              print(settings.print_bold_info_msg(info_msg))
+              sub_content = str(checks.url_decode(payload))
+              print(settings.print_sub_content(sub_content))
               # Export session
               if not settings.LOAD_SESSION:
                 shell = ""
@@ -478,7 +485,7 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                   else:
                     enumerate_again = ""
                   if len(enumerate_again) == 0:
-                    enumerate_again = "y"
+                    enumerate_again = "Y"
                   if enumerate_again in settings.CHOICE_YES:
                     tfb_enumeration.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
                     print("")
@@ -509,7 +516,7 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                   else:
                     file_access_again = ""
                   if len(file_access_again) == 0:
-                    file_access_again = "y"
+                    file_access_again = "Y"
                   if file_access_again in settings.CHOICE_YES:
                     tfb_file_access.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
                     break
@@ -557,7 +564,7 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                   else:
                     gotshell = ""
                   if len(gotshell) == 0:
-                     gotshell = "y"
+                     gotshell = "Y"
                   if gotshell in settings.CHOICE_YES:
                     if not menu.options.batch:
                       print("")
@@ -600,7 +607,7 @@ def tfb_injection_handler(url, timesec, filename, tmp_path, http_request_method,
                         output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
                         # Update logs with executed cmds and execution results.
                         logs.executed_command(filename, cmd, output)
-                        print("\n") + Fore.GREEN + Style.BRIGHT + output + Style.RESET_ALL + "\n"
+                        print("\n") + settings.print_output(output) + "\n"
                       # Update logs with executed cmds and execution results.
                       logs.executed_command(filename, cmd, output)
 

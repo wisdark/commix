@@ -40,25 +40,23 @@ def table_name(url):
 Ignore session.
 """
 def ignore(url):
-  info_msg = "Ignoring the stored session from the session file... "
-  sys.stdout.write(settings.print_info_msg(info_msg))
-  sys.stdout.flush()
-  if os.path.isfile(settings.SESSION_FILE):
-    print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
-  else:
-    print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
-    err_msg = "The session file does not exist."
-    print(settings.print_critical_msg(err_msg))
+  if settings.VERBOSITY_LEVEL >= 1:
+    debug_msg = "Ignoring the stored session from the session file."
+    print(settings.print_debug_msg(debug_msg))
+  if not os.path.isfile(settings.SESSION_FILE):
+    if settings.VERBOSITY_LEVEL >= 1:
+      err_msg = "The session file does not exist."
+      print(settings.print_critical_msg(err_msg))
 
 """
 Flush session.
 """
 def flush(url):
-  info_msg = "Flushing the stored session from the session file... "
+  info_msg = "Flushing the stored session from the session file. "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   if not os.path.isfile(settings.SESSION_FILE):
-    print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+    print(settings.FAIL_STATUS)
     err_msg = "The session file does not exist."
     print(settings.print_critical_msg(err_msg))
   else:
@@ -68,9 +66,9 @@ def flush(url):
       conn.executescript(';'.join(["DROP TABLE IF EXISTS %s" %i for i in tables]))
       conn.commit()
       conn.close()
-      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
+      print(settings.SUCCESS_STATUS)
     except sqlite3.OperationalError as err_msg:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
       err_msg = "Unable to flush the session file." + str(err_msg).title()
       print(settings.print_critical_msg(err_msg))    
 
@@ -290,7 +288,7 @@ def notification(url, technique, injection_type):
         else:
           settings.LOAD_SESSION = ""  
         if len(settings.LOAD_SESSION) == 0:
-           settings.LOAD_SESSION = "y"
+           settings.LOAD_SESSION = "Y"
         if settings.LOAD_SESSION in settings.CHOICE_YES:
           return True
         elif settings.LOAD_SESSION in settings.CHOICE_NO:

@@ -1,4 +1,17 @@
-## Version 3.1 (upcoming)
+## Version 3.1 (2020-06-26)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Added: A script "setup.py" has been added (i.e. easier installation).
+* Revised: Improvement regarding checking if the provided value has boundaries (e.g. 'param=/value/').
+* Revised: Improvement regarding dynamic code evaluation technique's heurstic checks.
+* Revised: Improvement regarding identifying the indicated web-page charset.
+* Revised: Minor improvement regarding verbose mode (i.e. debug messages).
+* Fixed: Bug-fix regarding Basic HTTP authentication.
+* Revised: Minor improvement regarding redirection mechanism.
+* Fixed: Bug-fix regarding defining wildcard character "*" in nested JSON objects.
+* Revised: Minor improvement regarding Flatten_json (third party) module.
+* Revised: Minor improvement regarding parsing nested JSON objects.
+* Added: New tamper script "doublequotes.py" that adds double-quotes ("") between the characters of the generated payloads (for *nix targets).
+* Fixed: Bug-fix regarding parsing raw HTTP headers from a file (i.e. `-r` option).
 * Revised: Improvements regarding data in the detailed message about occurred unhandled exception.
 * Revised: Minor bug-fixes and improvements regarding HTTP authentication dictionary-based cracker.
 

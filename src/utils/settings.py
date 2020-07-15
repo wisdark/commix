@@ -24,21 +24,30 @@ from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.six.moves import reload_module as _reload_module
 from src.thirdparty.colorama import Fore, Back, Style, init
 
+# Status
+FAIL_MSG = Fore.RED + " " * 10 + Style.RESET_ALL
+FAIL_STATUS = "" + FAIL_MSG + ""
+info_msg = Fore.GREEN + " " * 10 + Style.RESET_ALL
+SUCCESS_STATUS = "" + info_msg + ""
 # Status Signs
-SUCCESS_SIGN = "[" + Fore.GREEN + Style.BRIGHT + "+" + Style.RESET_ALL + "] "
-INFO_SIGN = Style.RESET_ALL + "[" + Fore.BLUE + Style.BRIGHT + "*" + Style.RESET_ALL + "] "
-QUESTION_SIGN = Style.RESET_ALL + "[" + Style.BRIGHT + Fore.MAGENTA + "?" + Style.RESET_ALL + "] "
-WARNING_SIGN = "[" + Fore.YELLOW  + "!" + Style.RESET_ALL + "] " + Fore.YELLOW + "Warning: "
-WARNING_BOLD_SIGN = "[" + Style.BRIGHT + Fore.YELLOW  + "!" + Style.RESET_ALL + "] " + Style.BRIGHT + Fore.YELLOW + "Warning: "
 LEGAL_DISCLAIMER = "(" + Style.BRIGHT + Fore.RED + "!" + Style.RESET_ALL + ") " + "Legal disclaimer: "
-ERROR_SIGN = "[" + Fore.RED + Style.BRIGHT + "x" + Style.RESET_ALL  + "] " + Fore.RED + "Error: "
-CRITICAL_SIGN = Back.RED + "[x] Critical: "
-PAYLOAD_SIGN = "    |_ " + Fore.CYAN
-TRAFFIC_SIGN = "    |_ " + Back.MAGENTA
-HTTP_CONTENT_SIGN = Fore.MAGENTA
-CHECK_SIGN = "[" + Fore.BLUE + Style.BRIGHT + "*" + Style.RESET_ALL  + "] " + "Checking "
-SUB_CONTENT_SIGN = "    [" + Fore.GREY + Style.BRIGHT + "~" + Style.RESET_ALL  + "] "
+INFO_SIGN = Style.RESET_ALL + "[" + Fore.GREEN + "info" + Style.RESET_ALL + "] "
+INFO_BOLD_SIGN = "[" + Fore.GREEN + Style.BRIGHT + "info" + Style.RESET_ALL + "] " 
+REQUEST_SIGN = Style.RESET_ALL + "[" + Style.BRIGHT + Back.MAGENTA + "traffic" + Style.RESET_ALL + "] " + Style.BRIGHT
+RESPONSE_SIGN = Style.RESET_ALL + "[" + Style.BRIGHT + Back.MAGENTA + "traffic" + Style.RESET_ALL + "] " + Style.BRIGHT
+#QUESTION_SIGN = Style.RESET_ALL + "[" + Fore.MAGENTA + "?" + Style.RESET_ALL + "] "
+QUESTION_SIGN = Style.BRIGHT
+WARNING_SIGN = "[" + Fore.LIGHTYELLOW_EX  + "warning" + Style.RESET_ALL + "] "
+WARNING_BOLD_SIGN = "[" + Style.BRIGHT + Fore.YELLOW  + "warning" + Style.RESET_ALL + "] " + Style.BRIGHT
+ERROR_SIGN = "[" + Fore.RED + "error" + Style.RESET_ALL  + "] " 
+CRITICAL_SIGN = "[" + Back.RED + "critical" + Style.RESET_ALL  + "] "
+PAYLOAD_SIGN = "[" + Fore.CYAN + "payload" + Style.RESET_ALL + "] " 
+SUB_CONTENT_SIGN = " " * 7 + Fore.GREY + "|_ " + Style.RESET_ALL
+TRAFFIC_SIGN = HTTP_CONTENT_SIGN = ""
 ABORTION_SIGN = ERROR_SIGN 
+DEBUG_SIGN = "[" + Back.BLUE + Fore.WHITE + "debug" + Style.RESET_ALL + "] " 
+DEBUG_BOLD_SIGN = "[" + Back.BLUE + Style.BRIGHT + Fore.WHITE + "debug" + Style.RESET_ALL + "] " + Style.BRIGHT
+CHECK_SIGN = DEBUG_SIGN + "Checking pair of credentials: "
 
 # Print error message
 def print_error_msg(err_msg):
@@ -70,14 +79,24 @@ def print_legal_disclaimer_msg(legal_disclaimer_msg):
   result = LEGAL_DISCLAIMER + str(legal_disclaimer_msg) + Style.RESET_ALL
   return result
 
+# Print request HTTP message
+def print_request_msg(req_msg):
+  result = REQUEST_SIGN + str(req_msg) + Style.RESET_ALL
+  return result
+
+# Print response HTTP message
+def print_response_msg(resp_msg):
+  result = RESPONSE_SIGN + str(resp_msg) + Style.RESET_ALL
+  return result
+
 # Print information message
 def print_info_msg(info_msg):
   result = INFO_SIGN + str(info_msg) + Style.RESET_ALL
   return result
 
-# Print success message
-def print_success_msg(success_msg):
-  result = SUCCESS_SIGN + Style.BRIGHT + str(success_msg) + Style.RESET_ALL
+# Print bold information message
+def print_bold_info_msg(info_msg):
+  result = INFO_BOLD_SIGN + Style.BRIGHT + str(info_msg) + Style.RESET_ALL
   return result
 
 # Print payload (verbose mode)
@@ -88,6 +107,10 @@ def print_payload(payload):
 # Print HTTP traffic (verbose mode)
 def print_traffic(traffic):
   result = TRAFFIC_SIGN + str(traffic) + Style.RESET_ALL
+  return result
+
+def print_output(output):
+  result = Fore.GREEN + Style.BRIGHT + str(output) + Style.RESET_ALL
   return result
 
 # Print HTTP response content (verbose mode)
@@ -102,8 +125,23 @@ def print_checking_msg(payload):
 
 # Print question message
 def print_question_msg(question_msg):
-  result = QUESTION_SIGN + question_msg 
+  result = QUESTION_SIGN + question_msg + Style.RESET_ALL
   return result
+
+# Print sub content message
+def print_sub_content(sub_content):
+  result = SUB_CONTENT_SIGN + sub_content + Style.RESET_ALL
+  return result
+
+# Print debug message (verbose mode)
+def print_debug_msg(debug_msg):
+  result = DEBUG_SIGN + debug_msg + Style.RESET_ALL
+  return result  
+
+# Print bold debug message (verbose mode)
+def print_bold_debug_msg(debug_msg):
+  result = DEBUG_BOLD_SIGN + debug_msg + Style.RESET_ALL
+  return result  
 
 # argv checks
 def sys_argv_checks():
@@ -160,8 +198,8 @@ APPLICATION = "commix"
 DESCRIPTION_FULL = "Automated All-in-One OS Command Injection and Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
-VERSION_NUM = "3.1.14"
-STABLE_VERSION = False
+VERSION_NUM = "3.1.62"
+STABLE_VERSION = True
 if STABLE_VERSION:
   VERSION = "v" + VERSION_NUM[:3] + "-stable"
 else:
@@ -194,6 +232,16 @@ PROXY_REGEX = r"((http[^:]*)://)?([\w\-.]+):(\d+)"
 # Inject Tag
 INJECT_TAG = "INJECT_HERE"
 INJECT_TAG_REGEX = r"(?i)INJECT[_]?HERE"
+VALUE_BOUNDARIES = r'[\\/]+' 
+
+#Basic heuristic checks for code injection warnings
+BASIC_TEST = "\\\\/{$}\\/\\"
+# Code injection warnings
+CODE_INJECTION_WARNINGS = ["eval()'d code", "runtime-created function", "usort", "assert", "preg_replace"]
+IDENTIFIED_WARNINGS = False
+
+SKIP_CODE_INJECTIONS = False
+SKIP_COMMAND_INJECTIONS = False
 
 # User-defined stored post data.
 USER_DEFINED_POST_DATA = ""
@@ -380,19 +428,19 @@ SHADOW_FILE = "/etc/shadow"
 SYS_PASSES = FILE_READ + SHADOW_FILE 
 
 # Accepts 'YES','YE','Y','yes','ye','y'
-CHOICE_YES = ['yes','ye','y']
+CHOICE_YES = ['YES','YE','Y','yes','ye','y']
 
 # Accepts 'NO','N','no','n'
-CHOICE_NO = ['no','n']
+CHOICE_NO = ['NO','N','no','n']
 
 # Accepts 'QUIT','Q','quit','q'
-CHOICE_QUIT = ['q','quit']
+CHOICE_QUIT = ['QUIT','Q','quit','q']
 
 # Accepts 'W','w','U','u','Q','q'
-CHOICE_OS = ['w','u','q']
+CHOICE_OS = ['W','w','U','u','Q','q']
 
 # Accepts 'C','c','S','s','Q','q','a','A','n','N'
-CHOICE_PROCEED = ['c','s','q','a','n']
+CHOICE_PROCEED = ['C','c','S','s','Q','q','a','A','n','N']
 
 # Available alternative shells
 AVAILABLE_SHELLS = ["python"]
@@ -791,6 +839,7 @@ TAMPER_SCRIPTS = {
                   "space2plus": False,
                   "space2htab": False,
                   "space2vtab": False,
+                  "doublequotes": False,
                   "singlequotes": False,
                   "caret": False,
                   "multiplespaces": False,
@@ -896,5 +945,8 @@ HTTP_ACCEPT_HEADER = "Accept"
 
 # HTTP Headers values
 HTTP_ACCEPT_HEADER_VALUE = "*/*"
+
+# Regular expression used for ignoring some special chars
+IGNORE_SPECIAL_CHAR_REGEX = "[^A-Za-z0-9.:,_]+"
 
 # eof

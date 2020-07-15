@@ -135,7 +135,7 @@ def crawler(url):
       else:
         change_depth_level = ""
       if len(change_depth_level) == 0:
-         change_depth_level = "y"
+         change_depth_level = "Y"
       if change_depth_level in settings.CHOICE_YES or change_depth_level in settings.CHOICE_NO:
         break  
       elif change_depth_level in settings.CHOICE_QUIT:
@@ -200,7 +200,7 @@ def crawler(url):
           else:
             sitemap_check = ""
           if len(sitemap_check) == 0:
-             sitemap_check = "y"
+             sitemap_check = "Y"
           if sitemap_check in settings.CHOICE_YES:
             output_href = sitemap(recursion)
             sitemap_check = output_href
@@ -219,7 +219,7 @@ def crawler(url):
   info_msg = "Checking "
   if sitemap_check:
     info_msg += "targets's sitemap.xml "
-  info_msg += "for usable links with GET parameters... "
+  info_msg += "for usable links with GET parameters. "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   succeed_banner = True
@@ -234,8 +234,8 @@ def crawler(url):
         valid_url_found = True
         url_num += 1
         if succeed_banner:
-          print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
-        print(settings.print_success_msg("URL " + str(url_num) + " - " + check_url))
+          print(settings.SUCCESS_STATUS)
+        print(settings.print_bold_info_msg("URL " + str(url_num) + " - " + check_url))
         if filename is not None:
           with open(filename, "a") as crawling_results:
             crawling_results.write(check_url + "\n")
@@ -245,7 +245,7 @@ def crawler(url):
         else:
           use_url = ""
         if len(use_url) == 0:
-           use_url = "y"
+           use_url = "Y"
         if use_url in settings.CHOICE_YES:
           return check_url
         elif use_url in settings.CHOICE_NO:
@@ -259,7 +259,7 @@ def crawler(url):
   except TypeError:
     pass
   if not valid_url_found:
-    print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+    print(settings.FAIL_STATUS)
   raise SystemExit()
 
 # eof

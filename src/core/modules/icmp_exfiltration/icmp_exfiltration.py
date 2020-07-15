@@ -20,6 +20,7 @@ import time
 import signal
 from src.thirdparty.six.moves import input as _input
 from src.thirdparty.six.moves import urllib as _urllib
+from src.thirdparty.six.moves import http_client as _http_client
 import threading
 from src.utils import menu
 from src.utils import logs
@@ -86,10 +87,10 @@ def signal_handler(signal, frame):
   exit(0)
 
 def snif(ip_dst, ip_src):
-  success_msg = "Started the sniffer between " + Fore.YELLOW + ip_src
-  success_msg += Style.RESET_ALL + Style.BRIGHT + " and " + Fore.YELLOW 
-  success_msg += ip_dst + Style.RESET_ALL + Style.BRIGHT + "."
-  print(settings.print_success_msg(success_msg))
+  info_msg = "Started the sniffer between " + Fore.YELLOW + ip_src
+  info_msg += Style.RESET_ALL + Style.BRIGHT + " and " + Fore.YELLOW 
+  info_msg += ip_dst + Style.RESET_ALL + Style.BRIGHT + "."
+  print(settings.print_bold_info_msg(info_msg))
   
   while True:
     sniff(filter = "icmp and src " + ip_dst, prn=packet_handler, timeout=settings.TIMESEC)
@@ -101,11 +102,10 @@ def cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src):
   
   # Check if defined "--verbose" option.
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg = "Executing the '" + cmd + "' command... "
-    sys.stdout.write(settings.print_info_msg(info_msg))
+    debug_msg = "Executing the '" + cmd + "' command. "
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
     sys.stdout.write("\n" + settings.print_payload(payload) + "\n")
-
   if http_request_method == "GET":
     url = url.replace(settings.INJECT_TAG, "")
     data = payload.replace(" ", "%20")
@@ -134,8 +134,7 @@ def cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src):
     print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
     raise SystemExit()
 
-  except InvalidURL:
-    err_msg = "Invalid target URL has been given." 
+  except _http_client.InvalidURL as err:
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
@@ -167,7 +166,7 @@ def input_cmd(http_request_method, url, vuln_parameter, ip_src, technique):
     else:
       gotshell = ""  
     if len(gotshell) == 0:
-       gotshell= "y"
+       gotshell= "Y"
     if gotshell in settings.CHOICE_YES:
       print("\nPseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
       if readline_error:

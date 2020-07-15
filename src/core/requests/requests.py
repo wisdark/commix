@@ -37,8 +37,8 @@ Estimating the response time (in seconds).
 def estimate_response_time(url, timesec):
   stored_auth_creds = False
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg = "Estimating the target URL response time... "
-    sys.stdout.write(settings.print_info_msg(info_msg))
+    debug_msg = "Estimating the target URL response time. "
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
   # Check if defined POST data
   if menu.options.data:
@@ -55,11 +55,11 @@ def estimate_response_time(url, timesec):
     
   except _urllib.error.HTTPError as err:
     ignore_start = time.time()
-    if "Unauthorized" in str(err) and menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
+    if settings.UNAUTHORIZED_ERROR in str(err) and menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
       pass
     else:
       if settings.VERBOSITY_LEVEL >= 1:
-        print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+        print(settings.FAIL_STATUS)
       err_msg = "Unable to connect to the target URL"
       try:
         err_msg += " (" + str(err.args[0]).split("] ")[1] + ")."
@@ -108,14 +108,14 @@ def estimate_response_time(url, timesec):
             stored_auth_creds = False
           if stored_auth_creds:
             menu.options.auth_cred = stored_auth_creds
-            success_msg = "Identified a valid (stored) pair of credentials '"  
-            success_msg += menu.options.auth_cred + Style.RESET_ALL + Style.BRIGHT  + "'."
-            print(settings.print_success_msg(success_msg))
+            info_msg = "Identified a (stored) valid pair of credentials '"  
+            info_msg += menu.options.auth_cred + Style.RESET_ALL + Style.BRIGHT  + "'."
+            print(settings.print_bold_info_msg(info_msg))
           else:  
             # Basic authentication 
             if menu.options.auth_type == "basic":
               if not menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
-                warn_msg = "(" + menu.options.auth_type.capitalize() + ") " 
+                warn_msg = menu.options.auth_type.capitalize() + " " 
                 warn_msg += "HTTP authentication credentials are required."
                 print(settings.print_warning_msg(warn_msg))
                 while True:
@@ -125,7 +125,7 @@ def estimate_response_time(url, timesec):
                   else:
                     do_update = ""  
                   if len(do_update) == 0:
-                     do_update = "y" 
+                     do_update = "Y" 
                   if do_update in settings.CHOICE_YES:
                     auth_creds = authentication.http_auth_cracker(url, realm)
                     if auth_creds != False:
@@ -146,7 +146,7 @@ def estimate_response_time(url, timesec):
             # Digest authentication         
             elif menu.options.auth_type == "digest":
               if not menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
-                warn_msg = "(" + menu.options.auth_type.capitalize() + ") " 
+                warn_msg = menu.options.auth_type.capitalize() + " " 
                 warn_msg += "HTTP authentication credentials are required."
                 print(settings.print_warning_msg(warn_msg))      
                 # Check if heuristics have failed to identify the realm attribute.
@@ -160,7 +160,7 @@ def estimate_response_time(url, timesec):
                   else:
                     do_update = ""
                   if len(do_update) == 0:
-                     do_update = "y" 
+                     do_update = "Y" 
                   if do_update in settings.CHOICE_YES:
                     auth_creds = authentication.http_auth_cracker(url, realm)
                     if auth_creds != False:
@@ -180,27 +180,28 @@ def estimate_response_time(url, timesec):
                 else:   
                   checks.http_auth_err_msg()      
         else:
-          pass
+          raise SystemExit()
+          #pass
   
     ignore_end = time.time()
     start = start - (ignore_start - ignore_end)
 
   except socket.timeout:
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
     err_msg = "The connection to target URL has timed out."
     print(settings.print_critical_msg(err_msg) + "\n")
     raise SystemExit()
 
   except _urllib.error.URLError as err_msg:
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
     print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
     raise SystemExit()
 
   except ValueError as err_msg:
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
     print(settings.print_critical_msg(str(err_msg) + "."))
     raise SystemExit()
 
@@ -209,7 +210,7 @@ def estimate_response_time(url, timesec):
   
   if int(diff) < 1:
     if settings.VERBOSITY_LEVEL >= 1 and stored_auth_creds == False:
-      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
+      print(settings.SUCCESS_STATUS)
     url_time_response = int(diff)
     if settings.TARGET_OS == "win":
       warn_msg = "Due to the relatively slow response of 'cmd.exe' in target "
@@ -217,7 +218,7 @@ def estimate_response_time(url, timesec):
       print(settings.print_warning_msg(warn_msg))
   else:
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
+      print(settings.SUCCESS_STATUS)
     url_time_response = int(round(diff))
     warn_msg = "The estimated response time is " + str(url_time_response)
     warn_msg += " second" + "s"[url_time_response == 1:] + ". That may cause" 
@@ -227,7 +228,7 @@ def estimate_response_time(url, timesec):
     if url_time_response >= 3:
       warn_msg += " and/or possible corruptions over the extracted data"
     warn_msg += "."
-    print(settings.print_warning_msg(warn_msg))
+    print(settings.print_bold_warning_msg(warn_msg))
 
   if int(timesec) == int(url_time_response):
     timesec = int(timesec) + int(url_time_response)
@@ -1014,8 +1015,8 @@ def encoding_detection(response):
   if not menu.options.encoding:
     charset_detected = False
     if settings.VERBOSITY_LEVEL >= 1:
-      info_msg = "Identifying the indicated web-page charset... " 
-      sys.stdout.write(settings.print_info_msg(info_msg))
+      debug_msg = "Identifying the indicated web-page charset. " 
+      sys.stdout.write(settings.print_debug_msg(debug_msg))
       sys.stdout.flush()
     try:
       # Detecting charset
@@ -1024,38 +1025,39 @@ def encoding_detection(response):
       except AttributeError:
         # Support for python 3.x
         charset = response.headers.get_content_charset()
-      if len(charset) != 0 :         
+      if charset != None and len(charset) != 0 :        
         charset_detected = True
       else:
-        content = re.findall(r";charset=(.*)\"", html_data)
+        content = re.findall(r"charset=['\"](.*)['\"]", response.read())[0]
         if len(content) != 0 :
           charset = content
           charset_detected = True
         else:
            # Check if HTML5 format
-          charset = re.findall(r"charset=['\"](.*?)['\"]", html_data) 
+          charset = re.findall(r"charset=['\"](.*?)['\"]", response.read())[0]
         if len(charset) != 0 :
           charset_detected = True
       # Check the identifyied charset
       if charset_detected :
-        settings.UNICODE_ENCODING = charset
+        settings.UNICODE_ENCODING = settings.ENCODING = charset.lower()
         if settings.VERBOSITY_LEVEL >= 1:
-          print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
-        settings.ENCODING = charset.lower()
+          print(settings.SUCCESS_STATUS)
         if settings.ENCODING.lower() not in settings.ENCODING_LIST:
           warn_msg = "The indicated web-page charset "  + settings.ENCODING + " seems unknown."
           print(settings.print_warning_msg(warn_msg))
         else:
           if settings.VERBOSITY_LEVEL >= 1:
-            success_msg = "The indicated web-page charset appears to be " 
-            success_msg += settings.ENCODING + Style.RESET_ALL + "."
-            print(settings.print_success_msg(success_msg))
+            debug_msg = "The indicated web-page charset appears to be '" 
+            debug_msg += settings.ENCODING + Style.RESET_ALL + "'."
+            print(settings.print_bold_debug_msg(debug_msg))
       else:
         pass
     except:
       pass
     if charset_detected == False and settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
+      warn_msg = "Heuristics have failed to identify indicated web-page charset."
+      print(settings.print_warning_msg(warn_msg))
   else:
     settings.ENCODING = menu.options.encoding
     if settings.ENCODING.lower() not in settings.ENCODING_LIST:
@@ -1071,8 +1073,8 @@ Procedure for target application identification
 def application_identification(server_banner, url):
   found_application_extension = False
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg = "Identifying the target application ... " 
-    sys.stdout.write(settings.print_info_msg(info_msg))
+    debug_msg = "Identifying the target application." 
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
   root, application_extension = splitext(_urllib.parse.urlparse(url).path)
   settings.TARGET_APPLICATION = application_extension[1:].upper()
@@ -1080,10 +1082,10 @@ def application_identification(server_banner, url):
   if settings.TARGET_APPLICATION:
     found_application_extension = True
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")           
-      success_msg = "The target application was identified as " 
-      success_msg += settings.TARGET_APPLICATION + Style.RESET_ALL + "."
-      print(settings.print_success_msg(success_msg))
+      print(settings.SUCCESS_STATUS)           
+      debug_msg = "The target application was identified as " 
+      debug_msg += settings.TARGET_APPLICATION + Style.RESET_ALL + "."
+      print(settings.print_bold_debug_msg(debug_msg))
 
     # Check for unsupported target applications
     for i in range(0,len(settings.UNSUPPORTED_TARGET_APPLICATION)):
@@ -1094,7 +1096,7 @@ def application_identification(server_banner, url):
 
   if not found_application_extension:
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
     warn_msg = "Heuristics have failed to identify target application."
     print(settings.print_warning_msg(warn_msg))
 
@@ -1104,19 +1106,19 @@ Procedure for target server's identification.
 def server_identification(server_banner):
   found_server_banner = False
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg = "Identifying the target server... " 
-    sys.stdout.write(settings.print_info_msg(info_msg))
+    debug_msg = "Identifying the target server. " 
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
 
   for i in range(0,len(settings.SERVER_BANNERS)):
     match = re.search(settings.SERVER_BANNERS[i].lower(), server_banner.lower())
     if match:
       if settings.VERBOSITY_LEVEL >= 1:
-        print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
+        print(settings.SUCCESS_STATUS)
       if settings.VERBOSITY_LEVEL >= 1:
-        success_msg = "The target server was identified as " 
-        success_msg += server_banner + Style.RESET_ALL + "."
-        print(settings.print_success_msg(success_msg))
+        debug_msg = "The target server was identified as " 
+        debug_msg += server_banner + Style.RESET_ALL + "."
+        print(settings.print_bold_debug_msg(debug_msg))
       settings.SERVER_BANNER = match.group(0)
       found_server_banner = True
       # Set up default root paths
@@ -1132,7 +1134,7 @@ def server_identification(server_banner):
       break
   else:
     if settings.VERBOSITY_LEVEL >= 1:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
       warn_msg = "The server which was identified as '" 
       warn_msg += server_banner + "' seems unknown."
       print(settings.print_warning_msg(warn_msg))
@@ -1147,8 +1149,8 @@ def check_target_os(server_banner):
     user_defined_os = settings.TARGET_OS
 
   if settings.VERBOSITY_LEVEL >= 1:
-    info_msg = "Identifying the target operating system... " 
-    sys.stdout.write(settings.print_info_msg(info_msg))
+    debug_msg = "Identifying the target operating system. " 
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
 
   # Procedure for target OS identification.
@@ -1178,12 +1180,12 @@ def check_target_os(server_banner):
 
   if settings.VERBOSITY_LEVEL >= 1 :
     if found_os_server:
-      print("[ " + Fore.GREEN + "SUCCEED" + Style.RESET_ALL + " ]")
-      success_msg = "The target operating system appears to be " 
-      success_msg += identified_os.title() + Style.RESET_ALL + "."
-      print(settings.print_success_msg(success_msg))
+      print(settings.SUCCESS_STATUS)
+      debug_msg = "The target operating system appears to be " 
+      debug_msg += identified_os.title() + Style.RESET_ALL + "."
+      print(settings.print_bold_debug_msg(debug_msg))
     else:
-      print("[ " + Fore.RED + "FAILED" + Style.RESET_ALL + " ]")
+      print(settings.FAIL_STATUS)
       warn_msg = "Heuristics have failed to identify server's operating system."
       print(settings.print_warning_msg(warn_msg))
 

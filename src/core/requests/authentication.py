@@ -51,9 +51,9 @@ def authentication_process():
     if len(cookies) != 0 :
       menu.options.cookie = cookies.rstrip()
       if settings.VERBOSITY_LEVEL >= 1:
-        success_msg = "The received cookie is "  
-        success_msg += str(menu.options.cookie) + Style.RESET_ALL + "."
-        print(settings.print_success_msg(success_msg))
+        info_msg = "The received cookie is "  
+        info_msg += str(menu.options.cookie) + Style.RESET_ALL + "."
+        print(settings.print_bold_info_msg(info_msg))
     _urllib.request.install_opener(opener)
     request = _urllib.request.Request(auth_url, auth_data)
     # Check if defined extra headers.
@@ -74,6 +74,9 @@ wordlists for usernames / passwords.
 def define_wordlists():
   try:
     usernames = []
+    if settings.VERBOSITY_LEVEL >= 1:
+      debug_msg = "Parsing '" + settings.USERNAMES_TXT_FILE + "' dictionary file for usernames."
+      print(settings.print_debug_msg(debug_msg))
     if not os.path.isfile(settings.USERNAMES_TXT_FILE):
       err_msg = "The username file (" + str(settings.USERNAMES_TXT_FILE) + ") is not found"
       print(settings.print_critical_msg(err_msg))
@@ -93,6 +96,9 @@ def define_wordlists():
 
   try:
     passwords = []
+    if settings.VERBOSITY_LEVEL >= 1:
+      debug_msg = "Parsing '" + settings.PASSWORDS_TXT_FILE + "' dictionary file for passwords."
+      print(settings.print_debug_msg(debug_msg))
     if not os.path.isfile(settings.PASSWORDS_TXT_FILE):
       err_msg = "The password file (" + str(settings.PASSWORDS_TXT_FILE) + ") is not found" + Style.RESET_ALL
       print(settings.print_critical_msg(err_msg))
@@ -128,11 +134,11 @@ def http_auth_cracker(url, realm):
         float_percent = "{0:.1f}%".format(round(((i*100)/(total*1.0)),2))
         # Check if verbose mode on
         if settings.VERBOSITY_LEVEL >= 1:
-          payload = "pair of credentials '" + username + ":" + password + "'"
+          payload = "" + username + ":" + password + ""
           if settings.VERBOSITY_LEVEL > 1:
             print(settings.print_checking_msg(payload))
           else:
-            sys.stdout.write("\r" + settings.print_checking_msg(payload) + "           ")
+            sys.stdout.write("\r" + settings.print_checking_msg(payload) + " " * 10)
             sys.stdout.flush()
         try:
           # Basic authentication 
@@ -142,6 +148,12 @@ def http_auth_cracker(url, realm):
             request.add_header("Authorization", "Basic " + base64string)
             headers.do_check(request)
             headers.check_http_traffic(request)
+            # Check if defined any HTTP Proxy (--proxy option).
+            if menu.options.proxy:
+              proxy.use_proxy(request)
+            # Check if defined Tor (--tor option).  
+            elif menu.options.tor:
+              tor.use_tor(request)
             result = _urllib.request.urlopen(request)
           # Digest authentication 
           elif authentication_type.lower() == "digest":
@@ -151,6 +163,12 @@ def http_auth_cracker(url, realm):
             _urllib.request.install_opener(opener)
             request = _urllib.request.Request(url)
             headers.check_http_traffic(request)
+            # Check if defined any HTTP Proxy (--proxy option).
+            if menu.options.proxy:
+              proxy.use_proxy(request)
+            # Check if defined Tor (--tor option).  
+            elif menu.options.tor:
+              tor.use_tor(request)
             result = _urllib.request.urlopen(request)
 
           # Store valid results to session 
@@ -162,24 +180,27 @@ def http_auth_cracker(url, realm):
         except:
           pass  
         if found:
-          if not settings.VERBOSITY_LEVEL >= 1:
-            float_percent = Fore.GREEN + "SUCCEED" + Style.RESET_ALL
+          if settings.VERBOSITY_LEVEL == 0:
+            float_percent = settings.info_msg
         else:
           if str(float_percent) == "100.0%":
-            if not settings.VERBOSITY_LEVEL >= 1:
-              float_percent = Fore.RED + "FAILED" + Style.RESET_ALL
+            if settings.VERBOSITY_LEVEL == 0:
+              float_percent = settings.FAIL_STATUS
           else:  
             i = i + 1
-        if not settings.VERBOSITY_LEVEL >= 1:
-          info_msg = "Checking for a valid pair of credentials... [ " +  float_percent + " ]"
+            float_percent = ".. (" + float_percent + ")"
+        if settings.VERBOSITY_LEVEL == 0:
+          info_msg = "Checking for a valid pair of credentials." 
+          info_msg += float_percent
           sys.stdout.write("\r\r" + settings.print_info_msg(info_msg))
           sys.stdout.flush()
         if found:
           valid_pair =  "" + username + ":" + password + ""
-          print("")
-          success_msg = "Identified a valid pair of credentials '" 
-          success_msg += valid_pair + Style.RESET_ALL + Style.BRIGHT  + "'."  
-          print(settings.print_success_msg(success_msg))
+          if not settings.VERBOSITY_LEVEL > 1:
+            print("")
+          info_msg = "Identified a valid pair of credentials '" 
+          info_msg += valid_pair + Style.RESET_ALL + Style.BRIGHT  + "'."  
+          print(settings.print_bold_info_msg(info_msg))
           return valid_pair
 
     err_msg = "Use the '--auth-cred' option to provide a valid pair of " 

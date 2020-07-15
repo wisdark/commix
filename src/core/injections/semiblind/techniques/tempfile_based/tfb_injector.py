@@ -192,7 +192,7 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     minlen = 1
 
   found_chars = False
-  info_msg = "Retrieving the length of execution output... "
+  info_msg = "Retrieving the length of execution output. "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()  
   if settings.VERBOSITY_LEVEL > 1:
@@ -218,9 +218,9 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     if settings.VERBOSITY_LEVEL == 1:
       payload_msg = payload.replace("\n", "\\n") 
       sys.stdout.write("\n" + settings.print_payload(payload_msg))
-    elif settings.VERBOSITY_LEVEL > 1:
-      info_msg = "Generating a payload for injection..."
-      print(settings.print_info_msg(info_msg))
+    elif settings.VERBOSITY_LEVEL >= 2:
+      debug_msg = "Generating payload for the injection."
+      print(settings.print_debug_msg(debug_msg))
       print(settings.print_payload(payload)) 
 
     # Check if defined cookie with "INJECT_HERE" tag
@@ -256,12 +256,16 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
         if settings.VERBOSITY_LEVEL >= 1:
           pass
         else:
-          sys.stdout.write("[" + Fore.GREEN + " SUCCEED " + Style.RESET_ALL+ "]\n")
+          sys.stdout.write(settings.SUCCESS_STATUS + "\n")
           sys.stdout.flush()
         if settings.VERBOSITY_LEVEL == 1:
           print("")
-        info_msg = "Retrieved: " + str(output_length)
-        print(settings.print_info_msg(info_msg))
+        if settings.VERBOSITY_LEVEL >= 1:
+          debug_msg = "Retrieved the length of execution output: " + str(output_length)
+          print(settings.print_bold_debug_msg(debug_msg))
+        else:
+          sub_content = "Retrieved: " + str(output_length)
+          print(settings.print_sub_content(sub_content))
       found_chars = True
       injection_check = False
       break
@@ -275,10 +279,10 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     check_end = 0
     check_start = time.time()
     output = []
-    percent = "0.0"
-    info_msg = "Grabbing the output from '" + OUTPUT_TEXTFILE + "', please wait... "
+    percent = "0.0%"
+    info_msg = "Grabbing the output from '" + OUTPUT_TEXTFILE + "'."
     if menu.options.verbose < 1 :
-      info_msg +=  "[ " +str(percent)+ "% ]"
+      info_msg += ".. (" + str(percent) + ")"
     elif menu.options.verbose == 1 :
       info_msg +=  ""
     else:
@@ -307,9 +311,9 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
         if settings.VERBOSITY_LEVEL == 1:
           payload_msg = payload.replace("\n", "\\n") 
           sys.stdout.write("\n" + settings.print_payload(payload_msg))
-        elif settings.VERBOSITY_LEVEL > 1:
-          info_msg = "Generating a payload for injection..."
-          print(settings.print_info_msg(info_msg))
+        elif settings.VERBOSITY_LEVEL >= 2:
+          debug_msg = "Generating payload for the injection."
+          print(settings.print_debug_msg(debug_msg))
           print(settings.print_payload(payload)) 
 
         # Check if defined cookie with "INJECT_HERE" tag
@@ -340,14 +344,16 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
         if (how_long >= settings.FOUND_HOW_LONG and how_long - timesec >= settings.FOUND_DIFF):
           injection_check = True
         if injection_check == True:
-          if not settings.VERBOSITY_LEVEL >= 1:
+          if settings.VERBOSITY_LEVEL == 0:
             output.append(chr(ascii_char))
             percent = ((num_of_chars*100)/output_length)
             float_percent = str("{0:.1f}".format(round(((num_of_chars * 100)/(output_length * 1.0)),2))) + "%"
             if percent == 100:
-              float_percent = Fore.GREEN + "SUCCEED" + Style.RESET_ALL
-            info_msg = "Grabbing the output from '" + OUTPUT_TEXTFILE 
-            info_msg += "', please wait... [ " + float_percent + " ]"
+              float_percent = settings.info_msg
+            else:
+              float_percent = ".. (" + str(float_percent) + ")"
+            info_msg = "Grabbing the output from '" + OUTPUT_TEXTFILE +"'."
+            info_msg += float_percent
             sys.stdout.write("\r" + settings.print_info_msg(info_msg))
             sys.stdout.flush()
 
@@ -361,11 +367,12 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
 
   else:
     check_start = 0
-    if not settings.VERBOSITY_LEVEL >= 1:
-      sys.stdout.write("[" +Fore.RED+ " FAILED " + Style.RESET_ALL+ "]")
+    if settings.VERBOSITY_LEVEL == 0:
+      sys.stdout.write(settings.FAIL_STATUS)
       sys.stdout.flush() 
     else:
-      print("") 
+      pass
+      # print("") 
     check_how_long = 0
     output = ""
 
@@ -386,14 +393,14 @@ def false_positive_check(separator, TAG, cmd, prefix, suffix, whitespace, timese
       cmd = "powershell.exe -InputFormat none write-host ([string](cmd /c " + cmd + ")).trim()"
 
   found_chars = False
-  info_msg = "Checking the reliability of the used payload "
-  info_msg += "in case of a false positive result... "
-  if settings.VERBOSITY_LEVEL == 1: 
-    sys.stdout.write(settings.print_info_msg(info_msg))
+  debug_msg = "Checking the reliability of the used payload "
+  debug_msg += "in case of a false positive result. "
+  if settings.VERBOSITY_LEVEL >= 1: 
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
   # Check if defined "--verbose" option.
-  elif settings.VERBOSITY_LEVEL > 1:
-    print(settings.print_info_msg(info_msg))
+  # elif settings.VERBOSITY_LEVEL > 1:
+  #   print(settings.print_info_msg(info_msg))
   
   # Varying the sleep time.
   timesec = timesec + random.randint(1, 5)
@@ -421,9 +428,9 @@ def false_positive_check(separator, TAG, cmd, prefix, suffix, whitespace, timese
       payload_msg = payload.replace("\n", "\\n") 
       sys.stdout.write("\n" + settings.print_payload(payload_msg))
     # Check if defined "--verbose" option.
-    elif settings.VERBOSITY_LEVEL > 1:
-      info_msg = "Generating a payload for testing the reliability of used payload..."
-      print(settings.print_info_msg(info_msg))
+    elif settings.VERBOSITY_LEVEL >= 1:
+      debug_msg = "Generating payload for testing the reliability of used payload."
+      print(settings.print_debug_msg(debug_msg))
       payload_msg = payload.replace("\n", "\\n") 
       sys.stdout.write(settings.print_payload(payload_msg) + "\n")
  
@@ -491,9 +498,9 @@ def false_positive_check(separator, TAG, cmd, prefix, suffix, whitespace, timese
           payload_msg = payload.replace("\n", "\\n") 
           sys.stdout.write("\n" + settings.print_payload(payload_msg))
         # Check if defined "--verbose" option.
-        elif settings.VERBOSITY_LEVEL > 1:
-          info_msg = "Generating a payload for injection..."
-          print(settings.print_info_msg(info_msg))
+        elif settings.VERBOSITY_LEVEL >= 1:
+          debug_msg = "Generating payload for the injection."
+          print(settings.print_debug_msg(debug_msg))
           payload_msg = payload.replace("\n", "\\n") 
           sys.stdout.write(settings.print_payload(payload_msg) + "\n")
 
@@ -546,13 +553,14 @@ def export_injection_results(cmd, separator, output, check_how_long):
       print("\n")
     elif settings.VERBOSITY_LEVEL == 1:
       print("")  
-    print(Fore.GREEN + Style.BRIGHT + output + Style.RESET_ALL)
+    print(settings.print_output(output))
     info_msg = "Finished in " + time.strftime('%H:%M:%S', time.gmtime(check_how_long))
     sys.stdout.write("\n" + settings.print_info_msg(info_msg))
     if not menu.options.os_cmd:
       print("")
   else:
     err_msg = "The '" + cmd + "' command, does not return any output."
-    print(settings.print_critical_msg(err_msg) + "\n")
-
+    if settings.VERBOSITY_LEVEL == 0:
+      print("") 
+    sys.stdout.write("\r" + settings.print_info_msg(err_msg) + "\n") 
 # eof
