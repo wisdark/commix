@@ -83,10 +83,19 @@ if settings.IS_WINDOWS:
 Define HTTP User-Agent header.
 """
 def user_agent_header():
+  # Check if defined "--mobile" option.
+  if menu.options.mobile:
+    if ((menu.options.agent != settings.DEFAULT_USER_AGENT) and not menu.options.requestfile) or menu.options.random_agent:
+      err_msg = "The switch '--mobile' is incompatible with option '--user-agent' or switch '--random-agent'."
+      print(settings.print_critical_msg(err_msg))
+      raise SystemExit()
+    else:
+      menu.options.agent = menu.mobile_user_agents()
+
   # Check if defined "--random-agent" option.
   if menu.options.random_agent:
-    if (menu.options.agent != settings.DEFAULT_USER_AGENT) or menu.options.mobile:
-      err_msg = "The option '--random-agent' is incompatible with option '--user-agent' or switch '--mobile'."
+    if ((menu.options.agent != settings.DEFAULT_USER_AGENT) and not menu.options.requestfile) or menu.options.mobile:
+      err_msg = "The switch '--random-agent' is incompatible with option '--user-agent' or switch '--mobile'."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
     else:
@@ -104,7 +113,10 @@ def user_agent_header():
         print(settings.print_info_msg(info_msg))
       except:
         print(settings.FAIL_STATUS)
-          
+  if settings.VERBOSITY_LEVEL >= 1:
+    debug_msg = "Setting the HTTP User-Agent header."
+    print(settings.print_debug_msg(debug_msg))
+
 """
 Examine the request
 """
@@ -119,15 +131,9 @@ def examine_request(request):
       return tor.use_tor(request)
     else:
       try:
-        return _urllib.request.urlopen(request)
-      except SocketError as e:
-        if e.errno == errno.ECONNRESET:
-          error_msg = "Connection reset by peer."
-          print(settings.print_critical_msg(error_msg))
-        elif e.errno == errno.ECONNREFUSED:
-          error_msg = "Connection refused."
-          print(settings.print_critical_msg(error_msg))
-        raise SystemExit()
+        response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
+        return response
+
       except ValueError:
         # Invalid format for the '--header' option.
         if settings.VERBOSITY_LEVEL < 2:
@@ -138,6 +144,7 @@ def examine_request(request):
         err_msg += "if you want to try to exploit the provided HTTP header."
         print(settings.print_critical_msg(err_msg))
         raise SystemExit()
+
       except Exception as err_msg:
         if settings.UNAUTHORIZED_ERROR in str(err_msg).lower():
           if menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
@@ -159,6 +166,15 @@ def examine_request(request):
             error_msg = str(err_msg).replace(": "," (") + ")."
           print(settings.print_critical_msg(error_msg))
           raise SystemExit()
+
+  except SocketError as e:
+    if e.errno == errno.ECONNRESET:
+      error_msg = "Connection reset by peer."
+      print(settings.print_critical_msg(error_msg))
+    elif e.errno == errno.ECONNREFUSED:
+      error_msg = "Connection refused."
+      print(settings.print_critical_msg(error_msg))
+    raise SystemExit()
 
   except _urllib.error.HTTPError as err_msg:
     error_description = ""
@@ -219,6 +235,12 @@ def check_internet(url):
 The init (URL) request.
 """
 def init_request(url):
+  # Number of seconds to wait before timeout connection
+  if settings.VERBOSITY_LEVEL >= 1:
+      debug_msg = "Setting the HTTP timeout."
+      print(settings.print_debug_msg(debug_msg))
+  if menu.options.timeout:
+    settings.TIMEOUT = menu.options.timeout
   # Check connection(s)
   checks.check_connection(url)
   # Define HTTP User-Agent header
@@ -262,7 +284,7 @@ def init_request(url):
   if menu.options.proxy:
     proxy.do_check(url)
   if settings.VERBOSITY_LEVEL >= 1:
-    debug_msg = "Creating HTTP requests opener object."
+    debug_msg = "Creating " + str(settings.SCHEME).upper() + " requests opener object."
     print(settings.print_debug_msg(debug_msg))
   # Used a valid pair of valid credentials
   if menu.options.auth_cred and menu.options.auth_type:
@@ -288,7 +310,7 @@ def url_response(url):
   if settings.CHECK_INTERNET:
     settings.CHECK_INTERNET = False
   if settings.INIT_TEST == True:
-    info_msg = "Checking connection to the target URL. "
+    info_msg = "Testing connection to the target URL. "
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
     if settings.VERBOSITY_LEVEL >= 2:
@@ -502,7 +524,7 @@ def main(filename, url):
         if menu.options.file_upload:
           checks.file_upload()
           try:
-            _urllib.request.urlopen(menu.options.file_upload)
+            _urllib.request.urlopen(menu.options.file_upload, timeout=settings.TIMEOUT)
           except _urllib.error.HTTPError as err_msg:
             print(settings.print_critical_msg(str(err_msg.code)))
             raise SystemExit()
@@ -727,15 +749,6 @@ try:
       err_msg = "The '--check-tor' swich requires usage of switch '--tor'."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
-
-    # Check if defined "--mobile" option.
-    if menu.options.mobile:
-      if (menu.options.agent != settings.DEFAULT_USER_AGENT) or menu.options.random_agent:
-        err_msg = "The switch '--mobile' is incompatible with options '--user-agent', '--random-agent'."
-        print(settings.print_critical_msg(err_msg))
-        raise SystemExit()
-      else:
-        menu.options.agent = menu.mobile_user_agents()
 
     # Check if defined "--ignore-code" option.
     if menu.options.ignore_code and "," in menu.options.ignore_code:

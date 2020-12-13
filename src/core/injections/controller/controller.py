@@ -84,7 +84,8 @@ def heuristic_basic(url, http_request_method):
       if http_request_method == "GET":
         request = _urllib.request.Request(url.replace(settings.INJECT_TAG, settings.BASIC_TEST))
       else:
-        request = _urllib.request.Request(url, menu.options.data.replace(settings.INJECT_TAG, settings.BASIC_TEST))
+        data = menu.options.data.replace(settings.INJECT_TAG, settings.BASIC_TEST)
+        request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
       headers.do_check(request)
       response = requests.get_request_response(request)
       html_data = response.read().decode(settings.UNICODE_ENCODING)
@@ -582,7 +583,7 @@ def perform_checks(url, filename):
     authentication.authentication_process()
 
     # Check if authentication page is the same with the next (injection) URL
-    if _urllib.request.urlopen(url).read() == _urllib.request.urlopen(menu.options.auth_url).read():
+    if _urllib.request.urlopen(url, timeout=settings.TIMEOUT).read() == _urllib.request.urlopen(menu.options.auth_url, timeout=settings.TIMEOUT).read():
       err_msg = "It seems that the authentication procedure has failed."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()

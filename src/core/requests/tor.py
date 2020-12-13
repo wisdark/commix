@@ -15,7 +15,7 @@ For more see the file 'readme/COPYING' for copying permission.
 
 import re
 import sys
-
+from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.six.moves import http_client as _http_client
 from src.utils import menu
 from src.utils import settings
@@ -121,7 +121,7 @@ def use_tor(request):
     privoxy_proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + PRIVOXY_PORT})
     opener = _urllib.request.build_opener(privoxy_proxy)
     _urllib.request.install_opener(opener)
-    response = _urllib.request.urlopen(request)
+    response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
     return response
 
   except Exception as err_msg:

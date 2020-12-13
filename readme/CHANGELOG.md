@@ -1,4 +1,13 @@
-## Version 3.1 (2020-06-26)
+## Version 3.2 (upcoming)
+* Updated: Minor update regarding smartphones to imitate, through HTTP User-Agent header.
+* Fixed: Bug-fix regarding setting suitable HTTP header User-Agent, when combining "--random-agent" or "--mobile" switch with "-r" option.
+* Fixed: Bug-fix regarding "hex" encoding/decoding.
+* Added: New option ( `--timeout`) for setting a number of seconds to wait before timeout connection (default 30).
+* Revised: Increased default timeout to 30 seconds.
+* Fixed: Bug-fix regarding Basic HTTP authentication.
+* Fixed: Bug-fix regarding connection problems.
+
+## Version 3.1 (2020-06-17)
 * Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
 * Added: A script "setup.py" has been added (i.e. easier installation).
 * Revised: Improvement regarding checking if the provided value has boundaries (e.g. 'param=/value/').
