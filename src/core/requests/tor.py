@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ def do_check():
     
   if check_privoxy_proxy:
     try:
-      check_tor_page = opener.open("https://check.torproject.org/").read()
+      check_tor_page = opener.open("https://check.torproject.org/").read().decode(settings.UNICODE_ENCODING)
       found_ip = re.findall(r":  <strong>" + "(.*)" + "</strong></p>", check_tor_page)
       if not "You are not using Tor" in check_tor_page:
         sys.stdout.write(settings.SUCCESS_STATUS + "\n")
@@ -75,7 +75,7 @@ def do_check():
         print(settings.print_warning_msg(warn_msg))  
 
       else:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         if menu.options.tor_check:
           err_msg = "It seems that your Tor connection is not properly set. "
         else:
@@ -89,7 +89,7 @@ def do_check():
         raise SystemExit() 
 
     except _urllib.error.URLError as err_msg:
-      print(settings.FAIL_STATUS)
+      print(settings.SINGLE_WHITESPACE)
       if menu.options.tor_check:
         err_msg = "It seems that your Tor connection is not properly set. "
       else:
@@ -102,7 +102,7 @@ def do_check():
       raise SystemExit()  
 
     except _http_client.BadStatusLine as err_msg:
-      print(settings.FAIL_STATUS)
+      print(settings.SINGLE_WHITESPACE)
       if len(err_msg.line) > 2 :
         print(err_msg.line, err_msg.message)
       raise SystemExit()

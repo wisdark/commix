@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ from src.utils import menu
 from src.utils import logs
 from src.utils import purge
 from src.utils import update
+from src.utils import common
 from src.utils import version
 from src.utils import install
 from src.utils import crawler
@@ -47,30 +48,9 @@ from src.core.injections.controller import parser
 from src.core.injections.controller import controller
 from src.thirdparty.six.moves import reload_module as _reload_module
 
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
-
 # Set default encoding
 _reload_module(sys)
-#sys.setdefaultencoding(settings.DEFAULT_ENCODING)
+#sys.setdefaultencoding(settings.UNICODE_ENCODING)
 
 if settings.IS_WINDOWS:
   import codecs
@@ -99,7 +79,7 @@ def user_agent_header():
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
     else:
-      if settings.VERBOSITY_LEVEL >= 1:
+      if settings.VERBOSITY_LEVEL != 0:
         debug_msg = "Fetching random HTTP User-Agent header. "  
         sys.stdout.write(settings.print_debug_msg(debug_msg))
         sys.stdout.flush()
@@ -107,13 +87,13 @@ def user_agent_header():
         pass
       try:
         menu.options.agent = random.choice(settings.USER_AGENT_LIST)
-        if settings.VERBOSITY_LEVEL >= 1:
-          print(settings.SUCCESS_STATUS)
+        if settings.VERBOSITY_LEVEL != 0:
+          print(settings.SINGLE_WHITESPACE)
         info_msg = "The fetched random HTTP User-Agent header value is '" + menu.options.agent + "'."  
         print(settings.print_info_msg(info_msg))
       except:
-        print(settings.FAIL_STATUS)
-  if settings.VERBOSITY_LEVEL >= 1:
+        print(settings.SINGLE_WHITESPACE)
+  if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Setting the HTTP User-Agent header."
     print(settings.print_debug_msg(debug_msg))
 
@@ -137,7 +117,7 @@ def examine_request(request):
       except ValueError:
         # Invalid format for the '--header' option.
         if settings.VERBOSITY_LEVEL < 2:
-          print(settings.FAIL_STATUS)
+          print(settings.SINGLE_WHITESPACE)
         err_msg = "Use '--header=\"HEADER_NAME: HEADER_VALUE\"'"
         err_msg += "to provide an extra HTTP header or"
         err_msg += " '--header=\"HEADER_NAME: " + settings.WILDCARD_CHAR  + "\"' "
@@ -185,7 +165,7 @@ def examine_request(request):
       warn_msg = "Skipping URL '" + url + "' - " + err_msg
       print(settings.print_warning_msg(warn_msg))
       if settings.EOF:
-        print("") 
+        print(settings.SINGLE_WHITESPACE) 
       return False  
     else:
       print(settings.print_critical_msg(err_msg))
@@ -202,7 +182,7 @@ def examine_request(request):
       err_msg = "Skipping URL '" + url + "' - " + err_msg
       print(settings.print_critical_msg(err_msg))
       if settings.EOF:
-        print("") 
+        print(settings.SINGLE_WHITESPACE) 
       return False 
     else:
       print(settings.print_critical_msg(err_msg))
@@ -217,8 +197,8 @@ def check_internet(url):
   info_msg = "Checking for internet connection. "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
-  if settings.VERBOSITY_LEVEL > 1:
-    print("")
+  if settings.VERBOSITY_LEVEL >= 2:
+    print(settings.SINGLE_WHITESPACE)
   try:
     request = _urllib.request.Request(settings.CHECK_INTERNET_ADDRESS)
     headers.do_check(request)
@@ -227,7 +207,7 @@ def check_internet(url):
       proxy.do_check(settings.CHECK_INTERNET_ADDRESS)
     examine_request(request)
   except:
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     error_msg = "No internet connection detected."
     print(settings.print_critical_msg(error_msg))
 
@@ -236,7 +216,7 @@ The init (URL) request.
 """
 def init_request(url):
   # Number of seconds to wait before timeout connection
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
       debug_msg = "Setting the HTTP timeout."
       print(settings.print_debug_msg(debug_msg))
   if menu.options.timeout:
@@ -283,7 +263,7 @@ def init_request(url):
   # Check if defined any HTTP Proxy (--proxy option).
   if menu.options.proxy:
     proxy.do_check(url)
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Creating " + str(settings.SCHEME).upper() + " requests opener object."
     print(settings.print_debug_msg(debug_msg))
   # Used a valid pair of valid credentials
@@ -314,7 +294,7 @@ def url_response(url):
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
     if settings.VERBOSITY_LEVEL >= 2:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
   response = examine_request(request)
   # Check for URL redirection
   if not menu.options.ignore_redirects:
@@ -347,7 +327,14 @@ Logs filename creation.
 """
 def logs_filename_creation():
   if menu.options.output_dir:
-    output_dir = menu.options.output_dir
+    if os.path.isdir(menu.options.output_dir):
+      output_dir = menu.options.output_dir
+      if not output_dir.endswith("/"):
+        output_dir = output_dir + "/"
+    else:
+      error_msg = "The '" + menu.options.output_dir + "' is not directory."
+      print(settings.print_critical_msg(error_msg))
+      raise SystemExit()
   else:
     output_dir = settings.OUTPUT_DIR
   
@@ -361,9 +348,9 @@ def logs_filename_creation():
       os.mkdir(output_dir)   
     except OSError as err_msg:
       try:
-        error_msg = str(err_msg.args[0]).split("] ")[1] + "."
+        error_msg = str(err_msg).split("] ")[1] + "."
       except IndexError:
-        error_msg = str(err_msg.args[0]) + "."
+        error_msg = str(err_msg) + "."
       print(settings.print_critical_msg(error_msg))
       raise SystemExit()
 
@@ -436,12 +423,6 @@ def main(filename, url):
 
     # Check for skipping injection techniques.
     if menu.options.skip_tech:
-      if menu.options.tech:
-        err_msg = "The options '--technique' and '--skip-technique' cannot be used "
-        err_msg += "simultaneously (i.e. only one option must be set)."
-        print(settings.print_critical_msg(err_msg))
-        raise SystemExit
-
       settings.SKIP_TECHNIQUES = True
       menu.options.tech = menu.options.skip_tech
 
@@ -482,6 +463,9 @@ def main(filename, url):
         print(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
+    if not menu.options.tech:
+      menu.options.tech = ""
+    
     # Check if specified wrong alternative shell
     if menu.options.alter_shell:
       if menu.options.alter_shell.lower() not in settings.AVAILABLE_SHELLS:
@@ -503,10 +487,14 @@ def main(filename, url):
   
     # Check if defined "--url" or "-m" option.
     if url:
-      if menu.options.auth_cred and menu.options.auth_cred and settings.VERBOSITY_LEVEL >= 1:
+      if menu.options.auth_cred and menu.options.auth_type:
         info_msg = "Used a valid pair of " + menu.options.auth_type 
         info_msg += " HTTP authentication credentials '" + menu.options.auth_cred + "'." 
         print(settings.print_bold_info_msg(info_msg))
+        session_handler.import_valid_credentials(url, authentication_type=menu.options.auth_type, \
+                                                 admin_panel=url, username=menu.options.auth_cred.split(":")[0], \
+                                                 password=menu.options.auth_cred.split(":")[1]
+                                                 )
       # Load the crawler
       if menu.options.crawldepth > 0 or menu.options.sitemap_url:  
         url = crawler.crawler(url)
@@ -534,14 +522,16 @@ def main(filename, url):
         try:
           # Webpage encoding detection.
           requests.encoding_detection(response)
+          # Procedure for target application identification
+          requests.application_identification(url)
+          # Specifies the technology supporting the web application
+          requests.technology_detection(response)
           if response.info()['server'] :
             server_banner = response.info()['server']
             # Procedure for target server's operating system identification.
             requests.check_target_os(server_banner)
             # Procedure for target server identification.
             requests.server_identification(server_banner)
-            # Procedure for target application identification
-            requests.application_identification(server_banner, url)
             # Store the Server's root dir
             settings.DEFAULT_WEB_ROOT = settings.WEB_ROOT
             if menu.options.is_admin or menu.options.is_root and not menu.options.current_user:
@@ -563,14 +553,14 @@ def main(filename, url):
       except _urllib.error.HTTPError as err_msg:
         # Check the codes of responses
         if str(err_msg.getcode()) == settings.INTERNAL_SERVER_ERROR:
-          print(settings.FAIL_STATUS)
+          print(settings.SINGLE_WHITESPACE)
           content = err_msg.read()
           raise SystemExit()
         
         # Invalid permission to access target URL page.
         elif str(err_msg.getcode()) == settings.FORBIDDEN_ERROR:
           if settings.VERBOSITY_LEVEL < 2:
-            print(settings.FAIL_STATUS)
+            print(settings.SINGLE_WHITESPACE)
           err_msg = "You don't have permission to access this page."
           print(settings.print_critical_msg(err_msg))
           raise SystemExit()
@@ -578,8 +568,8 @@ def main(filename, url):
         # The target host seems to be down!
         elif str(err_msg.getcode()) == settings.NOT_FOUND_ERROR:
           if settings.VERBOSITY_LEVEL < 2:
-            print(settings.FAIL_STATUS)
-          err_msg = "The host seems to be down!"
+            print(settings.SINGLE_WHITESPACE)
+          err_msg = "Not found."
           print(settings.print_critical_msg(err_msg))
           raise SystemExit()
 
@@ -587,9 +577,9 @@ def main(filename, url):
           raise
 
       # The target host seems to be down!
-      except _urllib.error.URLError as e:
+      except (_urllib.error.URLError, _http_client.BadStatusLine) as e:
         if settings.VERBOSITY_LEVEL < 2:
-          print(settings.FAIL_STATUS)
+          print(settings.SINGLE_WHITESPACE)
         err_msg = "The host seems to be down"
         try:
           err_msg += " (" + str(e.args[0]).split("] ")[1] + ")."
@@ -598,15 +588,8 @@ def main(filename, url):
           pass
         print(settings.print_critical_msg(err_msg))
         raise SystemExit()
-        
-      except _http_client.BadStatusLine as err_msg:
-        if settings.VERBOSITY_LEVEL < 2:
-          print(settings.FAIL_STATUS)
-        if len(err_msg.line) > 2 :
-          print(err_msg.line, err_msg.message)
-        pass
-  
-      except _http_client.InvalidURL as err:
+
+      except _http_client.InvalidURL as err_msg:
         print(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
@@ -623,30 +606,26 @@ def main(filename, url):
       checks.enable_all_enumeration_options()
 
     # Launch injection and exploitation controller.
-    controller.do_check(url, filename)
+    if len(settings.HTTP_METHOD) != 0:
+      http_request_method = settings.HTTP_METHOD
+    else:
+      if menu.options.data:
+        http_request_method = settings.HTTPMETHOD.POST
+      else:
+        http_request_method = settings.HTTPMETHOD.GET
+    controller.do_check(url, http_request_method, filename)
     return filename
 
   # Accidental stop / restart of the target host server.
-  except _http_client.BadStatusLine as err_msg:
-    if err_msg.line == "" or err_msg.message == "":
-      err_msg = "The target host is not responding."
-      err_msg += " Please ensure that is up and try again."
-      print("\n\n" + settings.print_critical_msg(err_msg))
-      logs.print_logs_notification(filename, url)      
-    else: 
-      err_msg = err_msg.line + err_msg.message
-      print(settings.print_critical_msg(err_msg) + "\n")
-    session_handler.clear(url)  
-    raise SystemExit()
-
-  # Connection reset by peer
-  except SocketError as err_msg:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print("")
+  except (_http_client.BadStatusLine, SocketError) as err_msg:
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     err_msg = "The target host is not responding."
     err_msg += " Please ensure that is up and try again."
-    print("\n" + settings.print_critical_msg(err_msg)) 
-    logs.print_logs_notification(filename, url)
+    print("\n" + settings.print_critical_msg(err_msg))
+    logs.print_logs_notification(filename, url)      
+    #session_handler.clear(url)  
+    #raise SystemExit()
 
 try:
   # Check if defined "--version" option.
@@ -657,6 +636,19 @@ try:
   # Print the legal disclaimer msg.
   print(settings.print_legal_disclaimer_msg(settings.LEGAL_DISCLAIMER_MSG))
 
+  # Get total number of days from last update
+  if os.path.isfile(settings.SETTINGS_PATH):
+    common.days_from_last_update()
+
+  # Define the level of verbosity.
+  if menu.options.verbose > 4:
+    err_msg = "The value for option '-v' "
+    err_msg += "must be an integer value from range [0, 4]."
+    print(settings.print_critical_msg(err_msg))
+    raise SystemExit()
+  else:  
+    settings.VERBOSITY_LEVEL = menu.options.verbose
+
   if not menu.options.batch:
     settings.OS_CHECKS_NUM = 1
   for os_checks_num in range(0, int(settings.OS_CHECKS_NUM)):
@@ -666,7 +658,7 @@ try:
       checks.list_tamper_scripts()
       raise SystemExit()
 
-    if readline_error :
+    if settings.READLINE_ERROR :
       checks.no_readline_module()
       raise SystemExit()
 
@@ -694,10 +686,23 @@ try:
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
+    if menu.options.encoding:
+      if menu.options.encoding.lower() not in settings.ENCODING_LIST:
+        err_msg = "The provided charset '"  + menu.options.encoding + "' is unknown. "
+        err_msg += "Please visit 'http://docs.python.org/library/codecs.html#standard-encodings' "
+        err_msg += "to get the full list of supported charsets."
+        print(settings.print_critical_msg(err_msg))
+        raise SystemExit()
+      else:
+        settings.DEFAULT_PAGE_ENCODING = menu.options.encoding.lower()
+
     if menu.options.header and len(menu.options.header.split("\\n"))> 1:
         warn_msg = "Swithing '--header' to '--headers' "
         warn_msg += "due to multiple extra HTTP headers."
         print(settings.print_warning_msg(warn_msg))
+
+    if menu.options.method:
+      settings.HTTP_METHOD = menu.options.method
 
     # Check if defined "--proxy" option.
     if menu.options.proxy:
@@ -798,22 +803,13 @@ try:
     # Check arguments
     if len(sys.argv) == 1:
       menu.parser.print_help()
-      print("")
+      print(settings.SINGLE_WHITESPACE)
       raise SystemExit()
     else:
       # Check for INJECT_HERE tag.
       inject_tag_regex_match = re.search(settings.INJECT_TAG_REGEX, ",".join(str(x) for x in sys.argv))
       if inject_tag_regex_match:
         settings.INJECT_TAG = inject_tag_regex_match.group(0)
-
-    # Define the level of verbosity.
-    if menu.options.verbose > 4:
-      err_msg = "The value for option '-v' "
-      err_msg += "must be an integer value from range [0, 4]."
-      print(settings.print_critical_msg(err_msg))
-      raise SystemExit()
-    else:  
-      settings.VERBOSITY_LEVEL = menu.options.verbose
 
     # Define the level of tests to perform.
     if menu.options.level > 3:
@@ -851,19 +847,19 @@ try:
       sys.stdout.write(settings.print_info_msg(info_msg))
       sys.stdout.flush()
       if not os.path.exists(bulkfile):
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         err_msg = "It seems that the '" + os.path.split(bulkfile)[1] + "' file, does not exist."
         sys.stdout.write(settings.print_critical_msg(err_msg) + "\n")
         sys.stdout.flush()
         raise SystemExit()
       elif os.stat(bulkfile).st_size == 0:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         err_msg = "It seems that the '" + os.path.split(bulkfile)[1] + "' file, is empty."
         sys.stdout.write(settings.print_critical_msg(err_msg) + "\n")
         sys.stdout.flush()
         raise SystemExit()
       else:
-        print(settings.SUCCESS_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         with open(menu.options.bulkfile) as f:
           bulkfile = [url.strip() for url in f]
         # Removing duplicates from list.
@@ -887,7 +883,7 @@ try:
 
           except _urllib.error.HTTPError as err_msg:
             if settings.VERBOSITY_LEVEL < 2:
-              print(settings.FAIL_STATUS)
+              print(settings.SINGLE_WHITESPACE)
             error_description = ""
             if len(str(err_msg).split(": ")[1]) == 0:
               error_description = "Non-standard HTTP status code" 
@@ -895,16 +891,16 @@ try:
             warn_msg = "Skipping URL '" + url + "' - " + err_msg
             print(settings.print_warning_msg(warn_msg))
             if settings.EOF:
-              print("") 
+              print(settings.SINGLE_WHITESPACE) 
 
           except _urllib.error.URLError as err_msg:
             if settings.VERBOSITY_LEVEL < 2:
-              print(settings.FAIL_STATUS)
+              print(settings.SINGLE_WHITESPACE)
             err_msg = str(err_msg.args[0]).split("] ")[1] + "." 
             err_msg = "Skipping URL '" + url + "' - " + err_msg
             print(settings.print_critical_msg(err_msg))
             if settings.EOF:
-              print("") 
+              print(settings.SINGLE_WHITESPACE) 
 
     else:
       if os_checks_num == 0:
@@ -928,17 +924,17 @@ except KeyboardInterrupt:
   #    settings.TEMPFILE_BASED_STATE :
   #    if not settings.DETECTION_PHASE and \
   #       settings.EXPLOITATION_PHASE:
-  #     if settings.VERBOSITY_LEVEL >= 1: 
+  #     if settings.VERBOSITY_LEVEL != 0: 
   #       new_line = ""
   print(new_line + settings.print_abort_msg(abort_msg))
   try:
     logs.print_logs_notification(filename, url)
-    print("")
+    print(settings.SINGLE_WHITESPACE)
   except NameError:
     raise SystemExit()
 
 except SystemExit: 
-  print("")
+  print(settings.SINGLE_WHITESPACE)
   raise SystemExit()
 
 except EOFError:

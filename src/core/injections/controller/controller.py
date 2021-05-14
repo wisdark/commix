@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -68,7 +68,10 @@ def check_for_stored_levels(url, http_request_method):
 Basic heuristic checks for code injection warnings
 """
 def heuristic_basic(url, http_request_method):
-  test_type = "code injection"
+  settings.EVAL_BASED_STATE = True
+  injection_type = "results-based dynamic code evaluation"
+  technique = "dynamic code evaluation technique"
+  technique = "(" + injection_type.split(" ")[0] + ") " + technique + ""
   try:
     try:
       if re.findall(r"=(.*)&", url):
@@ -77,32 +80,153 @@ def heuristic_basic(url, http_request_method):
         menu.options.data = menu.options.data.replace("/&", "/e&")
     except TypeError as err_msg:
       pass
-    if not settings.IDENTIFIED_WARNINGS:  
-      if settings.VERBOSITY_LEVEL >= 1:   
-        debug_msg = "Performing heuristic (" + test_type + ") test."
+    if not settings.IDENTIFIED_WARNINGS and not settings.IDENTIFIED_PHPINFO:  
+      if settings.VERBOSITY_LEVEL != 0:   
+        debug_msg = "Performing heuristic test for " + technique + "."
         print(settings.print_debug_msg(debug_msg))
-      if http_request_method == "GET":
-        request = _urllib.request.Request(url.replace(settings.INJECT_TAG, settings.BASIC_TEST))
-      else:
-        data = menu.options.data.replace(settings.INJECT_TAG, settings.BASIC_TEST)
-        request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
-      headers.do_check(request)
-      response = requests.get_request_response(request)
-      html_data = response.read().decode(settings.UNICODE_ENCODING)
-      for warning in settings.CODE_INJECTION_WARNINGS:
-        if warning in html_data:
-          technique = "dynamic code evaluation technique"
-          info_msg = "Heuristic (" + test_type + ") test shows that target URL might be injectable." 
-          print(settings.print_bold_info_msg(info_msg))
-          settings.IDENTIFIED_WARNINGS = True
-          break
+      for payload in settings.PHPINFO_CHECK_PAYLOADS:
+        payload = checks.perform_payload_modification(payload)
+        if not menu.options.data:
+          request = _urllib.request.Request(url.replace(settings.INJECT_TAG, payload))
+        else:
+          data = menu.options.data.replace(settings.INJECT_TAG, payload)
+          request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
+        headers.do_check(request)
+        response = requests.get_request_response(request)
+        if type(response) is not bool:
+          html_data = checks.page_encoding(response, action="decode")
+          match = re.search(settings.CODE_INJECTION_PHPINFO, html_data)
+          if match:
+            technique = technique + " (possible PHP version: '" + match.group(1) + "')"
+            settings.IDENTIFIED_PHPINFO = True
+          else:
+            for warning in settings.CODE_INJECTION_WARNINGS:
+              if warning in html_data:
+                settings.IDENTIFIED_WARNINGS = True
+                break
+          if settings.IDENTIFIED_WARNINGS or settings.IDENTIFIED_PHPINFO:
+            info_msg = "Heuristic test shows that target might be injectable via " + technique + "." 
+            print(settings.print_bold_info_msg(info_msg))
+            break
+
+    settings.EVAL_BASED_STATE = False
     return url
-  except _urllib.error.URLError as err_msg:
+
+  except (_urllib.error.URLError, _urllib.error.HTTPError) as err_msg:
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
-  except _urllib.error.HTTPError as err_msg:
-    print(settings.print_critical_msg(err_msg))
-    raise SystemExit()
+
+# Check if it's exploitable via classic command injection technique.
+def classic_command_injection_technique(url, timesec, filename, http_request_method):
+  injection_type = "results-based OS command injection"
+  technique = "classic command injection technique"
+  if not settings.SKIP_COMMAND_INJECTIONS:
+    if (len(menu.options.tech) == 0 or "c" in menu.options.tech):
+      settings.CLASSIC_STATE = None
+      if cb_handler.exploitation(url, timesec, filename, http_request_method, injection_type, technique) != False:
+        if (len(menu.options.tech) == 0 or "e" in menu.options.tech):
+          while True:
+            if not menu.options.batch:
+              settings.CLASSIC_STATE = True
+              question_msg = "Skipping of code injection tests is recommended. "
+              question_msg += "Do you agree? [Y/n] > "
+              procced_option = _input(settings.print_question_msg(question_msg))
+            else:
+              procced_option = ""
+            if len(procced_option) == 0:
+               procced_option = "Y"
+            if procced_option in settings.CHOICE_YES:
+              settings.SKIP_CODE_INJECTIONS = True
+              break
+            elif procced_option in settings.CHOICE_NO:
+              break
+            elif procced_option in settings.CHOICE_QUIT:
+              raise SystemExit()
+            else:
+              err_msg = "'" + procced_option + "' is not a valid answer."  
+              print(settings.print_error_msg(err_msg))
+              pass
+      else:
+        settings.CLASSIC_STATE = False
+    else:
+      if settings.VERBOSITY_LEVEL != 0:   
+        debug_msg = "Skipping test the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
+        print(settings.print_debug_msg(debug_msg))
+
+# Check if it's exploitable via dynamic code evaluation technique.   
+def dynamic_code_evaluation_technique(url, timesec, filename, http_request_method):
+  injection_type = "results-based dynamic code evaluation"
+  technique = "dynamic code evaluation technique"
+  if not settings.SKIP_CODE_INJECTIONS:
+    if (len(menu.options.tech) == 0 or "e" in menu.options.tech) or settings.SKIP_COMMAND_INJECTIONS:
+      settings.EVAL_BASED_STATE = None
+      if eb_handler.exploitation(url, timesec, filename, http_request_method, injection_type, technique) != False:
+        while True:
+          if not menu.options.batch:
+            settings.EVAL_BASED_STATE = True
+            question_msg = "Skipping of further command injection checks is recommended. "
+            question_msg += "Do you agree? [Y/n] > "
+            procced_option = _input(settings.print_question_msg(question_msg))
+          else:
+            procced_option = ""
+          if len(procced_option) == 0:
+             procced_option = "Y"
+          if procced_option in settings.CHOICE_YES:
+            settings.SKIP_COMMAND_INJECTIONS = True
+            break
+          elif procced_option in settings.CHOICE_NO:
+            if settings.SKIP_COMMAND_INJECTIONS:
+              settings.SKIP_COMMAND_INJECTIONS = False
+            break
+          elif procced_option in settings.CHOICE_QUIT:
+            raise SystemExit()
+          else:
+            err_msg = "'" + procced_option + "' is not a valid answer."  
+            print(settings.print_error_msg(err_msg))
+            pass
+      else:
+        settings.EVAL_BASED_STATE = False
+    else:
+      if settings.VERBOSITY_LEVEL != 0:   
+        debug_msg = "Skipping test the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
+        print(settings.print_debug_msg(debug_msg))
+  else:
+    if settings.VERBOSITY_LEVEL != 0:   
+      debug_msg = "Skipping test the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
+      print(settings.print_debug_msg(debug_msg))
+
+
+# Check if it's exploitable via time-based command injection technique.
+def timebased_command_injection_technique(url, timesec, filename, http_request_method, url_time_response):
+  injection_type = "blind OS command injection"
+  technique = "time-based command injection technique"
+  if not settings.SKIP_COMMAND_INJECTIONS:
+    if (len(menu.options.tech) == 0 or "t" in menu.options.tech):
+      settings.TIME_BASED_STATE = None
+      if tb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response, injection_type, technique) != False:
+        settings.TIME_BASED_STATE = True
+      else:
+        settings.TIME_BASED_STATE = False
+    else:
+      if settings.VERBOSITY_LEVEL != 0:   
+        debug_msg = "Skipping test the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
+        print(settings.print_debug_msg(debug_msg))
+
+# Check if it's exploitable via file-based command injection technique.
+def filebased_command_injection_technique(url, timesec, filename, http_request_method, url_time_response):
+  injection_type = "semi-blind command injection"
+  technique = "file-based command injection technique"
+  if not settings.SKIP_COMMAND_INJECTIONS:
+    if (len(menu.options.tech) == 0 or "f" in menu.options.tech):
+      settings.FILE_BASED_STATE = None
+      if fb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response, injection_type, technique) != False:
+        settings.FILE_BASED_STATE = True
+      else:
+        settings.FILE_BASED_STATE = False
+    else:
+      if settings.VERBOSITY_LEVEL != 0:   
+        debug_msg = "Skipping test the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
+        print(settings.print_debug_msg(debug_msg))
 
 """
 Proceed to the injection process for the appropriate parameter.
@@ -141,46 +265,40 @@ def injection_proccess(url, check_parameter, http_request_method, filename, time
   timesec, url_time_response = requests.estimate_response_time(url, timesec)
   # Load modules
   modules_handler.load_modules(url, http_request_method, filename)
-  # Check for identified warnings
-  url = heuristic_basic(url, http_request_method)
-  if settings.IDENTIFIED_WARNINGS:
-    if not settings.SKIP_COMMAND_INJECTIONS:
-      ci = "command injection techniques"
-      ce = "code injection technique"
-      if not menu.options.batch:
-        question_msg = "Do you want to skip test payloads for "
-        question_msg += ci + "? [Y/n] > "
-        procced_option = _input(settings.print_question_msg(question_msg))
-      else:
-        procced_option = ""
-      if procced_option in settings.CHOICE_YES or len(procced_option) == 0:
-        if settings.VERBOSITY_LEVEL >= 1:   
-          debug_msg = "Skipping " + ci + "."
-          print(settings.print_debug_msg(debug_msg))
-        settings.CLASSIC_STATE = settings.TIME_BASED_STATE = settings.FILE_BASED_STATE = False
-        settings.EVAL_BASED_STATE = settings.SKIP_COMMAND_INJECTIONS = True
-      elif procced_option in settings.CHOICE_NO:
-        if settings.VERBOSITY_LEVEL >= 1:   
-          debug_msg = "Skipping " + ce + "."
-          print(settings.print_debug_msg(debug_msg))
-        settings.SKIP_CODE_INJECTIONS = True
-        settings.EVAL_BASED_STATE = settings.SKIP_COMMAND_INJECTIONS = False
-      elif procced_option in settings.CHOICE_QUIT:
-        raise SystemExit()
-      else:
-        err_msg = "'" + procced_option + "' is not a valid answer."  
-        print(settings.print_error_msg(err_msg))
-        pass
 
   if not settings.LOAD_SESSION:
+    if (len(menu.options.tech) == 0 or "e" in menu.options.tech):
+      # Check for identified warnings
+      url = heuristic_basic(url, http_request_method)
+      if settings.IDENTIFIED_WARNINGS or settings.IDENTIFIED_PHPINFO:
+        while True:
+          if not menu.options.batch:
+            question_msg = "Skipping of further command injection tests is recommended. "
+            question_msg += "Do you agree? [Y/n] > "
+            procced_option = _input(settings.print_question_msg(question_msg))
+          else:
+            procced_option = ""
+          if procced_option in settings.CHOICE_YES or len(procced_option) == 0:
+            settings.CLASSIC_STATE = settings.TIME_BASED_STATE = settings.FILE_BASED_STATE = False
+            settings.EVAL_BASED_STATE = settings.SKIP_COMMAND_INJECTIONS = True
+            break
+          elif procced_option in settings.CHOICE_NO:
+            break
+          elif procced_option in settings.CHOICE_QUIT:
+            raise SystemExit()
+          else:
+            err_msg = "'" + procced_option + "' is not a valid answer."  
+            print(settings.print_error_msg(err_msg))
+            pass
+
     info_msg = "Setting the" 
     if not header_name == " cookie" and not the_type == " HTTP header":
-      info_msg += " " + http_request_method + ""
+      info_msg += " " + str(http_request_method) + ""
     info_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] 
     if header_name == " cookie" :
-      info_msg += header_name + the_type + check_parameter + " for tests."
+      info_msg += str(header_name) + str(the_type) + str(check_parameter) + " for tests."
     else:
-      info_msg += the_type + header_name + check_parameter + " for tests."
+      info_msg += str(the_type) + str(header_name) + str(check_parameter) + " for tests."
     print(settings.print_info_msg(info_msg))
 
   if menu.options.failed_tries and \
@@ -189,7 +307,7 @@ def injection_proccess(url, check_parameter, http_request_method, filename, time
     warn_msg = "Due to the provided (unsuitable) injection technique" 
     warn_msg += "s"[len(menu.options.tech) == 1:][::-1] + ", "
     warn_msg += "the option '--failed-tries' will be ignored."
-    print(settings.print_warning_msg(warn_msg)) + Style.RESET_ALL
+    print(settings.print_warning_msg(warn_msg) + Style.RESET_ALL)
 
   # Procced with file-based semiblind command injection technique,
   # once the user provides the path of web server's root directory.
@@ -200,103 +318,23 @@ def injection_proccess(url, check_parameter, http_request_method, filename, time
       if checks.procced_with_file_based_technique():
         menu.options.tech = "f"
 
-  if not menu.options.tech:
-    menu.options.tech = ""
-  if len(menu.options.tech) == 0 or "c" in menu.options.tech:
-    settings.CLASSIC_STATE = True
-  if len(menu.options.tech) == 0 or "e" in menu.options.tech:
-    settings.EVAL_BASED_STATE = True
-  if len(menu.options.tech) == 0 or "t" in menu.options.tech:
-    settings.TIME_BASED_STATE = True
-  if len(menu.options.tech) == 0 or "f" in menu.options.tech:
-    settings.FILE_BASED_STATE = True
-
-  # Check if it is vulnerable to classic command injection technique.
-  if not settings.SKIP_COMMAND_INJECTIONS and settings.CLASSIC_STATE:
-    settings.CLASSIC_STATE = None
-    if cb_handler.exploitation(url, timesec, filename, http_request_method) != False:
-      if settings.EVAL_BASED_STATE:
-        if not menu.options.batch:
-          settings.CLASSIC_STATE = True
-          question_msg = "Due to results, "
-          question_msg += "skipping of code injection checks is recommended. "
-          question_msg += "Do you agree? [Y/n] > "
-          procced_option = _input(settings.print_question_msg(question_msg))
-        else:
-          procced_option = ""
-        if len(procced_option) == 0:
-           procced_option = "Y"
-        if procced_option in settings.CHOICE_YES:
-          if settings.VERBOSITY_LEVEL >= 1:   
-            debug_msg = "Skipping code injection checks."
-            print(settings.print_debug_msg(debug_msg))
-          settings.SKIP_CODE_INJECTIONS = True
-        elif procced_option in settings.CHOICE_NO:
-          pass
-        elif procced_option in settings.CHOICE_QUIT:
-          raise SystemExit()
-        else:
-          err_msg = "'" + procced_option + "' is not a valid answer."  
-          print(settings.print_error_msg(err_msg))
-          pass
-    else:
-      settings.CLASSIC_STATE = False
-
-  # Check if it is vulnerable to eval-based code injection technique.
-  if not settings.SKIP_CODE_INJECTIONS and settings.EVAL_BASED_STATE:
-    settings.EVAL_BASED_STATE = None
-    if eb_handler.exploitation(url, timesec, filename, http_request_method) != False:
-      if not menu.options.batch:
-        settings.EVAL_BASED_STATE = True
-        question_msg = "Due to results, "
-        question_msg += "skipping of further command injection checks is recommended. "
-        question_msg += "Do you agree? [Y/n] > "
-        procced_option = _input(settings.print_question_msg(question_msg))
-      else:
-        procced_option = ""
-      if len(procced_option) == 0:
-         procced_option = "Y"
-      if procced_option in settings.CHOICE_YES:
-        if settings.VERBOSITY_LEVEL >= 1:   
-          debug_msg = "Skipping command injection checks."
-          print(settings.print_debug_msg(debug_msg))
-        settings.SKIP_COMMAND_INJECTIONS = True
-      elif procced_option in settings.CHOICE_NO:
-        pass
-      elif procced_option in settings.CHOICE_QUIT:
-        raise SystemExit()
-      else:
-        err_msg = "'" + procced_option + "' is not a valid answer."  
-        print(settings.print_error_msg(err_msg))
-        pass
-    else:
-      settings.EVAL_BASED_STATE = False
-  
-  if not settings.SKIP_COMMAND_INJECTIONS:
-    # Check if it is vulnerable to time-based blind command injection technique.
-    if settings.TIME_BASED_STATE:
-      settings.TIME_BASED_STATE = None
-      if tb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response) != False:
-        settings.TIME_BASED_STATE = True
-      else:
-        settings.TIME_BASED_STATE = False
-
-    # Check if it is vulnerable to file-based semiblind command injection technique.
-    if settings.FILE_BASED_STATE:
-      settings.FILE_BASED_STATE = None
-      if fb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response) != False:
-        settings.FILE_BASED_STATE = True
-      else:
-        settings.FILE_BASED_STATE = False
+  if settings.SKIP_COMMAND_INJECTIONS:
+    dynamic_code_evaluation_technique(url, timesec, filename, http_request_method)
+    classic_command_injection_technique(url, timesec, filename, http_request_method)
+  else:
+    classic_command_injection_technique(url, timesec, filename, http_request_method)
+    dynamic_code_evaluation_technique(url, timesec, filename, http_request_method)
+  timebased_command_injection_technique(url, timesec, filename, http_request_method, url_time_response)
+  filebased_command_injection_technique(url, timesec, filename, http_request_method, url_time_response)
 
   # All injection techniques seems to be failed!
   if settings.CLASSIC_STATE == settings.EVAL_BASED_STATE == settings.TIME_BASED_STATE == settings.FILE_BASED_STATE == False :
     warn_msg = "The tested"
-    if not header_name == " cookie" and not the_type == " HTTP header":
-      warn_msg += " " + http_request_method + ""
-    warn_msg += the_type + header_name + check_parameter
+    if header_name != " cookie" and the_type != " HTTP header":
+      warn_msg += " " + str(http_request_method) + ""
+    warn_msg += str(the_type) + str(header_name) + str(check_parameter)
     warn_msg += " seems to be not injectable."
-    print(settings.print_warning_msg(warn_msg)) + Style.RESET_ALL
+    print(settings.print_warning_msg(warn_msg))
 
 """
 Inject HTTP headers (User-agent / Referer / Host) (if level > 2).
@@ -455,7 +493,7 @@ Check if HTTP Method is GET.
 def get_request(url, http_request_method, filename, timesec):
 
   #if not settings.COOKIE_INJECTION:
-  found_url = parameters.do_GET_check(url)
+  found_url = parameters.do_GET_check(url, http_request_method)
   if found_url != False:
 
     check_parameters = []
@@ -506,7 +544,7 @@ def post_request(url, http_request_method, filename, timesec):
 
   # Check if HTTP Method is POST.
   parameter = menu.options.data
-  found_parameter = parameters.do_POST_check(parameter)
+  found_parameter = parameters.do_POST_check(parameter, http_request_method)
 
   # Check if singe entry parameter
   if type(found_parameter) is str:
@@ -565,7 +603,7 @@ def post_request(url, http_request_method, filename, timesec):
 """
 Perform checks
 """
-def perform_checks(url, filename):
+def perform_checks(url, http_request_method, filename):
 
   def basic_level_checks():
     settings.PERFORM_BASIC_SCANS = False
@@ -593,12 +631,6 @@ def perform_checks(url, filename):
     raise SystemExit()
   else:
     pass
-
-  # Check if HTTP Method is GET.
-  if not menu.options.data:
-    http_request_method = "GET"      
-  else:
-    http_request_method = "POST"
 
   if menu.options.shellshock:
     menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
@@ -640,7 +672,7 @@ def perform_checks(url, filename):
 """
 General check on every injection technique.
 """
-def do_check(url, filename):
+def do_check(url, http_request_method, filename):
   # Check for '--tor' option.
   if menu.options.tor: 
     if not menu.options.tech or "t" in menu.options.tech or "f" in menu.options.tech:
@@ -653,61 +685,61 @@ def do_check(url, filename):
     if not menu.options.tech or "e" in menu.options.tech or "t" in menu.options.tech or "f" in menu.options.tech:
       warn_msg = "The '--backticks' switch is only supported by the classic command injection. "
       warn_msg += "It will be ignored for all other techniques."
-      print(settings.print_warning_msg(warn_msg)) + Style.RESET_ALL
+      print(settings.print_warning_msg(warn_msg) + Style.RESET_ALL)
 
   if menu.options.wizard:
-    if perform_checks(url,filename) == False:
+    if perform_checks(url, http_request_method, filename) == False:
       scan_level = menu.options.level
       while int(scan_level) < int(settings.HTTP_HEADER_INJECTION_LEVEL) and settings.LOAD_SESSION != True:
-        if not menu.options.batch:
-          question_msg = "Do you want to increase to '--level=" + str(scan_level + 1) 
-          question_msg += "' in order to perform more tests? [Y/n] > "
-          next_level = _input(settings.print_question_msg(question_msg))
-        else:
-          next_level = ""
-        if len(next_level) == 0:
-           next_level = "Y"
-        if next_level in settings.CHOICE_YES:
-          menu.options.level = int(menu.options.level + scan_level)
-          if perform_checks(url,filename) == False and scan_level < settings.HTTP_HEADER_INJECTION_LEVEL :
-            scan_level = scan_level + 1
+        while True:
+          if not menu.options.batch:
+            question_msg = "Do you want to increase to '--level=" + str(scan_level + 1) 
+            question_msg += "' in order to perform more tests? [Y/n] > "
+            next_level = _input(settings.print_question_msg(question_msg))
           else:
-            break  
-        elif next_level in settings.CHOICE_NO:
-          break
-        elif next_level in settings.CHOICE_QUIT:
-          raise SystemExit()
-        else:
-          err_msg = "'" + next_level + "' is not a valid answer."  
-          print(settings.print_error_msg(err_msg))
-          pass
+            next_level = ""
+          if len(next_level) == 0:
+             next_level = "Y"
+          if next_level in settings.CHOICE_YES:
+            menu.options.level = int(menu.options.level + scan_level)
+            if perform_checks(url, http_request_method, filename) == False and scan_level < settings.HTTP_HEADER_INJECTION_LEVEL :
+              scan_level = scan_level + 1
+            else:
+              break  
+          elif next_level in settings.CHOICE_NO:
+            break
+          elif next_level in settings.CHOICE_QUIT:
+            raise SystemExit()
+          else:
+            err_msg = "'" + next_level + "' is not a valid answer."  
+            print(settings.print_error_msg(err_msg))
+            pass
   else:
-    perform_checks(url,filename)
+    perform_checks(url, http_request_method, filename)
     
   # All injection techniques seems to be failed!
   if settings.CLASSIC_STATE == settings.EVAL_BASED_STATE == settings.TIME_BASED_STATE == settings.FILE_BASED_STATE == False :
     if settings.INJECTION_CHECKER == False and not settings.CHECK_BOTH_OS:
       err_msg = "All tested parameters "
       if menu.options.level > 2:
-        err_msg += "and headers "
+        err_msg += "and HTTP headers "
       err_msg += "appear to be not injectable."
       if not menu.options.alter_shell :
         err_msg += " Try to use the option '--alter-shell'"
       else:
         err_msg += " Try to remove the option '--alter-shell'"
       if menu.options.level < settings.HTTP_HEADER_INJECTION_LEVEL :
-        err_msg += " and/or try to increase '--level' values to perform"
+        err_msg += " and/or increase '--level' values to perform"
         err_msg += " more tests (i.e 'User-Agent', 'Referer', 'Host', 'Cookie' etc)"
-      else:
-        if menu.options.skip_empty:
-          err_msg += " and/or try to remove the option '--skip-empty'"  
+      if menu.options.skip_empty:
+        err_msg += " and/or remove the option '--skip-empty'"  
       err_msg += "."
       print(settings.print_critical_msg(err_msg))
 
   logs.print_logs_notification(filename, url)
   if not settings.CHECK_BOTH_OS:
     # if not menu.options.bulkfile or settings.EOF:
-    #   print("")
+    #   print(settings.SINGLE_WHITESPACE)
     raise SystemExit()
 
 # eof

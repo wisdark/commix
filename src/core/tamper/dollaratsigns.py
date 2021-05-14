@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ def tamper(payload):
   def add_dollar_at_signs(payload):
     settings.TAMPER_SCRIPTS[__tamper__] = True
     rep = {
+            "$@I$@F$@S": "IFS", 
             "$@i$@f": "if", 
             "$@t$@h$@e$@n": "then",
             "$@e$@l$@s$@e": "else",

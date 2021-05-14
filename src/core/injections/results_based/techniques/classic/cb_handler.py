@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,27 +36,11 @@ from src.core.injections.results_based.techniques.classic import cb_injector
 from src.core.injections.results_based.techniques.classic import cb_payloads
 from src.core.injections.results_based.techniques.classic import cb_enumeration
 from src.core.injections.results_based.techniques.classic import cb_file_access
-
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
+try:
+  import html
+  unescape = html.unescape
+except:  # Python 2
+  unescape = _html_parser.HTMLParser().unescape
 
 """
 The "classic" technique on result-based OS command injection.
@@ -65,27 +49,25 @@ The "classic" technique on result-based OS command injection.
 """
 The "classic" injection technique handler.
 """
-def cb_injection_handler(url, timesec, filename, http_request_method):
+def cb_injection_handler(url, timesec, filename, http_request_method, injection_type, technique):
   shell = False
   counter = 1
   vp_flag = True
   no_result = True
   is_encoded = False
   export_injection_info = False
-  injection_type = "results-based OS command injection"
-  technique = "classic command injection technique"
 
   if not settings.LOAD_SESSION: 
     info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
-    if settings.VERBOSITY_LEVEL >= 1:
-      print("")
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
       
   i = 0
   # Calculate all possible combinations
-  total = len(settings.WHITESPACE) * len(settings.PREFIXES) * len(settings.SEPARATORS) * len(settings.SUFFIXES)
-  for whitespace in settings.WHITESPACE:
+  total = len(settings.WHITESPACES) * len(settings.PREFIXES) * len(settings.SEPARATORS) * len(settings.SUFFIXES)
+  for whitespace in settings.WHITESPACES:
     for prefix in settings.PREFIXES:
       for suffix in settings.SUFFIXES:
         for separator in settings.SEPARATORS:
@@ -137,7 +119,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
               payload = parameters.suffixes(payload, suffix)
 
               # Whitespace fixation
-              payload = payload.replace(" ", whitespace)
+              payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
               
               # Perform payload modification
               payload = checks.perform_payload_modification(payload)
@@ -264,7 +246,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
             else:    
               header_name = ""
               the_type = " parameter"
-              if http_request_method == "GET":
+              if not menu.options.data:
                 found_vuln_parameter = parameters.vuln_GET_param(url)
               else :
                 found_vuln_parameter = vuln_parameter
@@ -282,7 +264,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
 
             if not settings.LOAD_SESSION:
               if settings.VERBOSITY_LEVEL == 0:
-                print("")
+                print(settings.SINGLE_WHITESPACE)
               else:
                 checks.total_of_requests()
 
@@ -300,7 +282,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
             if not settings.LOAD_SESSION:
               session_handler.injection_point_importation(url, technique, injection_type, separator, shell[0], vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response=0, timesec=0, how_long=0, output_length=0, is_vulnerable=menu.options.level)
             else:
-              whitespace = settings.WHITESPACE[0]
+              whitespace = settings.WHITESPACES[0]
               settings.LOAD_SESSION = False  
             
             # Check for any enumeration options.
@@ -316,7 +298,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
                   enumerate_again = "Y"
                 if enumerate_again in settings.CHOICE_YES:
                   cb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                  #print("")
+                  #print(settings.SINGLE_WHITESPACE)
                   break
                 elif enumerate_again in settings.CHOICE_NO:
                   new_line = False
@@ -332,12 +314,12 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
                 cb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
           
             if not menu.file_access_options() and not menu.options.os_cmd and new_line:
-              print("")
+              print(settings.SINGLE_WHITESPACE)
             
             # Check for any system file access options.
             if settings.FILE_ACCESS_DONE == True :
               if settings.ENUMERATION_DONE != True:
-                print("")
+                print(settings.SINGLE_WHITESPACE)
               while True:
                 if not menu.options.batch:
                   question_msg = "Do you want to access files again? [Y/n] > "
@@ -348,7 +330,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
                    file_access_again = "Y"
                 if file_access_again in settings.CHOICE_YES:
                   cb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                  print("")
+                  print(settings.SINGLE_WHITESPACE)
                   break
                 elif file_access_again in settings.CHOICE_NO: 
                   break
@@ -361,14 +343,14 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
             else:
               if menu.file_access_options():
                 # if not menu.enumeration_options():
-                #   print("")
+                #   print(settings.SINGLE_WHITESPACE)
                 cb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                print("")
+                print(settings.SINGLE_WHITESPACE)
               
             # Check if defined single cmd.
             if menu.options.os_cmd:
               # if not menu.file_access_options():
-              #   print("")
+              #   print(settings.SINGLE_WHITESPACE)
               cb_enumeration.single_os_cmd_exec(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
 
             # Pseudo-Terminal shell
@@ -385,22 +367,15 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
               if len(gotshell) == 0:
                  gotshell = "Y"
               if gotshell in settings.CHOICE_YES:
-                if not menu.options.batch:
-                  print("")
+                # if not menu.options.batch:
+                #   print(settings.SINGLE_WHITESPACE)
                 print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
-                if readline_error:
+                if settings.READLINE_ERROR:
                   checks.no_readline_module()
                 while True:
                   try:
-                    if not readline_error:
-                      # Tab compliter
-                      readline.set_completer(menu.tab_completer)
-                      # MacOSX tab compliter
-                      if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-                        readline.parse_and_bind("bind ^I rl_complete")
-                      # Unix tab compliter
-                      else:
-                        readline.parse_and_bind("tab: complete")
+                    if not settings.READLINE_ERROR:
+                      checks.tab_autocompleter()
                     cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
                     cmd = checks.escaped_cmd(cmd)
                     if cmd.lower() in settings.SHELL_OPTIONS:
@@ -423,22 +398,21 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
                           shell = cb_injector.injection_results(response, TAG, cmd)
                           shell = "".join(str(p) for p in shell)
                         except:
-                          print("")
+                          print(settings.SINGLE_WHITESPACE)
                           continue  
                         if not menu.options.ignore_session :
                           session_handler.store_cmd(url, cmd, shell, vuln_parameter)
                       else:
                         shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
                       if shell:
-                        html_parser = _html_parser.HTMLParser()
-                        shell = html_parser.unescape(shell)
+                        shell = unescape(shell)
                         # Update logs with executed cmds and execution results.
                         logs.executed_command(filename, cmd, shell)
                       if shell != "":
                         print("\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL + "\n")
                       else:
-                        if settings.VERBOSITY_LEVEL >= 1:
-                          print("")
+                        if settings.VERBOSITY_LEVEL != 0:
+                          print(settings.SINGLE_WHITESPACE)
                         err_msg = "The '" + cmd + "' command, does not return any output."
                         print(settings.print_critical_msg(err_msg) + "\n")
 
@@ -472,7 +446,7 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
                 
   if no_result == True:
     if settings.VERBOSITY_LEVEL == 0:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
     return False
   else :
     sys.stdout.write("\r")
@@ -482,8 +456,8 @@ def cb_injection_handler(url, timesec, filename, http_request_method):
 The exploitation function.
 (call the injection handler)
 """
-def exploitation(url, timesec, filename, http_request_method):
-  if cb_injection_handler(url, timesec, filename, http_request_method) == False:
+def exploitation(url, timesec, filename, http_request_method, injection_type, technique):
+  if cb_injection_handler(url, timesec, filename, http_request_method, injection_type, technique) == False:
     return False
 
 # eof

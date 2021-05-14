@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,6 @@ Notes: Useful to bypass very weak and bespoke web application firewalls that has
 __tamper__ = "multiplespaces"
 
 settings.TAMPER_SCRIPTS[__tamper__] = True
-settings.WHITESPACE[0] = settings.WHITESPACE[0] * random.randrange(2, 8)
+settings.WHITESPACES[0] = settings.WHITESPACES[0] * random.randrange(2, 8)
 
 # eof 

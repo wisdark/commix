@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ from src.thirdparty.six.moves import http_client as _http_client
  Check if HTTP Proxy is defined.
 """
 def do_check(url):
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     info_msg = "Setting the HTTP proxy for all HTTP requests. "
     print(settings.print_info_msg(info_msg))
   if menu.options.data:
@@ -60,9 +60,9 @@ def use_proxy(request):
     err_msg += ")."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit() 
-  except Exception as err:
-    if settings.UNAUTHORIZED_ERROR in str(err).lower():
-      pass
+  except _urllib.error.HTTPError as err_msg:
+    if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
+      return False
     elif "Connection refused" in str(err):
       err_msg = "Unable to connect to the target URL or proxy ("
       err_msg += str(menu.options.proxy)

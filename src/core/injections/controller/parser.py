@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -33,28 +33,27 @@ def logfile_parser():
   Warning message for mutiple request in same log file.
   """
   def multi_requests():
-    print(settings.SUCCESS_STATUS)
-    warn_msg = "Multiple"
+    print(settings.SINGLE_WHITESPACE)
+    err_msg = "Multiple"
     if menu.options.requestfile: 
-      warn_msg += " requests"
+      err_msg += " requests"
     elif menu.options.logfile: 
-      warn_msg += " targets"
-    warn_msg += " are not supported, thus all coming"
+      err_msg += " targets"
+    err_msg += " are not supported, thus all coming"
     if menu.options.requestfile: 
-      warn_msg += " requests "
+      err_msg += " requests "
     elif menu.options.logfile: 
-      warn_msg += " targets "
-    warn_msg += "will be ignored."
-    sys.stdout.write(settings.print_warning_msg(warn_msg) + "\n")
+      err_msg += " targets "
+    err_msg += "will be ignored."
+    sys.stdout.write(settings.print_critical_msg(err_msg) + "\n")
     sys.stdout.flush()
     return False
 
   """
   Error message for invalid data.
   """
-  def invalid_data(request, single_request):
-    if single_request:
-      print(settings.FAIL_STATUS)
+  def invalid_data(request):
+    print(settings.SINGLE_WHITESPACE)
     err_msg = "Specified file "
     err_msg += "'" + os.path.split(request_file)[1] + "'"
     err_msg += " does not contain a valid HTTP request."
@@ -74,79 +73,72 @@ def logfile_parser():
   sys.stdout.flush()
 
   if not os.path.exists(request_file):
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     err_msg = "It seems that the '" + request_file + "' file, does not exist."
     sys.stdout.write(settings.print_critical_msg(err_msg) + "\n")
     sys.stdout.flush()
     raise SystemExit()
 
   else:
-    if menu.options.requestfile:
-      with open(request_file, 'r') as f:
-        settings.RAW_HTTP_HEADERS = [line.strip() for line in f]
-      settings.RAW_HTTP_HEADERS = [header for header in settings.RAW_HTTP_HEADERS if header]
-      settings.RAW_HTTP_HEADERS = settings.RAW_HTTP_HEADERS[1:]
-      settings.RAW_HTTP_HEADERS = settings.RAW_HTTP_HEADERS[:-1]
-      settings.RAW_HTTP_HEADERS = '\\n'.join(settings.RAW_HTTP_HEADERS)
-
-    # Check for multiple hosts
     try:
-      request = open(request_file, "r")
+      if menu.options.requestfile:
+        with open(request_file, 'r') as file:
+          settings.RAW_HTTP_HEADERS = [line.strip() for line in file]
+        settings.RAW_HTTP_HEADERS = [header for header in settings.RAW_HTTP_HEADERS if header]
+        settings.RAW_HTTP_HEADERS = settings.RAW_HTTP_HEADERS[1:]
+        settings.RAW_HTTP_HEADERS = settings.RAW_HTTP_HEADERS[:-1]
+        settings.RAW_HTTP_HEADERS = '\\n'.join(settings.RAW_HTTP_HEADERS)
     except IOError as err_msg:
-      try:
-        error_msg = str(err_msg.args[0]).split("] ")[1] + "."
-      except:
-        error_msg = str(err_msg.args[0]) + "."
+      error_msg = "The '" + request_file + "' "
+      error_msg += str(err_msg.args[1]).lower() + "."
+      print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(error_msg))
       raise SystemExit()
-        
-    words_dict = {}
-    for word in request.read().strip().splitlines():
-      if word[:4].strip() == "GET" or word[:4].strip() == "POST":
-        words_dict[word[:4].strip()] = words_dict.get(word[:4].strip(), 0) + 1
 
-    # Check if same header appears more than once.
+    if os.stat(request_file).st_size != 0:
+      with open(request_file, 'r') as file:
+        request = file.read()
+    else:
+      invalid_data(request_file)
+
     single_request = True
-    if len(words_dict.keys()) > 1:
+    pattern = r'HTTP/([\d.]+)'
+    if len(re.findall(pattern, request)) > 1:
       single_request = multi_requests()
-    for key in words_dict.keys():
-      if words_dict[key] > 1:
-        single_request = multi_requests()
 
-    # Check for GET / POST HTTP Header
-    for http_header in ["GET","POST"]:
-      request = open(request_file, "r")
-      request = request.read()
-      if "\\n" in request:
-        request = request.replace("\\n","\n")
-      request_url = re.findall(r"" + http_header + " (.*) ", request)
+    if len(settings.HTTP_METHOD) == 0:
+      http_method = request.strip().splitlines()[0].split()[0]
+      settings.HTTP_METHOD = http_method
+    else:
+      http_method = settings.HTTP_METHOD
 
-      if request_url:
-        if not single_request:
-          request_url = request_url[0]
-        if http_header == "POST":
-          # Check for POST Data.
-          result = [item for item in request.splitlines() if item]
-          multiple_xml = []
-          for item in result:
-            if checks.is_XML_check(item):
-              multiple_xml.append(item)
-          if len(multiple_xml) != 0:
-            menu.options.data = '\n'.join([str(item) for item in multiple_xml]) 
-          else:  
-            menu.options.data = result[len(result)-1]
-        else:
-          try:
-            # Check if url ends with "=".
-            if request_url[0].endswith("="):
-              request_url = request_url[0].replace("=","=" + settings.INJECT_TAG, 1)
-          except IndexError:
-            invalid_data(request_file, single_request) 
-        break
+    if "\\n" in request:
+      request = request.replace("\\n","\n")
+    request_url = re.findall(r"" + " (.*) HTTP/", request)
+
+    if request_url:
+      # Check last line for POST data
+      if len(request.splitlines()[-1]) != 0:
+        result = [item for item in request.splitlines() if item]
+        multiple_xml = []
+        for item in result:
+          if checks.is_XML_check(item):
+            multiple_xml.append(item)
+        if len(multiple_xml) != 0:
+          menu.options.data = '\n'.join([str(item) for item in multiple_xml]) 
+        else:  
+          menu.options.data = result[len(result)-1]
+      else:
+        try:
+          # Check if url ends with "=".
+          if request_url[0].endswith("="):
+            request_url = request_url[0].replace("=","=" + settings.INJECT_TAG, 1)
+        except IndexError:
+          invalid_data(request_file) 
 
     # Check if invalid data
     if not request_url:
-      invalid_data(request_file, single_request)
+      invalid_data(request_file)
     else:
       request_url = "".join([str(i) for i in request_url])       
 
@@ -174,7 +166,7 @@ def logfile_parser():
           menu.options.auth_cred = base64.b64decode(auth_provided[1]).decode()
         elif menu.options.auth_type == "digest":
           if not menu.options.auth_cred:
-            print(settings.FAIL_STATUS)
+            print(settings.SINGLE_WHITESPACE)
             err_msg = "Use the '--auth-cred' option to provide a valid pair of "
             err_msg += "HTTP authentication credentials (i.e --auth-cred=\"admin:admin\") "
             print(settings.print_critical_msg(err_msg))
@@ -197,7 +189,7 @@ def logfile_parser():
 
     # Target URL  
     if not menu.options.host:
-      invalid_data(request_file, single_request)
+      invalid_data(request_file)
     else:
       menu.options.url = prefix + menu.options.host + request_url
       if single_request:
@@ -206,9 +198,10 @@ def logfile_parser():
       if menu.options.logfile:
         info_msg = "Parsed target from '" + os.path.split(request_file)[1] + "' for tests :"
         print(settings.print_info_msg(info_msg))
-        sub_content = http_header + " " +  prefix + menu.options.host + request_url
+        sub_content = http_method + " " +  prefix + menu.options.host + request_url
         print(settings.print_sub_content(sub_content))
-        if http_header == "POST":
+        if menu.options.data:
            sub_content = "Data: " + menu.options.data
            print(settings.print_sub_content(sub_content))
+
 # eof

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -161,6 +161,10 @@ target.add_option("--crawl",
 target.add_option("-x",
                 dest="sitemap_url",
                 help="Parse target(s) from remote sitemap(.xml) file.")
+
+target.add_option("--method",
+                dest="method",
+                help="Force usage of given HTTP method (e.g. PUT)")
 
 # Request options
 request = OptionGroup(parser,  Style.BRIGHT + Style.UNDERLINE + "Request" + Style.RESET_ALL, 
@@ -431,6 +435,7 @@ injection.add_option("--prefix",
 
 injection.add_option("--technique", 
                 action="store",
+                default="cetf",
                 dest="tech",
                 help="Specify injection technique(s) to use.")
 

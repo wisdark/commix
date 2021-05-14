@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -52,8 +52,8 @@ def powershell_version(separator, payload, TAG, timesec, prefix, suffix, whitesp
   try:
     if float(ps_version):
       settings.PS_ENABLED = True
-      # if settings.VERBOSITY_LEVEL >= 1:
-      #   print("")
+      # if settings.VERBOSITY_LEVEL != 0:
+      #   print(settings.SINGLE_WHITESPACE)
       # Output PowerShell's version number
       info_msg = "The PowerShell's version number is " 
       info_msg += ps_version + Style.RESET_ALL + Style.BRIGHT
@@ -87,8 +87,8 @@ def hostname(separator, payload, TAG, timesec, prefix, suffix, whitespace, http_
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   if shell:
-    # if settings.VERBOSITY_LEVEL >= 1:
-    #   print("")
+    # if settings.VERBOSITY_LEVEL != 0:
+    #   print(settings.SINGLE_WHITESPACE)
     info_msg = "The hostname is " +  str(shell)
     sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".\n")
     sys.stdout.flush()
@@ -149,8 +149,8 @@ def system_information(separator, payload, TAG, timesec, prefix, suffix, whitesp
     else:
       target_arch = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
     if target_arch:
-      # if settings.VERBOSITY_LEVEL >= 1:
-      #   print("")
+      # if settings.VERBOSITY_LEVEL != 0:
+      #   print(settings.SINGLE_WHITESPACE)
       info_msg = "The target operating system is " +  str(target_os) + Style.RESET_ALL  
       info_msg += Style.BRIGHT + " and the hardware platform is " +  str(target_arch)
       sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".\n")
@@ -221,8 +221,8 @@ def current_user(separator, payload, TAG, timesec, prefix, suffix, whitespace, h
           output_file.write(" and it is privileged.\n")
           output_file.close()
     else:
-      # if settings.VERBOSITY_LEVEL >= 1:
-      #   print("")
+      # if settings.VERBOSITY_LEVEL != 0:
+      #   print(settings.SINGLE_WHITESPACE)
       info_msg = "The current user is " +  str(cu_account)
       sys.stdout.write(settings.print_bold_info_msg(info_msg) + ".\n")
       sys.stdout.flush()
@@ -258,8 +258,8 @@ def system_users(separator, payload, TAG, timesec, prefix, suffix, whitespace, h
     sys_users = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   # Windows users enumeration.
   if settings.TARGET_OS == "win":
-    # if settings.VERBOSITY_LEVEL >= 1:
-    #   print("")
+    # if settings.VERBOSITY_LEVEL != 0:
+    #   print(settings.SINGLE_WHITESPACE)
     info_msg = "Executing the 'net users' command "
     info_msg += "to enumerate users entries. "  
     sys.stdout.write(settings.print_info_msg(info_msg))
@@ -305,8 +305,8 @@ def system_users(separator, payload, TAG, timesec, prefix, suffix, whitespace, h
           else :
             is_privileged = ""
             is_privileged_nh = ""
-          # if settings.VERBOSITY_LEVEL >= 1:
-          #   print("")          
+          # if settings.VERBOSITY_LEVEL != 0:
+          #   print(settings.SINGLE_WHITESPACE)          
           print("    (" +str(count)+ ") '" + Style.BRIGHT +  sys_users_list[user] + Style.RESET_ALL + "'" + Style.BRIGHT + is_privileged + Style.RESET_ALL + ".")
           # Add infos to logs file.   
           output_file = open(filename, "a")
@@ -329,8 +329,8 @@ def system_users(separator, payload, TAG, timesec, prefix, suffix, whitespace, h
       sys.stdout.flush()
       pass
   else:
-    # if settings.VERBOSITY_LEVEL >= 1:
-    #   print("")
+    # if settings.VERBOSITY_LEVEL != 0:
+    #   print(settings.SINGLE_WHITESPACE)
     info_msg = "Fetching '" + settings.PASSWD_FILE 
     info_msg += "' to enumerate users entries. "  
     sys.stdout.write(settings.print_info_msg(info_msg))
@@ -457,8 +457,8 @@ def system_passwords(separator, payload, TAG, timesec, prefix, suffix, whitespac
       sys_passes = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
     if sys_passes == "":
       sys_passes = " "
-      # if settings.VERBOSITY_LEVEL >= 1:
-      #   print("")
+      # if settings.VERBOSITY_LEVEL != 0:
+      #   print(settings.SINGLE_WHITESPACE)
       info_msg = "Fetching '" + settings.SHADOW_FILE 
       info_msg += "' to enumerate users password hashes. "  
       sys.stdout.write(settings.print_info_msg(info_msg))
@@ -534,8 +534,8 @@ Check the defined options
 """
 def do_check(separator, payload, TAG, timesec, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename):
   
-  # if not settings.VERBOSITY_LEVEL >= 1 and not settings.ENUMERATION_DONE:
-  #   print("")
+  # if not settings.VERBOSITY_LEVEL != 0 and not settings.ENUMERATION_DONE:
+  #   print(settings.SINGLE_WHITESPACE)
 
   # Check if PowerShell is enabled.
   if not menu.options.ps_version and settings.TARGET_OS == "win":

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ import sys
 import time
 import subprocess
 from src.utils import menu
-from src.utils import common
 from src.utils import settings
 from src.utils import requirments
 from src.thirdparty.six.moves import input as _input
@@ -39,19 +38,19 @@ def revision_num():
     start = time.time()
     process = subprocess.Popen("git reset --hard HEAD && git clean -fd && git pull", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, _ = process.communicate()
-    if not menu.options.verbose:
+    if settings.VERBOSITY_LEVEL == 0:
       info_msg = ('Updated to', 'Already at')["Already" in stdout]
       process = subprocess.Popen("git rev-parse --verify HEAD", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     # Delete *.pyc files.
     subprocess.Popen("find . -name \"*.pyc\" -delete", shell=True).wait()
     # Delete empty directories and files.
     subprocess.Popen("find . -empty -type d -delete", shell=True).wait()
-    if not menu.options.verbose: 
+    if settings.VERBOSITY_LEVEL == 0: 
       stdout, _ = process.communicate()
       match = re.search(r"(?i)[0-9a-f]{32}", stdout or "")
       rev_num = match.group(0) if match else None
       info_msg += " the latest revision '" + str(rev_num[:7]) + "'."
-      print(settings.SUCCESS_STATUS)
+      print(settings.SINGLE_WHITESPACE)
     else:
       sys.stdout.write(Fore.MAGENTA + "\n" + stdout + Style.RESET_ALL)
       end  = time.time()
@@ -59,7 +58,7 @@ def revision_num():
       info_msg = "Finished in " + time.strftime('%H:%M:%S', time.gmtime(how_long)) + "."
     print(settings.print_info_msg(info_msg))
   except:
-    print(settings.FAIL_STATUS) 
+    print(settings.SINGLE_WHITESPACE) 
     raise SystemExit()
 
 """
@@ -72,13 +71,13 @@ def updater():
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   if menu.options.offline:  
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     err_msg = "You cannot update commix via GitHub without access on the Internet."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
   # Check if windows
   if settings.IS_WINDOWS:
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     err_msg = "For updating purposes on Windows platform, it's recommended "
     err_msg += "to use a GitHub client for Windows (http://windows.github.com/)."
     print(settings.print_critical_msg(err_msg))
@@ -89,7 +88,7 @@ def updater():
       # Check if 'git' is installed.
       requirments.do_check(requirment)
       if requirments.do_check(requirment) == True :
-        if menu.options.verbose:
+        if settings.VERBOSITY_LEVEL != 0:
           debug_msg = "commix will try to update itself using '" + requirment + "' command."
           print(settings.print_debug_msg(debug_msg))
         # Check if ".git" exists!
@@ -101,17 +100,17 @@ def updater():
           sys.stdout.write(settings.print_info_msg(info_msg))
           sys.stdout.flush()
           revision_num()
-          print("")
+          print(settings.SINGLE_WHITESPACE)
           os._exit(0)
         else:
-          print(settings.FAIL_STATUS)
+          print(settings.SINGLE_WHITESPACE)
           err_msg = "The '.git' directory not found. Do it manually: " 
           err_msg += Style.BRIGHT + "'git clone " + settings.GIT_URL 
           err_msg += " " + settings.APPLICATION + "' "
           print(settings.print_critical_msg(err_msg))    
           raise SystemExit()
       else:
-          print(settings.FAIL_STATUS)
+          print(settings.SINGLE_WHITESPACE)
           err_msg = requirment + " not found."
           print(settings.print_critical_msg(err_msg))
           raise SystemExit()
@@ -135,11 +134,6 @@ def check_for_update():
     if (int(settings.VERSION_NUM.replace(".","")[:2]) < int(update_version.replace(".","")[:2])) or \
        ((int(settings.VERSION_NUM.replace(".","")[:2]) == int(update_version.replace(".","")[:2])) and \
          int(settings.VERSION_NUM.replace(".","")[2:]) < int(update_version.replace(".","")[2:])):
-      # Get total number of days from last update 
-      if common.days_from_last_update() >= 1 :
-        _ = common.days_from_last_update()
-        warn_msg = "Current version seems to be out-of-date (more than " + str(_) + " day" + "s"[_ == 1:] + ")."
-        print(settings.print_warning_msg(warn_msg))
       while True:
         if not menu.options.batch:
           question_msg = "Do you want to update to the latest version now? [Y/n] > "
@@ -171,14 +165,14 @@ def unicorn_updater(current_version):
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
   if menu.options.offline:  
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     err_msg = "You cannot update TrustedSec's Magic Unicorn "
     err_msg += "via GitHub without access on the Internet."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
   # Check if windows
   if settings.IS_WINDOWS:
-    print(settings.FAIL_STATUS)
+    print(settings.SINGLE_WHITESPACE)
     err_msg = "For updating purposes on Windows platform, it's recommended "
     err_msg += "to use a GitHub client for Windows (http://windows.github.com/)."
     print(settings.print_critical_msg(err_msg))
@@ -205,7 +199,7 @@ def unicorn_updater(current_version):
         sys.stdout.flush()
         revision_num()
       else:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         err_msg = requirment + " not found."
         print(settings.print_critical_msg(err_msg))
         raise SystemExit()

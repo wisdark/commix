@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,16 +29,17 @@ if not settings.TAMPER_SCRIPTS[__tamper__]:
   settings.TAMPER_SCRIPTS[__tamper__] = True
 
 def tamper(payload):
-  if settings.WHITESPACE[0] == "+":
+  if settings.WHITESPACES[0] == "+":
     err_msg = "Tamper script '" +  __tamper__  + "' is unlikely to work combined with the tamper script 'space2plus'."
     if settings.VERBOSITY_LEVEL == 0:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
     print(settings.print_critical_msg(err_msg)) 
     raise SystemExit()
     
   else:
     payload = _urllib.parse.unquote(payload)
     payload = hexencode(payload)
+    payload = payload.decode(settings.UNICODE_ENCODING)
     return payload
 
 # eof 

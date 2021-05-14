@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,18 +21,14 @@ import string
 import random
 import base64
 from src.thirdparty.six.moves import urllib as _urllib
-
-
 from src.utils import menu
 from src.utils import settings
 from src.thirdparty.colorama import Fore, Back, Style, init
-
 from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
 from src.core.requests import requests
 from src.core.requests import parameters
-
 from src.core.injections.controller import checks
 from src.core.injections.blind.techniques.time_based import tb_payloads
 
@@ -50,7 +46,7 @@ def examine_requests(payload, vuln_parameter, http_request_method, url, timesec,
   start = time.time()
 
   # Check if defined method is GET (Default).
-  if http_request_method == "GET":
+  if not menu.options.data:
     # Encoding non-ASCII characters payload.
     # payload = _urllib.parse.quote(payload)   
     target = url.replace(settings.INJECT_TAG, payload)
@@ -62,7 +58,7 @@ def examine_requests(payload, vuln_parameter, http_request_method, url, timesec,
     parameter = menu.options.data
     parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
-    parameter = parameters.do_POST_check(parameter)
+    parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
     # Define the POST data  
     if settings.IS_JSON:
@@ -97,7 +93,7 @@ def injection_test(payload, http_request_method, url):
   start = time.time()
 
   # Check if defined method is GET (Default).
-  if http_request_method == "GET":
+  if not menu.options.data:
     # Encoding non-ASCII characters payload.
     # payload = _urllib.parse.quote(payload)
 
@@ -111,7 +107,7 @@ def injection_test(payload, http_request_method, url):
     parameter = menu.options.data
     parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
-    parameter = parameters.do_POST_check(parameter)
+    parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
     # Define the vulnerable parameter
     vuln_parameter = parameters.vuln_POST_param(parameter, url)
@@ -188,8 +184,8 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
   info_msg = "Retrieving the length of execution output. "
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()  
-  if settings.VERBOSITY_LEVEL > 1:
-    print("")
+  if settings.VERBOSITY_LEVEL >= 2:
+    print(settings.SINGLE_WHITESPACE)
   for output_length in range(int(minlen), int(maxlen)):
     if alter_shell:
       # Execute shell commands on vulnerable host.
@@ -202,7 +198,7 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     payload = parameters.suffixes(payload, suffix)
 
     # Whitespace fixation
-    payload = payload.replace(" ", whitespace)
+    payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
 
     # Perform payload modification
     payload = checks.perform_payload_modification(payload)
@@ -248,14 +244,14 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
 
     if injection_check == True:        
       if output_length > 1:
-        if settings.VERBOSITY_LEVEL >= 1:
+        if settings.VERBOSITY_LEVEL != 0:
           pass
         else:
           sys.stdout.write(settings.SUCCESS_STATUS + "\n")
           sys.stdout.flush()
         if settings.VERBOSITY_LEVEL == 1:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0:
           debug_msg = "Retrieved the length of execution output: " + str(output_length)
           print(settings.print_bold_debug_msg(debug_msg))
         else:
@@ -276,9 +272,9 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     output = []
     percent = "0.0%"
     info_msg = "Presuming the execution output." 
-    if menu.options.verbose < 1 :
+    if settings.VERBOSITY_LEVEL == 0 :
       info_msg += ".. (" + str(percent) + ")"
-    elif menu.options.verbose == 1 :
+    elif settings.VERBOSITY_LEVEL == 1 :
       info_msg +=  ""
     else:
       info_msg +=  "\n"  
@@ -298,7 +294,7 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
         payload = parameters.suffixes(payload, suffix)
 
         # Whitespace fixation
-        payload = payload.replace(" ", whitespace)
+        payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
         
         # Perform payload modification
         payload = checks.perform_payload_modification(payload)
@@ -375,12 +371,12 @@ def injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
       sys.stdout.flush()
     else:
       pass
-      #print("")
+
     check_how_long = 0
     output = False
 
-  if settings.VERBOSITY_LEVEL >= 1 and menu.options.ignore_session:
-    print("")
+  if settings.VERBOSITY_LEVEL != 0 and menu.options.ignore_session:
+    print(settings.SINGLE_WHITESPACE)
   return  check_how_long, output
 
 """
@@ -398,7 +394,7 @@ def false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timese
   found_chars = False
   debug_msg = "Checking the reliability of the used payload "
   debug_msg += "in case of a false positive result. "
-  if settings.VERBOSITY_LEVEL >= 1: 
+  if settings.VERBOSITY_LEVEL != 0: 
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
 
@@ -418,7 +414,7 @@ def false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timese
     payload = parameters.suffixes(payload, suffix)
 
     # Whitespace fixation
-    payload = payload.replace(" ", whitespace)
+    payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
 
     # Perform payload modification
     payload = checks.perform_payload_modification(payload)
@@ -428,7 +424,7 @@ def false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timese
       payload_msg = payload.replace("\n", "\\n") 
       sys.stdout.write("\n" + settings.print_payload(payload_msg))
     # Check if defined "--verbose" option.
-    elif settings.VERBOSITY_LEVEL >= 1:
+    elif settings.VERBOSITY_LEVEL != 0:
       debug_msg = "Generating payload for testing the reliability of used payload."
       print("\n" + settings.print_debug_msg(debug_msg))
       payload_msg = payload.replace("\n", "\\n") 
@@ -489,7 +485,7 @@ def false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timese
         payload = parameters.suffixes(payload, suffix)
 
         # Whitespace fixation
-        payload = payload.replace(" ", whitespace)
+        payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
 
         # Perform payload modification
         payload = checks.perform_payload_modification(payload)
@@ -542,8 +538,14 @@ def false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timese
 
     if str(output) == str(randvcalc):
       if settings.VERBOSITY_LEVEL == 1:
-        print("")
+        print(settings.SINGLE_WHITESPACE)
       return how_long, output
+  else:
+    if settings.VERBOSITY_LEVEL < 2:
+      print(settings.SINGLE_WHITESPACE)
+    warn_msg = "False positive or unexploitable injection point detected."
+    print(settings.print_warning_msg(warn_msg))
+        
 
 """
 Export the injection results
@@ -554,7 +556,7 @@ def export_injection_results(cmd, separator, output, check_how_long):
     if settings.VERBOSITY_LEVEL == 0:
       print("\n")
     elif settings.VERBOSITY_LEVEL == 1:
-      print("")  
+      print(settings.SINGLE_WHITESPACE)  
     print(settings.print_output(output))
     info_msg = "Finished in " + time.strftime('%H:%M:%S', time.gmtime(check_how_long)) + "."
     sys.stdout.write("\n" + settings.print_info_msg(info_msg))
@@ -571,6 +573,6 @@ def export_injection_results(cmd, separator, output, check_how_long):
     else:
       err_msg = "The '" + cmd + "' command, does not return any output."
       if settings.VERBOSITY_LEVEL == 0:
-        print("")
+        print(settings.SINGLE_WHITESPACE)
       sys.stdout.write("\r" + settings.print_critical_msg(err_msg))
 # eof

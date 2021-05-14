@@ -1,17 +1,40 @@
-## Version 3.2 (upcoming)
+## Version 3.3 (TBA)
+* Added: Support for parsing custom wordlists regarding HTTP authentication (Basic / Digest) dictionary-based cracker.
+* Revised: Improvements regarding dynamic code evaluation heuristic test.
+* Fixed: Minor bug-fix regarding parsing SOAP/XML data via `--data` option.
+* Revised: Minor improvement regarding parsing GraphQL JSON objects.
+* Added: The .bat files command separator (i.e. ["%1a"](http://seclists.org/fulldisclosure/2016/Nov/67)) has been added.
+* Added: New option `--method` to force usage of provided HTTP method (e.g. `PUT`).
+
+## Version 3.2 (2021-04-12)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Added: New tamper script "slash2env.py" that replaces slashes ("/") with environment variable value "${PATH%%u*}" (for *nix targets).
+* Revised: Minor improvement regarding session handler for supporting Python 3.4+.
+* Revised: Minor improvement regarding `--web-root` option.
+* Added: New tamper script "uninitializedvariable.py" that adds uninitialized bash variables between the characters of each command of the generated payloads (for *nix targets).
+* Revised: Improvement regarding decompressing `deflate`, `x-gzip` and `gzip` HTTP responses.
+* Fixed: Bug-fix regarding several charset-related unhandled exceptions.
+* Revised: Improvements regarding dynamic code evaluation heuristic test.
+* Fixed: Bug-fix regarding HTTP authentication (Basic / Digest) dictionary-based cracker.
+* Fixed: Bug-fix regarding logging all HTTP traffic into a textual file.
+* Revised: Improvement regarding crawler.
+* Fixed: Multiple bug-fixes regarding supporting Python 3.9.
+* Revised: Improvement regarding mechanism which nagging if used version is > 30 days old.
+* Fixed: Multiple bug-fixes regarding the shellshock module.
+* Revised: Improvement regarding Python 3.4+ for using the "html.unescape()" function for converting HTML entities to plain-text representations.
 * Updated: Minor update regarding smartphones to imitate, through HTTP User-Agent header.
-* Fixed: Bug-fix regarding setting suitable HTTP header User-Agent, when combining "--random-agent" or "--mobile" switch with "-r" option.
+* Fixed: Bug-fix regarding setting suitable HTTP header User-Agent, when combining `--random-agent` or `--mobile` switch with `-r` option.
 * Fixed: Bug-fix regarding "hex" encoding/decoding.
 * Added: New option ( `--timeout`) for setting a number of seconds to wait before timeout connection (default 30).
 * Revised: Increased default timeout to 30 seconds.
 * Fixed: Bug-fix regarding Basic HTTP authentication.
-* Fixed: Bug-fix regarding connection problems.
+* Fixed: Bug-fix regarding connection problems (via @fuero).
 
 ## Version 3.1 (2020-06-17)
 * Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
 * Added: A script "setup.py" has been added (i.e. easier installation).
 * Revised: Improvement regarding checking if the provided value has boundaries (e.g. 'param=/value/').
-* Revised: Improvement regarding dynamic code evaluation technique's heurstic checks.
+* Revised: Improvement regarding dynamic code evaluation technique's heuristic checks.
 * Revised: Improvement regarding identifying the indicated web-page charset.
 * Revised: Minor improvement regarding verbose mode (i.e. debug messages).
 * Fixed: Bug-fix regarding Basic HTTP authentication.

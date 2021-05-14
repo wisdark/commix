@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -53,8 +53,8 @@ def file_read(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     shell = "".join(str(p) for p in shell)
   except TypeError:
     pass
-  if settings.VERBOSITY_LEVEL < 1 and _:
-    print("")
+  if settings.VERBOSITY_LEVEL == 0 and _:
+    print(settings.SINGLE_WHITESPACE)
   if shell:
     info_msg = "The contents of file '"  
     info_msg += file_to_read + Style.RESET_ALL + Style.BRIGHT 
@@ -104,7 +104,7 @@ def file_write(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec,
   # Execute command
   if settings.TARGET_OS == "win":
     from src.core.injections.results_based.techniques.classic import cb_injector
-    whitespace = settings.WHITESPACE[0]
+    whitespace = settings.WHITESPACES[0]
     dest_to_write = dest_to_write.replace("\\","/")
     # Find path
     path = os.path.dirname(dest_to_write)
@@ -143,15 +143,15 @@ def file_write(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec,
     shell = "".join(str(p) for p in shell)
     # Check if file exists
     cmd = "echo $(ls " + dest_to_write + ")"
-  print("")
+  print(settings.SINGLE_WHITESPACE)
   check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
   shell = output 
   try:
     shell = "".join(str(p) for p in shell)
   except TypeError:
     pass
-  if settings.VERBOSITY_LEVEL < 1 and _:
-    print("")
+  if settings.VERBOSITY_LEVEL == 0 and _:
+    print(settings.SINGLE_WHITESPACE)
   if shell:
     info_msg = "The '" +  shell + Style.RESET_ALL 
     info_msg += Style.BRIGHT + "' file was created successfully!\n" 
@@ -202,15 +202,15 @@ def file_upload(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec
       cmd = "dir " + dest_to_upload + ")"
     else:  
       cmd = "echo $(ls " + dest_to_upload + ")"
-    print("")  
+    print(settings.SINGLE_WHITESPACE)  
     check_how_long, output = tb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
     shell = output 
     try:
       shell = "".join(str(p) for p in shell)
     except TypeError:
       pass
-    if settings.VERBOSITY_LEVEL < 1 and _:
-      print("")
+    if settings.VERBOSITY_LEVEL == 0 and _:
+      print(settings.SINGLE_WHITESPACE)
     if shell:
       info_msg = "The '" +  shell + Style.RESET_ALL 
       info_msg += Style.BRIGHT + "' file was uploaded successfully!"

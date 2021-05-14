@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -53,8 +53,8 @@ def file_read(separator, TAG, prefix, suffix, whitespace, http_request_method, u
     session_handler.store_cmd(url, cmd, shell, vuln_parameter)
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
-  if settings.VERBOSITY_LEVEL >= 1 and menu.options.ignore_session:
-    print("")
+  if settings.VERBOSITY_LEVEL != 0 and menu.options.ignore_session:
+    print(settings.SINGLE_WHITESPACE)
   if shell:
     info_msg = "The contents of file '"  
     info_msg += file_to_read + "'" + Style.RESET_ALL + ": "
@@ -148,8 +148,8 @@ def file_write(separator, TAG, prefix, suffix, whitespace, http_request_method, 
   response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
   shell = cb_injector.injection_results(response, TAG, cmd)
   shell = "".join(str(p) for p in shell)
-  if settings.VERBOSITY_LEVEL >= 1:
-    print("")
+  if settings.VERBOSITY_LEVEL != 0:
+    print(settings.SINGLE_WHITESPACE)
   if shell:
     info_msg = "The " +  shell + Style.RESET_ALL
     info_msg += Style.BRIGHT + " file was created successfully!" + "\n" 
@@ -207,8 +207,8 @@ def file_upload(separator, TAG, prefix, suffix, whitespace, http_request_method,
     response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     shell = cb_injector.injection_results(response, TAG, cmd)
     shell = "".join(str(p) for p in shell)
-    if settings.VERBOSITY_LEVEL >= 1:
-      print("")
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     if shell:
       info_msg = "The " +  shell
       info_msg += Style.RESET_ALL + Style.BRIGHT + " file was uploaded successfully!" 

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -558,8 +558,8 @@ Check the defined options
 """
 def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   
-  # if not settings.VERBOSITY_LEVEL >= 1 and not settings.ENUMERATION_DONE:
-  #   print("")
+  # if not settings.VERBOSITY_LEVEL != 0 and not settings.ENUMERATION_DONE:
+  #   print(settings.SINGLE_WHITESPACE)
 
   # Check if PowerShell is enabled.
   if not menu.options.ps_version and settings.TARGET_OS == "win":

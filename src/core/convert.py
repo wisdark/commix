@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,8 +18,10 @@ from src.utils import settings
 from src.thirdparty import six
 
 def hexdecode(value):
+  if value.lower().startswith("0x"):
+    value = value[2:]
   try:
-    value = codecs.decode(value, "hex")
+    value = codecs.decode(''.join(value.split()), "hex")
   except LookupError:
     value = binascii.unhexlify(value)
   value = value.decode(settings.UNICODE_ENCODING)

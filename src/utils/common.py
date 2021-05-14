@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,7 +30,12 @@ from src.thirdparty.six.moves import urllib as _urllib
 Get total number of days from last update
 """
 def days_from_last_update():
-  return int(time.time() - os.path.getmtime(settings.SETTINGS_PATH)) // (3600 * 24)
+  days_from_last_update = int(time.time() - os.path.getmtime(settings.SETTINGS_PATH)) // (3600 * 24)
+  if days_from_last_update > settings.NAGGING_DAYS:
+    warn_msg = "You haven't updated " + settings.APPLICATION + " for more than "
+    warn_msg += str(days_from_last_update) + " day"
+    warn_msg += "s"[days_from_last_update == 1:] + "!"
+    print(settings.print_warning_msg(warn_msg))
 
 """
 Automatically create a Github issue with unhandled exception information.
@@ -45,7 +50,8 @@ def create_github_issue(err_msg, exc_msg):
   _ = re.sub(r"= _", "= ", _)
   _ = _.encode(settings.UNICODE_ENCODING)
   
-  key = hashlib.md5(_).hexdigest()[:8]
+  bug_report =  "Bug Report: Unhandled exception \"" + str([i for i in exc_msg.split('\n') if i][-1]) + "\""
+
   while True:
     try:
       if not menu.options.batch:
@@ -60,7 +66,7 @@ def create_github_issue(err_msg, exc_msg):
       if choise in settings.CHOICE_YES:
         break
       elif choise in settings.CHOICE_NO:
-        print("")
+        print(settings.SINGLE_WHITESPACE)
         return
       else:
         err_msg = "'" + choise + "' is not a valid answer."  
@@ -72,7 +78,7 @@ def create_github_issue(err_msg, exc_msg):
 
   err_msg = err_msg[err_msg.find("\n"):]
   request = _urllib.request.Request(url="https://api.github.com/search/issues?q=" + \
-        _urllib.parse.quote("repo:commixproject/commix" + " " + "Unhandled exception (#" + str(key) + ")")
+        _urllib.parse.quote("repo:commixproject/commix" + " " + str(bug_report))
         )
 
   try:
@@ -91,9 +97,9 @@ def create_github_issue(err_msg, exc_msg):
   except:
     pass
 
-  data = {"title": "Unhandled exception (#" + str(key) + ")", "body": "```" + str(err_msg) + "\n```\n```\n" + str(exc_msg) + "```"}
+  data = {"title": str(bug_report), "body": "```" + str(err_msg) + "\n```\n```\n" + str(exc_msg) + "```"}
   request = _urllib.request.Request(url = "https://api.github.com/repos/commixproject/commix/issues", 
-                                data = data.encode(json.dumps(data)), 
+                                data = json.dumps(data).encode(), 
                                 headers = {"Authorization": "token " + base64.b64decode(settings.GITHUB_REPORT_OAUTH_TOKEN.encode(settings.UNICODE_ENCODING)).decode()}
                                 )
   try:
@@ -101,7 +107,7 @@ def create_github_issue(err_msg, exc_msg):
   except Exception as err:
     content = None
 
-  issue_url = re.search(r"https://github.com/commixproject/commix/issues/\d+", content or "")
+  issue_url = re.search(r"https://github.com/commixproject/commix/issues/\d+", content.decode(settings.UNICODE_ENCODING) or "")
   if issue_url:
     info_msg = "The created Github issue can been found at the address '" + str(issue_url.group(0)) + "'.\n"
     print(settings.print_info_msg(info_msg))
@@ -150,6 +156,12 @@ def unhandled_exception():
 
   elif "MemoryError" in exc_msg:
     err_msg = "Memory exhaustion detected."
+    print(settings.print_critical_msg(err_msg))
+    raise SystemExit()
+
+  elif "Permission denied: '" in exc_msg:
+    match = re.search(r"Permission denied: '([^']*)", exc_msg)
+    err_msg = "Permission error occurred while accessing file '" + match.group(1) + "'."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 

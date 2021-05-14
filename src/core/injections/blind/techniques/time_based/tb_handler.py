@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,27 +36,6 @@ from src.core.injections.blind.techniques.time_based import tb_payloads
 from src.core.injections.blind.techniques.time_based import tb_enumeration
 from src.core.injections.blind.techniques.time_based import tb_file_access
 
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
-
 """
 The "time-based" injection technique on Blind OS Command Injection.
 """
@@ -64,7 +43,7 @@ The "time-based" injection technique on Blind OS Command Injection.
 """
 The "time-based" injection technique handler.
 """
-def tb_injection_handler(url, timesec, filename, http_request_method, url_time_response):
+def tb_injection_handler(url, timesec, filename, http_request_method, url_time_response, injection_type, technique):
  
   counter = 1
   num_of_chars = 1
@@ -75,10 +54,8 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
   false_positive_warning = False
   export_injection_info = False
   how_long = 0
-  injection_type = "blind OS command injection"
-  technique = "time-based command injection technique"
 
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
     print(settings.print_info_msg(info_msg))
 
@@ -93,8 +70,8 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
 
   #whitespace = checks.check_whitespaces()
   # Calculate all possible combinations
-  total = len(settings.WHITESPACE) * len(settings.PREFIXES) * len(settings.SEPARATORS) * len(settings.SUFFIXES)
-  for whitespace in settings.WHITESPACE:
+  total = len(settings.WHITESPACES) * len(settings.PREFIXES) * len(settings.SEPARATORS) * len(settings.SUFFIXES)
+  for whitespace in settings.WHITESPACES:
     for prefix in settings.PREFIXES:
       for suffix in settings.SUFFIXES:
         for separator in settings.SEPARATORS:
@@ -151,7 +128,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 payload = parameters.suffixes(payload, suffix)
 
                 # Whitespace fixation
-                payload = payload.replace(" ", whitespace)
+                payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
                 
                 # Perform payload modification
                 payload = checks.perform_payload_modification(payload)
@@ -351,7 +328,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                       percent = ""
                   else:
                     percent = ".. (" + str(float_percent) + "%)"
-                    print("")
+                    print(settings.SINGLE_WHITESPACE)
                     # Print logs notification message
                     logs.logs_notification(filename)
                   #raise
@@ -398,7 +375,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
               else:
                 header_name = ""
                 the_type = " parameter"
-                if http_request_method == "GET":
+                if not menu.options.data:
                   found_vuln_parameter = parameters.vuln_GET_param(url)
                 else :
                   found_vuln_parameter = vuln_parameter
@@ -416,7 +393,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
 
               if not settings.LOAD_SESSION:
                 if settings.VERBOSITY_LEVEL == 0:
-                  print("")
+                  print(settings.SINGLE_WHITESPACE)
                 else:
                   checks.total_of_requests()
 
@@ -451,7 +428,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                     enumerate_again = "Y"
                   if enumerate_again in settings.CHOICE_YES:
                     tb_enumeration.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
-                    print("")
+                    print(settings.SINGLE_WHITESPACE)
                     break
                   elif enumerate_again in settings.CHOICE_NO: 
                     new_line = True
@@ -465,11 +442,11 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
               else:
                 if menu.enumeration_options():
                   tb_enumeration.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
-                  print("")
+                  print(settings.SINGLE_WHITESPACE)
 
               # Check for any system file access options.
               if settings.FILE_ACCESS_DONE == True:
-                print("")
+                print(settings.SINGLE_WHITESPACE)
                 while True:
                   if not menu.options.batch:
                     question_msg = "Do you want to access files again? [Y/n] > "
@@ -493,7 +470,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                     pass
               else:
                 # if not menu.enumeration_options() and not menu.options.os_cmd:
-                #   print("")
+                #   print(settings.SINGLE_WHITESPACE)
                 tb_file_access.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
 
               # Check if defined single cmd.
@@ -502,12 +479,12 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 check_how_long, output = tb_enumeration.single_os_cmd_exec(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
                 # Export injection result
                 tb_injector.export_injection_results(cmd, separator, output, check_how_long)
-                print("")
+                print(settings.SINGLE_WHITESPACE)
                 logs.print_logs_notification(filename, url) 
                 raise SystemExit()
 
               if not new_line :
-                print("")
+                print(settings.SINGLE_WHITESPACE)
 
               # Pseudo-Terminal shell
               go_back = False
@@ -523,10 +500,10 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 if len(gotshell) == 0:
                   gotshell = "Y"
                 if gotshell in settings.CHOICE_YES:
-                  if not menu.options.batch:
-                    print("")
+                  # if not menu.options.batch:
+                  #   print(settings.SINGLE_WHITESPACE)
                   print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
-                  if readline_error:
+                  if settings.READLINE_ERROR:
                     checks.no_readline_module()
                   while True:
                     if false_positive_warning:
@@ -535,15 +512,8 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                       sys.stdout.write("\r" + settings.print_warning_msg(warn_msg))
                       false_positive_warning = False
                     try:
-                      # Tab compliter
-                      if not readline_error:
-                        readline.set_completer(menu.tab_completer)
-                        # MacOSX tab compliter
-                        if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-                          readline.parse_and_bind("bind ^I rl_complete")
-                        # Unix tab compliter
-                        else:
-                          readline.parse_and_bind("tab: complete")
+                      if not settings.READLINE_ERROR:
+                        checks.tab_autocompleter()
                       cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
                       cmd = checks.escaped_cmd(cmd)
                       if cmd.lower() in settings.SHELL_OPTIONS:
@@ -563,10 +533,10 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                             session_handler.store_cmd(url, cmd, output, vuln_parameter)
                         else:
                           output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
-                          print("\n") + settings.print_output(output)
+                          print("\n" + settings.print_output(output))
                         # Update logs with executed cmds and execution results.
                         logs.executed_command(filename, cmd, output)
-                        print("")
+                        print(settings.SINGLE_WHITESPACE)
 
                     except KeyboardInterrupt: 
                       raise
@@ -600,7 +570,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
     
   if no_result == True:
     if settings.VERBOSITY_LEVEL == 0:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
     return False
 
   else :
@@ -611,10 +581,13 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
 The exploitation function.
 (call the injection handler)
 """
-def exploitation(url, timesec, filename, http_request_method, url_time_response):
+def exploitation(url, timesec, filename, http_request_method, url_time_response, injection_type, technique):
   # Check if attack is based on time delays.
   if not settings.TIME_RELATIVE_ATTACK :
+    warn_msg = "It is very important to not stress the network connection during usage of time-based payloads to prevent potential disruptions."
+    print(settings.print_warning_msg(warn_msg) + Style.RESET_ALL)
     settings.TIME_RELATIVE_ATTACK = True
+    
   if url_time_response >= settings.SLOW_TARGET_RESPONSE:
     warn_msg = "It is highly recommended, due to serious response delays, "
     warn_msg += "to skip the time-based (blind) technique and to continue "
@@ -636,7 +609,7 @@ def exploitation(url, timesec, filename, http_request_method, url_time_response)
           from src.core.injections.semiblind.techniques.file_based import fb_handler
           fb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response)
         elif proceed_option.lower() == "c":
-          if tb_injection_handler(url, timesec, filename, http_request_method, url_time_response) == False:
+          if tb_injection_handler(url, timesec, filename, http_request_method, url_time_response, injection_type, technique) == False:
             return False
         elif proceed_option.lower() == "q":
           raise SystemExit()
@@ -645,7 +618,7 @@ def exploitation(url, timesec, filename, http_request_method, url_time_response)
         print(settings.print_error_msg(err_msg))
         pass
   else:
-    if tb_injection_handler(url, timesec, filename, http_request_method, url_time_response) == False:
+    if tb_injection_handler(url, timesec, filename, http_request_method, url_time_response, injection_type, technique) == False:
       settings.TIME_RELATIVE_ATTACK = False
       return False
 # eof

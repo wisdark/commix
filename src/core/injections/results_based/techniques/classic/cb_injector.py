@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,7 +31,12 @@ from src.core.requests import requests
 from src.core.requests import parameters
 from src.core.injections.controller import checks
 from src.core.injections.results_based.techniques.classic import cb_payloads
-
+try:
+  import html
+  unescape = html.unescape
+except:  # Python 2
+  unescape = _html_parser.HTMLParser().unescape
+  
 """
 The "classic" technique on result-based OS command injection.
 """
@@ -42,7 +47,7 @@ Check if target host is vulnerable.
 def injection_test(payload, http_request_method, url):       
 
   # Check if defined method is GET (Default).
-  if http_request_method == "GET":
+  if not menu.options.data:
     if " " in payload:
       payload = payload.replace(" ","%20")
     # Define the vulnerable parameter
@@ -61,7 +66,7 @@ def injection_test(payload, http_request_method, url):
     parameter = menu.options.data
     parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
-    parameter = parameters.do_POST_check(parameter)
+    parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
     # Define the POST data   
     if settings.IS_JSON:
@@ -95,11 +100,11 @@ def injection_test_results(response, TAG, randvcalc):
     return False
   else:
     # Check the execution results
-    html_data = response.read().decode(settings.UNICODE_ENCODING)
+    html_data = checks.page_encoding(response, action="decode")
     html_data = html_data.replace("\n"," ")
     # cleanup string / unescape html to string
     html_data = _urllib.parse.unquote(html_data)
-    html_data = _html_parser.HTMLParser().unescape(html_data)
+    html_data = unescape(html_data)
     # Replace non-ASCII characters with a single space
     re.sub(r"[^\x00-\x7f]",r" ", html_data)
 
@@ -159,13 +164,13 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
     payload = parameters.suffixes(payload, suffix)
 
     # Whitespace fixation
-    payload = payload.replace(" ", whitespace)
+    payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
     
     # Perform payload modification
     payload = checks.perform_payload_modification(payload)
 
     # Check if defined "--verbose" option.
-    if settings.VERBOSITY_LEVEL >= 1:
+    if settings.VERBOSITY_LEVEL != 0:
       debug_msg = "Executing the '" + cmd + "' command. "
       sys.stdout.write(settings.print_debug_msg(debug_msg))
       sys.stdout.flush()
@@ -193,10 +198,10 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
 
     else:
       # Check if defined method is GET (Default).
-      if http_request_method == "GET":
+      if not menu.options.data:
         
         # Check if its not specified the 'INJECT_HERE' tag
-        #url = parameters.do_GET_check(url)
+        #url = parameters.do_GET_check(url, http_request_method)
         target = url.replace(settings.INJECT_TAG, payload)
         vuln_parameter = ''.join(vuln_parameter)
         request = _urllib.request.Request(target)
@@ -212,7 +217,7 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
         parameter = menu.options.data
         parameter = _urllib.parse.unquote(parameter)
         # Check if its not specified the 'INJECT_HERE' tag
-        parameter = parameters.do_POST_check(parameter)
+        parameter = parameters.do_POST_check(parameter, http_request_method)
         parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
         # Define the POST data    
         if settings.IS_JSON:
@@ -256,11 +261,11 @@ def injection_results(response, TAG, cmd):
   false_result = False
   try:
     # Grab execution results
-    html_data = response.read().decode(settings.UNICODE_ENCODING)
+    html_data = checks.page_encoding(response, action="decode")
     html_data = html_data.replace("\n"," ")
     # cleanup string / unescape html to string
     html_data = _urllib.parse.unquote(html_data)
-    html_data = _html_parser.HTMLParser().unescape(html_data)
+    html_data = unescape(html_data)
 
     # Replace non-ASCII characters with a single space
     re.sub(r"[^\x00-\x7f]",r" ", html_data)

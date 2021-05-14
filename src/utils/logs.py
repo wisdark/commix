@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,58 +21,14 @@ import datetime
 from src.utils import menu
 from src.utils import settings
 from src.utils import session_handler
+from src.core.injections.controller import checks
 from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.colorama import Fore, Back, Style, init
-
-readline_error = False
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      readline_error = True
-else:
-  try:
-    import readline
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
-      import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      readline_error = True
-pass
 
 """
 1. Generate injection logs (logs.txt) in "./ouput" file.
 2. Check for logs updates and apply if any!
 """
-
-"""
-Save command history.
-"""
-def save_cmd_history():
-  try:
-    cli_history = os.path.expanduser(settings.CLI_HISTORY)
-    if os.path.exists(cli_history):
-      readline.write_history_file(cli_history)
-  except (IOError, AttributeError) as e:
-    warn_msg = "There was a problem writing the history file '" + cli_history + "'."
-    print(settings.print_warning_msg(warn_msg))
-
-"""
-Load commands from history.
-"""
-def load_cmd_history():
-  try:
-    cli_history = os.path.expanduser(settings.CLI_HISTORY)
-    if os.path.exists(cli_history):
-      readline.read_history_file(cli_history)
-  except (IOError, AttributeError) as e:
-    warn_msg = "There was a problem loading the history file '" + cli_history + "'."
-    print(settings.print_warning_msg(warn_msg))
 
 """
 Create log files
@@ -88,12 +44,13 @@ def create_log_file(url, output_dir):
     host = parts[0].split('/', 1)[0]
   except OSError as err_msg:
     try:
-      error_msg = str(err_msg.args[0]).split("] ")[1] + "."
-    except:
-      error_msg = str(err_msg.args[0]) + "."
+      error_msg = str(err_msg).split("] ")[1] + "."
+    except IndexError:
+      error_msg = str(err_msg) + "."
     print(settings.print_critical_msg(error_msg))
     raise SystemExit()
-      
+
+
   # Check if port is defined to host.
   if ":" in host:
     host = host.replace(":","_")
@@ -102,11 +59,11 @@ def create_log_file(url, output_dir):
   except:
     try:
       os.mkdir(output_dir + host + "/")
-    except Exception as err_msg:
+    except OSError as err_msg:
       try:
-        error_msg = str(err_msg.args[0]).split("] ")[1] + "."
-      except:
-        error_msg = str(err_msg.args[0]) + "."
+        error_msg = str(err_msg).split("] ")[1] + "."
+      except IndexError:
+        error_msg = str(err_msg) + "."
       print(settings.print_critical_msg(error_msg))
       raise SystemExit()
 
@@ -128,7 +85,7 @@ def create_log_file(url, output_dir):
     settings.SESSION_FILE = output_dir + host + "/" + "session" + ".db"
 
   # Load command history
-  load_cmd_history()
+  checks.load_cmd_history()
 
   # The logs filename construction.
   filename = output_dir + host + "/" + settings.OUTPUT_FILE
@@ -223,7 +180,7 @@ def log_traffic(header):
 Print logs notification.
 """
 def print_logs_notification(filename, url):
-  save_cmd_history()
+  checks.save_cmd_history()
   if settings.SHOW_LOGS_MSG == True:
     logs_notification(filename)
   if url:

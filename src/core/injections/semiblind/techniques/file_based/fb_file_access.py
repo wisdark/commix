@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -49,8 +49,8 @@ def file_read(separator, payload, TAG, timesec, prefix, suffix, whitespace, http
     session_handler.store_cmd(url, cmd, shell, vuln_parameter)
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
-  if settings.VERBOSITY_LEVEL >= 1 and menu.options.ignore_session:
-    print("")
+  if settings.VERBOSITY_LEVEL != 0 and menu.options.ignore_session:
+    print(settings.SINGLE_WHITESPACE)
   if shell:
     info_msg = "The contents of file '"  
     info_msg += file_to_read + "'" + Style.RESET_ALL + ": "
@@ -135,8 +135,8 @@ def file_write(separator, payload, TAG, timesec, prefix, suffix, whitespace, htt
   shell = fb_injector.injection_results(url, OUTPUT_TEXTFILE, timesec)
   shell = "".join(str(p) for p in shell)
   if shell:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print("")
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     info_msg = "The " +  shell + Style.RESET_ALL
     info_msg += Style.BRIGHT + " file was created successfully!" + "\n" 
     sys.stdout.write(settings.print_bold_info_msg(info_msg))
@@ -192,8 +192,8 @@ def file_upload(separator, payload, TAG, timesec, prefix, suffix, whitespace, ht
     shell = fb_injector.injection_results(url, OUTPUT_TEXTFILE, timesec)
     shell = "".join(str(p) for p in shell)
     if shell:
-      if settings.VERBOSITY_LEVEL >= 1:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0:
+        print(settings.SINGLE_WHITESPACE)
       info_msg = "The " +  shell
       info_msg += Style.RESET_ALL + Style.BRIGHT + " file was uploaded successfully!" 
       sys.stdout.write(settings.print_bold_info_msg(info_msg) + "\n")

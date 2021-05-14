@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,10 +24,10 @@ __tamper__ = "space2vtab"
 
 if settings.TARGET_OS == "win":
   settings.TAMPER_SCRIPTS[__tamper__] = True
-  if settings.WHITESPACE[0] == "%20":
-    settings.WHITESPACE[0] = "%0b"
+  if settings.WHITESPACES[0] == "%20":
+    settings.WHITESPACES[0] = "%0b"
   else:
-    settings.WHITESPACE.append("%0b") 
+    settings.WHITESPACES.append("%0b") 
 else:
   warn_msg = "Unix target host(s), does not support vertical tab(s)."
   print(settings.print_warning_msg(warn_msg))

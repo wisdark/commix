@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,16 +19,29 @@ import sys
 import time
 import random
 import string
+import codecs
 from src.core.compat import xrange
 from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.six.moves import reload_module as _reload_module
 from src.thirdparty.colorama import Fore, Back, Style, init
+
+class HTTPMETHOD(object):
+  GET = "GET"
+  POST = "POST"
+  HEAD = "HEAD"
+  PUT = "PUT"
+  DELETE = "DELETE"
+  TRACE = "TRACE"
+  OPTIONS = "OPTIONS"
+  CONNECT = "CONNECT"
+  PATCH = "PATCH"
 
 # Status
 FAIL_MSG = Fore.RED + " " * 10 + Style.RESET_ALL
 FAIL_STATUS = "" + FAIL_MSG + ""
 info_msg = Fore.GREEN + " " * 10 + Style.RESET_ALL
 SUCCESS_STATUS = "" + info_msg + ""
+
 # Status Signs
 LEGAL_DISCLAIMER = "(" + Style.BRIGHT + Fore.RED + "!" + Style.RESET_ALL + ") " + "Legal disclaimer: "
 INFO_SIGN = Style.RESET_ALL + "[" + Fore.GREEN + "info" + Style.RESET_ALL + "] "
@@ -36,7 +49,7 @@ INFO_BOLD_SIGN = "[" + Fore.GREEN + Style.BRIGHT + "info" + Style.RESET_ALL + "]
 REQUEST_SIGN = Style.RESET_ALL + "[" + Style.BRIGHT + Back.MAGENTA + "traffic" + Style.RESET_ALL + "] "
 RESPONSE_SIGN = Style.RESET_ALL + "[" + Style.BRIGHT + Back.MAGENTA + "traffic" + Style.RESET_ALL + "] "
 QUESTION_SIGN = Style.BRIGHT
-TOTAL_OF_REQUESTS_COLOR = ""
+TOTAL_OF_REQUESTS_COLOR = Fore.LIGHTYELLOW_EX 
 WARNING_SIGN = "[" + Fore.LIGHTYELLOW_EX  + "warning" + Style.RESET_ALL + "] "
 WARNING_BOLD_SIGN = "[" + Style.BRIGHT + Fore.YELLOW  + "warning" + Style.RESET_ALL + "] " + Style.BRIGHT
 ERROR_SIGN = "[" + Fore.RED + "error" + Style.RESET_ALL  + "] " 
@@ -171,7 +184,7 @@ def sys_argv_errors():
   _reload_module(sys)
   try:
     # Fix for Python 2.7
-    sys.setdefaultencoding('utf8')
+    sys.setdefaultencoding(UNICODE_ENCODING)
   except AttributeError:
     pass
   for i in xrange(len(sys.argv)):
@@ -199,16 +212,17 @@ The global variables.
 """
 # About
 APPLICATION = "commix"
-DESCRIPTION_FULL = "Automated All-in-One OS Command Injection and Exploitation Tool"
+DESCRIPTION_FULL = "Automated All-in-One OS Command Injection Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
-VERSION_NUM = "3.2.33"
-STABLE_VERSION = False
-if STABLE_VERSION:
-  VERSION = "v" + VERSION_NUM[:3] + "-stable"
+VERSION_NUM = "3.3"
+REVISION = "26"
+STABLE_RELEASE = False
+if STABLE_RELEASE:
+  VERSION = "v" + VERSION_NUM + "-stable"
 else:
-  VERSION = "v" + VERSION_NUM[:3] + "-dev#" + VERSION_NUM[4:]
-YEAR = "2014-2020"
+  VERSION = "v" + VERSION_NUM + "-dev#" + REVISION
+YEAR = "2014-2021"
 AUTHOR_TWITTER = "@ancst" 
 APPLICATION_URL = "https://commixproject.com" 
 APPLICATION_TWITTER = "@commixproject" 
@@ -224,6 +238,9 @@ LEGAL_DISCLAIMER_MSG = "Usage of " + APPLICATION + " for attacking targets witho
 # Random string generator
 RANDOM_STRING_GENERATOR = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(10))
 
+# Readline 
+READLINE_ERROR = False
+
 # Random Tag
 RANDOM_TAG = "" 
 
@@ -236,14 +253,24 @@ PROXY_REGEX = r"((http[^:]*)://)?([\w\-.]+):(\d+)"
 # Inject Tag
 INJECT_TAG = "INJECT_HERE"
 INJECT_TAG_REGEX = r"(?i)INJECT[_]?HERE"
-VALUE_BOUNDARIES = r'[\\/]+' 
+VALUE_BOUNDARIES = r'[\\/](.+?)[\\/]'
 
-#Basic heuristic checks for code injection warnings
-BASIC_TEST = "\\\\/{$}\\/\\"
+#Basic heuristic checks for code injection warnings or... phpinfo page ;)
+PHPINFO_PAYLOAD = "eval(phpinfo())"
+PHPINFO_CHECK_PAYLOADS = ["print(" + PHPINFO_PAYLOAD + ")", 
+                          "test)'}" + PHPINFO_PAYLOAD + "'#",
+                          "'." + PHPINFO_PAYLOAD + ".'",
+                          "{${" + PHPINFO_PAYLOAD + "}}",
+                          "\\\\/{${" + PHPINFO_PAYLOAD + "}}\\/\\"
+                         ]
+
+# Executed phpinfo()
+IDENTIFIED_PHPINFO = False
+CODE_INJECTION_PHPINFO = r"PHP Version </td><td class=\"v\">(([\w\.]+))"
 
 # Code injection warnings
-CODE_INJECTION_WARNINGS = ["eval()'d code", "runtime-created function", "usort", "assert", "preg_replace"]
 IDENTIFIED_WARNINGS = False
+CODE_INJECTION_WARNINGS = ["eval()'d code", "runtime-created function", "usort", "assert", "preg_replace"]
 
 SKIP_CODE_INJECTIONS = False
 SKIP_COMMAND_INJECTIONS = False
@@ -312,6 +339,9 @@ OUTPUT_FILE = OUTPUT_FILE_NAME + OUTPUT_FILE_EXT
 # Max Length.
 MAXLEN = "10000"
 
+# Maximum response total page size (trimmed if larger)
+MAX_CONNECTION_TOTAL_SIZE = 100 * 1024 * 1024
+
 # Slow target response.
 SLOW_TARGET_RESPONSE = 3
 
@@ -325,7 +355,7 @@ HTTP_HEADER = ""
 PREFIXES = ["", " ", "'", "\"", "&", "%26", "|", "%7C", "%27", "%22", "'%26"]
 
 # The command injection separators.
-SEPARATORS = ["", ";", "%3B", "&", "%26", "&&", "%26%26", "|", "%7C", "||", "%7C%7C", "%0a", "%0d%0a"]
+SEPARATORS = ["", ";", "%3B", "&", "%26", "%1a", "&&", "%26%26", "|", "%7C", "||", "%7C%7C", "%0a", "%0d%0a"]
 
 # The command injection suffixes.
 SUFFIXES = ["", "'", "\"", "&&", "%26%26", "|", "%7C", "||", "%7C%7C", " #", "//", "\\\\", "%26'", "%27", "%22", "%5C%5C", "%2F%2F"]
@@ -337,16 +367,18 @@ JUNK_COMBINATION = ["&&&", "|||", "|&&", "&|", "&;", "|;", "%7C;", "%26;", "%7C&
 EXECUTION_FUNCTIONS = ["exec", "system", "shell_exec", "passthru", "proc_open", "popen"]
 
 # The code injection prefixes.
-EVAL_PREFIXES = ["", "{${", ";", "'", ")", "')", "\")", "\".", "'.", ");}", "');}", "\");}"]
+EVAL_PREFIXES = [".", "", "{${", "\".", "'.", "", ";", "'", ")", "')", "\")", ");}", "');}", "\");}"]
 
 # The code injection separators.
 EVAL_SEPARATORS = ["", "%0a", "\\n", "%0d%0a", "\\r\\n"]
 
 # The code injection suffixes.
-EVAL_SUFFIXES = ["", "}}","\\\\", "//", "#", ".\"", ".'", ")}"]
+EVAL_SUFFIXES = ["", "}}", ".\"", ".'", "", "\\\\", "//", "#", ")}"]
 
-# The white-spaces
-WHITESPACE = ["%20"]
+# The default (url-ecoded) white-space.
+WHITESPACES = ["%20"]
+
+SINGLE_WHITESPACE = " "
 
 # Reference: http://www.w3.org/Protocols/HTTP/Object_Headers.html#uri
 URI_HTTP_HEADER = "URI"
@@ -526,6 +558,8 @@ CUSTOM_HEADER_NAME = ""
 # Valid URL format check
 VALID_URL_FORMAT = "https?://(?:www)?(?:[\w-]{2,255}(?:\.\w{2,6}){1,2})(?:/[\w&%?#-]{1,300})?"
 
+VALID_URL = True
+
 # Accepted shell menu options
 SHELL_OPTIONS = [
         "?",
@@ -555,18 +589,14 @@ PARAMETER_SPLITTING_REGEX = r'[,]'
 # Cookie delimiter
 PARAMETER_DELIMITER = "&"
 
-# Web-page encoding
-ENCODING = ""
+UNICODE_ENCODING = "utf8"
 
-DEFAULT_ENCODING = "utf-8"
-# Encoding used for Unicode data
-UNICODE_ENCODING = "utf-8"
+# Reference: http://en.wikipedia.org/wiki/ISO/IEC_8859-1
+DEFAULT_PAGE_ENCODING = "iso-8859-1"
 try:
-  pass
-  #unicode(DEFAULT_ENCODING, DEFAULT_ENCODING)
+  codecs.lookup(DEFAULT_PAGE_ENCODING)
 except LookupError:
-  # Reference: http://en.wikipedia.org/wiki/ISO/IEC_8859-1
-  DEFAULT_ENCODING = "iso-8859-1"
+  DEFAULT_PAGE_ENCODING = UNICODE_ENCODING
 
 # Character Sets List. 
 # A complete list of the standard encodings Python supports.
@@ -666,6 +696,9 @@ ENCODING_LIST = [
   "utf-8-sig"
  ]
 
+# Default value for HTTP Accept-Encoding header
+HTTP_ACCEPT_ENCODING_HEADER_VALUE = "gzip, deflate"
+
 # Default server banner
 SERVER_BANNER = ""
 
@@ -714,7 +747,7 @@ CRAWL_EXCLUDE_EXTENSIONS = [
   "s7z", "scm", "scpt", "sgi", "shar", "sil", "smv", "so", "sub", "swf", "tar", "tbz2", "tga", "tgz", "tif", "tiff", 
   "tlz", "ts", "ttf", "uvh", "uvi", "uvm", "uvp", "uvs", "uvu", "viv", "vob", "war", "wav", "wax", "wbmp", "wdp", "weba", 
   "webm", "webp", "whl", "wm", "wma", "wmv", "wmx", "woff", "woff2", "wvx", "xbm", "xif", "xls", "xlsx", "xlt", "xm", "xpi", 
-  "xpm", "xwd", "xz", "z", "zip", "zipx", "php"
+  "xpm", "xwd", "xz", "z", "zip", "zipx"
 ]
 
 TARGET_APPLICATION = ""
@@ -857,7 +890,9 @@ TAMPER_SCRIPTS = {
                   "sleep2usleep": False,
                   "sleep2timeout": False,
                   "xforwardedfor": False,
-                  "dollaratsigns": False
+                  "dollaratsigns": False,
+                  "uninitializedvariable": False,
+                  "slash2env":False
                  }
 
 # HTTP Errors
@@ -865,10 +900,26 @@ BAD_REQUEST = "400"
 UNAUTHORIZED_ERROR = "401"
 FORBIDDEN_ERROR = "403"
 NOT_FOUND_ERROR = "404"
+NOT_ALLOWED = "405"
 NOT_ACCEPTABLE_ERROR = "406"
 INTERNAL_SERVER_ERROR = "500"
+NOT_IMPLEMENTED = "501"
+BAD_GATEWAY = "502"
+SERVICE_UNAVAILABLE = "503"
+GATEWAY_TIMEOUT = "504"
 
-HTTP_ERROR_CODES = [ BAD_REQUEST, UNAUTHORIZED_ERROR, FORBIDDEN_ERROR, NOT_FOUND_ERROR, NOT_ACCEPTABLE_ERROR, INTERNAL_SERVER_ERROR ]
+HTTP_ERROR_CODES = [  BAD_REQUEST, 
+                      UNAUTHORIZED_ERROR,
+                      FORBIDDEN_ERROR,
+                      NOT_FOUND_ERROR,
+                      NOT_ALLOWED,
+                      NOT_ACCEPTABLE_ERROR,
+                      INTERNAL_SERVER_ERROR,
+                      NOT_IMPLEMENTED,
+                      BAD_GATEWAY,
+                      SERVICE_UNAVAILABLE,
+                      GATEWAY_TIMEOUT
+                    ]
 
 # End line
 END_LINE = ["\r", "\n", "\r\n"]
@@ -946,7 +997,13 @@ GOOGLE_ANALYTICS_COOKIE_PREFIX = "__UTM"
 TAMPER_SCRIPTS_PATH = "src/core/tamper/"
 
 # Default path for settings.py file
-SETTINGS_PATH = os.path.join("src", "utils", "settings.py")
+SETTINGS_PATH = os.path.abspath("src/utils/settings.py")
+
+# Period after last-update to start nagging (about the old revision).
+NAGGING_DAYS = 30
+
+LINUX_DEFAULT_DOC_ROOTS = ["/var/www/", "/var/www/html", "/var/www/htdocs", "/usr/local/apache2/htdocs", "/usr/local/www/data", "/var/apache2/htdocs", "/var/www/nginx-default", "/srv/www/htdocs"]  # Reference: https://wiki.apache.org/httpd/DistrosDefaultLayout
+DEFINED_WEBROOT = False
 
 # HTTP Headers
 COOKIE = "Cookie"
@@ -959,6 +1016,13 @@ HTTP_ACCEPT_HEADER = "Accept"
 HTTP_ACCEPT_HEADER_VALUE = "*/*"
 
 # Regular expression used for ignoring some special chars
-IGNORE_SPECIAL_CHAR_REGEX = "[^A-Za-z0-9.:,_]+"
+IGNORE_SPECIAL_CHAR_REGEX = "[^/(A-Za-z0-9.:,_]+"
+
+PERFORM_CRACKING = False
+
+PAGE_COMPRESSION = None
+
+# Force usage of given HTTP method (e.g. PUT).
+HTTP_METHOD = ""
 
 # eof

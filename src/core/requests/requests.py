@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2020 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ Estimating the response time (in seconds).
 """
 def estimate_response_time(url, timesec):
   stored_auth_creds = False
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Estimating the target URL response time. "
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
@@ -58,11 +58,11 @@ def estimate_response_time(url, timesec):
     if settings.UNAUTHORIZED_ERROR in str(err) and menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
       pass
     else:
-      if settings.VERBOSITY_LEVEL >= 1:
-        print(settings.FAIL_STATUS)
+      if settings.VERBOSITY_LEVEL != 0:
+        print(settings.SINGLE_WHITESPACE)
       err_msg = "Unable to connect to the target URL"
       try:
-        err_msg += " (" + str(err.args[0]).split("] ")[1] + ")."
+        err_msg += " (Reason: " + str(err.args[0]).split("] ")[-1].lower() + ")."
       except IndexError:
         err_msg += " (" + str(err) + ")."
       print(settings.print_critical_msg(err_msg))
@@ -106,9 +106,9 @@ def estimate_response_time(url, timesec):
             stored_auth_creds = session_handler.export_valid_credentials(url, auth_type.lower())
           except:
             stored_auth_creds = False
-          if stored_auth_creds:
+          if stored_auth_creds and not menu.options.ignore_session:
             menu.options.auth_cred = stored_auth_creds
-            info_msg = "Identified a (stored) valid pair of credentials '"  
+            info_msg = "Identified a previously stored valid pair of credentials '"  
             info_msg += menu.options.auth_cred + Style.RESET_ALL + Style.BRIGHT  + "'."
             print(settings.print_bold_info_msg(info_msg))
           else:  
@@ -181,27 +181,26 @@ def estimate_response_time(url, timesec):
                   checks.http_auth_err_msg()      
         else:
           raise SystemExit()
-          #pass
-  
+   
     ignore_end = time.time()
     start = start - (ignore_start - ignore_end)
 
   except socket.timeout:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.FAIL_STATUS)
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     err_msg = "The connection to target URL has timed out."
     print(settings.print_critical_msg(err_msg) + "\n")
     raise SystemExit()
 
   except _urllib.error.URLError as err_msg:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.FAIL_STATUS)
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
     raise SystemExit()
 
   except ValueError as err_msg:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.FAIL_STATUS)
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     print(settings.print_critical_msg(str(err_msg) + "."))
     raise SystemExit()
 
@@ -209,16 +208,16 @@ def estimate_response_time(url, timesec):
   diff = end - start 
   
   if int(diff) < 1:
-    if settings.VERBOSITY_LEVEL >= 1 and stored_auth_creds == False:
-      print(settings.SUCCESS_STATUS)
+    if settings.VERBOSITY_LEVEL != 0 and stored_auth_creds == False:
+      print(settings.SINGLE_WHITESPACE)
     url_time_response = int(diff)
     if settings.TARGET_OS == "win":
       warn_msg = "Due to the relatively slow response of 'cmd.exe' in target "
       warn_msg += "host, there may be delays during the data extraction procedure."
       print(settings.print_warning_msg(warn_msg))
   else:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.SUCCESS_STATUS)
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
     url_time_response = int(round(diff))
     warn_msg = "The estimated response time is " + str(url_time_response)
     warn_msg += " second" + "s"[url_time_response == 1:] + ". That may cause" 
@@ -246,102 +245,94 @@ Get the response of the request
 """
 def get_request_response(request):
 
-  if settings.REVERSE_TCP == False and settings.BIND_TCP == False:
-    headers.check_http_traffic(request)
-    # Check if defined any HTTP Proxy.
-    if menu.options.proxy:
-      try:
-        response = proxy.use_proxy(request)
-      except _urllib.error.HTTPError as err_msg:
-        if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
-          response = False  
-        elif settings.IGNORE_ERR_MSG == False:
-          err = str(err_msg) + "."
-          if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-            settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-            print("")
-          if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-            print("") 
-          print(settings.print_critical_msg(err))
-          continue_tests = checks.continue_tests(err_msg)
-          if continue_tests == True:
-            settings.IGNORE_ERR_MSG = True
-          else:
-            raise SystemExit()
-        response = False 
-      except _urllib.error.URLError as err_msg:
-        if "Connection refused" in err_msg.reason:
-          err_msg =  "The target host is not responding. "
-          err_msg += "Please ensure that is up and try again."
-          if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-             settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-            print("")
-          if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-            print("")
-          print(settings.print_critical_msg(err_msg))
-        raise SystemExit()
-
-    # Check if defined Tor.
-    elif menu.options.tor:
-      try:
-        response = tor.use_tor(request)
-      except _urllib.error.HTTPError as err_msg:
-        if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
-          response = False  
-        elif settings.IGNORE_ERR_MSG == False:
-          err = str(err_msg) + "."
-          if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-            settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-            print("")
-          if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-            print("") 
-          print(settings.print_critical_msg(err))
-          continue_tests = checks.continue_tests(err_msg)
-          if continue_tests == True:
-            settings.IGNORE_ERR_MSG = True
-          else:
-            raise SystemExit()
-        response = False 
-      except _urllib.error.URLError as err_msg:
-        err_msg = str(err_msg.reason).split(" ")[2:]
-        err_msg = ' '.join(err_msg)+ "."
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("")
-        print(settings.print_critical_msg(err_msg))
-        raise SystemExit()
-
-    else:
-      try:
-        response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
-      except _urllib.error.HTTPError as err_msg:
-        if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
-          response = False  
-        elif settings.IGNORE_ERR_MSG == False:
-          if not str(err_msg.code) == str(menu.options.ignore_code):
-            err = str(err_msg) + "."
-            # if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-            #   settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-            #   print "f"
-            # elif settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-            #   print "s"
-            if settings.VERBOSITY_LEVEL < 2:
-              print("\r" + settings.print_critical_msg(err) + 30 * " ")
-
-          continue_tests = checks.continue_tests(err_msg)
-          if continue_tests == True:
-            settings.IGNORE_ERR_MSG = True
-          else:
-            raise SystemExit()
+  headers.check_http_traffic(request)
+  # Check if defined any HTTP Proxy.
+  if menu.options.proxy:
+    try:
+      response = proxy.use_proxy(request)
+    except _urllib.error.HTTPError as err_msg:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
-      except _urllib.error.URLError as err_msg:
-        err_msg = str(err_msg.reason).split(" ")[2:]
-        err_msg = ' '.join(err_msg)+ "."
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("")
+      elif settings.IGNORE_ERR_MSG == False:
+        err = str(err_msg) + "."
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
+        print(settings.print_critical_msg(err))
+        continue_tests = checks.continue_tests(err_msg)
+        if continue_tests == True:
+          settings.IGNORE_ERR_MSG = True
+        else:
+          raise SystemExit()
+      response = False 
+    except _urllib.error.URLError as err_msg:
+      if "Connection refused" in err_msg.reason:
+        err_msg =  "The target host is not responding. "
+        err_msg += "Please ensure that is up and try again."
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+           settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE)
         print(settings.print_critical_msg(err_msg))
-        raise SystemExit()
+      raise SystemExit()
+
+  # Check if defined Tor.
+  elif menu.options.tor:
+    try:
+      response = tor.use_tor(request)
+    except _urllib.error.HTTPError as err_msg:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
+        response = False  
+      elif settings.IGNORE_ERR_MSG == False:
+        err = str(err_msg) + "."
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
+        print(settings.print_critical_msg(err))
+        continue_tests = checks.continue_tests(err_msg)
+        if continue_tests == True:
+          settings.IGNORE_ERR_MSG = True
+        else:
+          raise SystemExit()
+      response = False 
+    except _urllib.error.URLError as err_msg:
+      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = ' '.join(err_msg)+ "."
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
+      print(settings.print_critical_msg(err_msg))
+      raise SystemExit()
+
   else:
-    response = headers.check_http_traffic(request)
+    try:
+      response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
+    except _urllib.error.HTTPError as err_msg:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
+        response = False  
+      elif settings.IGNORE_ERR_MSG == False:
+        if not str(err_msg.code) == str(menu.options.ignore_code):
+          err = str(err_msg) + "."
+          if settings.VERBOSITY_LEVEL < 2:
+            print("\r" + settings.print_critical_msg(err) + 30 * " ")
+
+        continue_tests = checks.continue_tests(err_msg)
+        if continue_tests == True:
+          settings.IGNORE_ERR_MSG = True
+        else:
+          raise SystemExit()
+      response = False  
+    except _urllib.error.URLError as err_msg:
+      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = ' '.join(err_msg)+ "."
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
+      print(settings.print_critical_msg(err_msg))
+      raise SystemExit()
   return response
 
 """
@@ -368,7 +359,7 @@ def cookie_injection(url, vuln_parameter, payload):
     #Check if defined extra headers.
     headers.do_check(request)
     payload = checks.newline_fixation(payload)
-    request.add_header('Cookie', menu.options.cookie.replace(settings.INJECT_TAG, payload))
+    request.add_header('Cookie', menu.options.cookie.replace(settings.INJECT_TAG, payload.replace("+", "%2B")))
     try:
       headers.check_http_traffic(request)
       response = opener.open(request)
@@ -390,7 +381,7 @@ def cookie_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME : menu.options.proxy})
       response = inject_cookie(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err_msg = str(err_msg) + "."
@@ -404,8 +395,8 @@ def cookie_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -415,15 +406,15 @@ def cookie_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
       response = inject_cookie(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -434,8 +425,8 @@ def cookie_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -443,15 +434,15 @@ def cookie_injection(url, vuln_parameter, payload):
     try:
       response = inject_cookie(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -463,8 +454,8 @@ def cookie_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -517,15 +508,15 @@ def user_agent_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME : menu.options.proxy})
       response = inject_user_agent(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -536,8 +527,8 @@ def user_agent_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -547,15 +538,15 @@ def user_agent_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
       response = inject_user_agent(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -566,8 +557,8 @@ def user_agent_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -575,15 +566,15 @@ def user_agent_injection(url, vuln_parameter, payload):
     try:
       response = inject_user_agent(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -594,8 +585,8 @@ def user_agent_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -649,15 +640,15 @@ def referer_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME : menu.options.proxy})
       response = inject_referer(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -668,8 +659,8 @@ def referer_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -679,15 +670,15 @@ def referer_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
       response = inject_referer(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -698,8 +689,8 @@ def referer_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -708,15 +699,15 @@ def referer_injection(url, vuln_parameter, payload):
       response = inject_referer(url, vuln_parameter, payload, proxy)
 
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -727,8 +718,8 @@ def referer_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -784,15 +775,15 @@ def host_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME : menu.options.proxy})
       response = inject_host(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -803,8 +794,8 @@ def host_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -814,15 +805,15 @@ def host_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
       response = inject_host(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -833,8 +824,8 @@ def host_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -843,15 +834,15 @@ def host_injection(url, vuln_parameter, payload):
       response = inject_host(url, vuln_parameter, payload, proxy)
 
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -862,8 +853,8 @@ def host_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -919,15 +910,15 @@ def custom_header_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME : menu.options.proxy})
       response = inject_custom_header(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -938,8 +929,8 @@ def custom_header_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -949,15 +940,15 @@ def custom_header_injection(url, vuln_parameter, payload):
       proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
       response = inject_custom_header(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -968,8 +959,8 @@ def custom_header_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -977,15 +968,15 @@ def custom_header_injection(url, vuln_parameter, payload):
     try:
       response = inject_custom_header(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
-      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR:
+      if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
         response = False  
       elif settings.IGNORE_ERR_MSG == False:
         err = str(err_msg) + "."
-        if not settings.VERBOSITY_LEVEL >= 1 and settings.TIME_BASED_STATE == False or \
-          settings.VERBOSITY_LEVEL >= 1 and settings.EVAL_BASED_STATE == None:
-          print("")
-        if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-          print("") 
+        if not settings.VERBOSITY_LEVEL != 0 and settings.TIME_BASED_STATE == False or \
+          settings.VERBOSITY_LEVEL != 0 and settings.EVAL_BASED_STATE == None:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+          print(settings.SINGLE_WHITESPACE) 
         print(settings.print_critical_msg(err))
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -996,8 +987,8 @@ def custom_header_injection(url, vuln_parameter, payload):
     except _urllib.error.URLError as err_msg:
       err_msg = str(err_msg.reason).split(" ")[2:]
       err_msg = ' '.join(err_msg)+ "."
-      if settings.VERBOSITY_LEVEL >= 1 and settings.LOAD_SESSION == False:
-        print("")
+      if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
+        print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
           
@@ -1014,13 +1005,14 @@ Target's encoding detection
 def encoding_detection(response):
   if not menu.options.encoding:
     charset_detected = False
-    if settings.VERBOSITY_LEVEL >= 1:
+    if settings.VERBOSITY_LEVEL != 0:
       debug_msg = "Identifying the indicated web-page charset. " 
       sys.stdout.write(settings.print_debug_msg(debug_msg))
       sys.stdout.flush()
     try:
       # Detecting charset
       try:
+        # Support for python 2.7.x
         charset = response.headers.getparam('charset')
       except AttributeError:
         # Support for python 3.x
@@ -1039,40 +1031,51 @@ def encoding_detection(response):
           charset_detected = True
       # Check the identifyied charset
       if charset_detected :
-        settings.UNICODE_ENCODING = settings.ENCODING = charset.lower()
-        if settings.VERBOSITY_LEVEL >= 1:
-          print(settings.SUCCESS_STATUS)
-        if settings.ENCODING.lower() not in settings.ENCODING_LIST:
-          warn_msg = "The indicated web-page charset "  + settings.ENCODING + " seems unknown."
+        settings.DEFAULT_PAGE_ENCODING = charset
+        if settings.VERBOSITY_LEVEL != 0:
+          print(settings.SINGLE_WHITESPACE)
+        if settings.DEFAULT_PAGE_ENCODING.lower() not in settings.ENCODING_LIST:
+          warn_msg = "The indicated web-page charset "  + settings.DEFAULT_PAGE_ENCODING + " seems unknown."
           print(settings.print_warning_msg(warn_msg))
         else:
-          if settings.VERBOSITY_LEVEL >= 1:
-            debug_msg = "The indicated web-page charset appears to be '" 
-            debug_msg += settings.ENCODING + Style.RESET_ALL + "'."
+          if settings.VERBOSITY_LEVEL != 0:
+            debug_msg = "The indicated web-page charset appears to be " 
+            debug_msg += settings.DEFAULT_PAGE_ENCODING + Style.RESET_ALL + "."
             print(settings.print_bold_debug_msg(debug_msg))
       else:
         pass
     except:
       pass
-    if charset_detected == False and settings.VERBOSITY_LEVEL >= 1:
-      print(settings.FAIL_STATUS)
+    if charset_detected == False and settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
       warn_msg = "Heuristics have failed to identify indicated web-page charset."
       print(settings.print_warning_msg(warn_msg))
-  else:
-    settings.ENCODING = menu.options.encoding
-    if settings.ENCODING.lower() not in settings.ENCODING_LIST:
-      err_msg = "The user-defined charset '"  + settings.ENCODING + "' seems unknown. "
-      err_msg += "Please visit 'http://docs.python.org/library/codecs.html#standard-encodings' "
-      err_msg += "to get the full list of supported charsets."
-      print(settings.print_critical_msg(err_msg))
-      raise SystemExit()
 
 """
 Procedure for target application identification
 """
-def application_identification(server_banner, url):
+def technology_detection(response):
+  if settings.VERBOSITY_LEVEL != 0:
+    debug_msg = "Identifying the technology supporting the target application. " 
+    sys.stdout.write(settings.print_debug_msg(debug_msg))
+    sys.stdout.flush()
+    print(settings.SINGLE_WHITESPACE) 
+  if response.info()['X-Powered-By']: 
+    if settings.VERBOSITY_LEVEL != 0:        
+      debug_msg = "The target application is powered by " 
+      debug_msg += response.info()['X-Powered-By'] + Style.RESET_ALL + "."
+      print(settings.print_bold_debug_msg(debug_msg))
+  else:
+    if settings.VERBOSITY_LEVEL != 0:
+      warn_msg = "Heuristics have failed to identify the technology supporting the target application."
+      print(settings.print_warning_msg(warn_msg))
+
+"""
+Procedure for target application identification
+"""
+def application_identification(url):
   found_application_extension = False
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Identifying the target application." 
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
@@ -1081,9 +1084,9 @@ def application_identification(server_banner, url):
   
   if settings.TARGET_APPLICATION:
     found_application_extension = True
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.SUCCESS_STATUS)           
-      debug_msg = "The target application was identified as " 
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)           
+      debug_msg = "The target application identified as " 
       debug_msg += settings.TARGET_APPLICATION + Style.RESET_ALL + "."
       print(settings.print_bold_debug_msg(debug_msg))
 
@@ -1095,17 +1098,17 @@ def application_identification(server_banner, url):
         raise SystemExit()
 
   if not found_application_extension:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.FAIL_STATUS)
-    warn_msg = "Heuristics have failed to identify target application."
-    print(settings.print_warning_msg(warn_msg))
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
+      warn_msg = "Heuristics have failed to identify target application."
+      print(settings.print_warning_msg(warn_msg))
 
 """
 Procedure for target server's identification.
 """
 def server_identification(server_banner):
   found_server_banner = False
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Identifying the target server. " 
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
@@ -1113,10 +1116,10 @@ def server_identification(server_banner):
   for i in range(0,len(settings.SERVER_BANNERS)):
     match = re.search(settings.SERVER_BANNERS[i].lower(), server_banner.lower())
     if match:
-      if settings.VERBOSITY_LEVEL >= 1:
-        print(settings.SUCCESS_STATUS)
-      if settings.VERBOSITY_LEVEL >= 1:
-        debug_msg = "The target server was identified as " 
+      if settings.VERBOSITY_LEVEL != 0:
+        print(settings.SINGLE_WHITESPACE)
+      if settings.VERBOSITY_LEVEL != 0:
+        debug_msg = "The target server identified as " 
         debug_msg += server_banner + Style.RESET_ALL + "."
         print(settings.print_bold_debug_msg(debug_msg))
       settings.SERVER_BANNER = match.group(0)
@@ -1133,9 +1136,9 @@ def server_identification(server_banner):
         settings.WEB_ROOT = "\\inetpub\\wwwroot"
       break
   else:
-    if settings.VERBOSITY_LEVEL >= 1:
-      print(settings.FAIL_STATUS)
-      warn_msg = "The server which was identified as '" 
+    if settings.VERBOSITY_LEVEL != 0:
+      print(settings.SINGLE_WHITESPACE)
+      warn_msg = "The server which identified as '" 
       warn_msg += server_banner + "' seems unknown."
       print(settings.print_warning_msg(warn_msg))
 
@@ -1143,12 +1146,11 @@ def server_identification(server_banner):
 Procedure for target server's operating system identification.
 """
 def check_target_os(server_banner):
-
   found_os_server = False
   if menu.options.os and checks.user_defined_os():
     user_defined_os = settings.TARGET_OS
 
-  if settings.VERBOSITY_LEVEL >= 1:
+  if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Identifying the target operating system. " 
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
@@ -1178,14 +1180,14 @@ def check_target_os(server_banner):
           if not checks.identified_os():
             settings.TARGET_OS = user_defined_os
 
-  if settings.VERBOSITY_LEVEL >= 1 :
+  if settings.VERBOSITY_LEVEL != 0 :
     if found_os_server:
-      print(settings.SUCCESS_STATUS)
+      print(settings.SINGLE_WHITESPACE)
       debug_msg = "The target operating system appears to be " 
       debug_msg += identified_os.title() + Style.RESET_ALL + "."
       print(settings.print_bold_debug_msg(debug_msg))
     else:
-      print(settings.FAIL_STATUS)
+      print(settings.SINGLE_WHITESPACE)
       warn_msg = "Heuristics have failed to identify server's operating system."
       print(settings.print_warning_msg(warn_msg))
 
