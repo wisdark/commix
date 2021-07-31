@@ -105,7 +105,7 @@ def value_boundaries(value):
   else:
     procced_option = ""
   if procced_option in settings.CHOICE_YES or len(procced_option) == 0:
-    value = value.replace(re.search(settings.VALUE_BOUNDARIES, value).group(0), "")
+    value = re.search(settings.VALUE_BOUNDARIES, value).group(1)
   elif procced_option in settings.CHOICE_NO:
     pass
   elif procced_option in settings.CHOICE_QUIT:
@@ -1022,6 +1022,14 @@ def whitespace_check(payload):
 Check for added caret between the characters of the generated payloads.
 """
 def other_symbols(payload):
+  # Check for (multiple) backticks (instead of "$()") for commands substitution on the generated payloads.
+  if payload.count("`") >= 2:
+    if menu.options.tamper:
+      menu.options.tamper = menu.options.tamper + ",backticks"
+    else:
+      menu.options.tamper = "backticks"  
+    settings.USE_BACKTICKS == True
+
   # Check for caret symbol
   if payload.count("^") >= 10:
     if not settings.TAMPER_SCRIPTS['caret']:
@@ -1267,20 +1275,29 @@ def is_empty(multi_parameters, http_request_method):
   empty_parameters = []
   multi_params = [s for s in multi_parameters]
   if settings.IS_JSON:
-    multi_params = ','.join(multi_params)
-    json_data = json.loads(multi_params, object_pairs_hook=OrderedDict)
-    multi_params = flatten(json_data)
+    try:
+      multi_params = ','.join(multi_params)
+      json_data = json.loads(multi_params, object_pairs_hook=OrderedDict)
+      multi_params = flatten(json_data)
+    except ValueError as err_msg:
+      print(settings.print_critical_msg(err_msg))
+      raise SystemExit()
   for empty in multi_params:
     try:
       if settings.IS_JSON:
-        param = re.sub("[^/()A-Za-z0-9.:,_]+", '',  multi_params[empty])
-        if "(" and ")" in param:
-          param = re.findall(r'\((.*)\)', param)
-          for value in param[0].split(","):
-            if value.split(":")[1] == "":
-              empty_parameters.append(value.split(":")[0])
-        elif len(str(multi_params[empty])) == 0 :
-          empty_parameters.append(empty)
+        try:
+          param = re.sub("[^/()A-Za-z0-9.:,_]+", '',  multi_params[empty])
+          if "(" and ")" in param:
+            param = re.findall(r'\((.*)\)', param)
+            for value in param[0].split(","):
+              if value.split(":")[1] == "":
+                empty_parameters.append(value.split(":")[0])
+          elif len(str(multi_params[empty])) == 0 :
+            empty_parameters.append(empty)
+        except TypeError:
+          warn_msg = "The provided value for parameter '" + str(empty) + "' seems unusable."
+          print(settings.print_warning_msg(warn_msg))
+          pass
       elif settings.IS_XML:
         if re.findall(r'>(.*)<', empty)[0] == "" or \
            re.findall(r'>(.*)<', empty)[0] == " ":
@@ -1302,7 +1319,7 @@ def is_empty(multi_parameters, http_request_method):
       skip_empty(empty_parameters, http_request_method)
       return True
     else:
-      warn_msg = "The provided value"+ "s"[len(empty_parameters.split(",")) == 1:][::-1]
+      warn_msg = "The provided value" + "s"[len(empty_parameters.split(",")) == 1:][::-1]
       warn_msg += " for " + http_request_method 
       warn_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] 
       warn_msg += " parameter" + "s"[len(empty_parameters.split(",")) == 1:][::-1]
@@ -1543,7 +1560,7 @@ def define_py_working_dir():
   if settings.TARGET_OS == "win" and menu.options.alter_shell:
     while True:
       if not menu.options.batch:
-        question_msg = "Do you want to use '" + settings.WIN_PYTHON_DIR 
+        question_msg = "Do you want to use '" + settings.WIN_PYTHON_INTERPRETER 
         question_msg += "' as Python working directory on the target host? [Y/n] > "
         python_dir = _input(settings.print_question_msg(question_msg))
       else:
@@ -1554,8 +1571,8 @@ def define_py_working_dir():
         break
       elif python_dir in settings.CHOICE_NO:
         question_msg = "Please provide a custom working directory for Python (e.g. '" 
-        question_msg += settings.WIN_PYTHON_DIR + "') > "
-        settings.WIN_PYTHON_DIR = _input(settings.print_question_msg(question_msg))
+        question_msg += settings.WIN_PYTHON_INTERPRETER + "') > "
+        settings.WIN_PYTHON_INTERPRETER = _input(settings.print_question_msg(question_msg))
         break
       else:
         err_msg = "'" + python_dir + "' is not a valid answer."  

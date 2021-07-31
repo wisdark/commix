@@ -108,6 +108,12 @@ general.add_option("--batch",
                 default=False,
                 help="Never ask for user input, use the default behaviour.")
 
+general.add_option("--skip-heuristics",
+                action="store_true",
+                dest="skip_heuristics",
+                default=False,
+                help="Skip heuristic detection for code injection.")
+
 general.add_option("--encoding",
                 action="store",
                 dest="encoding",
@@ -156,7 +162,7 @@ target.add_option("--crawl",
                 default=0,
                 dest="crawldepth",
                 type="int",
-                help="Crawl the website starting from the target URL (1-2, Default: " + str(settings.DEFAULT_CRAWLDEPTH_LEVEL) + ").")
+                help="Crawl the website starting from the target URL (1-2, Default: 0).")
 
 target.add_option("-x",
                 dest="sitemap_url",
@@ -506,12 +512,6 @@ injection.add_option("--msf-path",
                 default=False,
                 help="Set a local path where metasploit is installed.")
 
-injection.add_option("--backticks", 
-                action="store_true",
-                dest="enable_backticks",
-                default=False,
-                help="Use backticks instead of \"$()\", for commands substitution.")
-
 # Detection options
 detection = OptionGroup(parser, Style.BRIGHT + Style.UNDERLINE + "Detection" + Style.RESET_ALL, "These options can be "
                         "used to customize the detection phase.")
@@ -536,6 +536,7 @@ detection.add_option("--skip-empty",
 
 detection.add_option("--failed-tries", 
                 action="store",
+                type="int",
                 dest="failed_tries",
                 default=20,
                 help="Set a number of failed injection tries, in file-based technique.")

@@ -68,53 +68,62 @@ def check_for_stored_levels(url, http_request_method):
 Basic heuristic checks for code injection warnings
 """
 def heuristic_basic(url, http_request_method):
-  settings.EVAL_BASED_STATE = True
   injection_type = "results-based dynamic code evaluation"
   technique = "dynamic code evaluation technique"
   technique = "(" + injection_type.split(" ")[0] + ") " + technique + ""
-  try:
-    try:
-      if re.findall(r"=(.*)&", url):
-        url = url.replace("/&", "/e&")
-      elif re.findall(r"=(.*)&", menu.options.data):
-        menu.options.data = menu.options.data.replace("/&", "/e&")
-    except TypeError as err_msg:
-      pass
-    if not settings.IDENTIFIED_WARNINGS and not settings.IDENTIFIED_PHPINFO:  
-      if settings.VERBOSITY_LEVEL != 0:   
-        debug_msg = "Performing heuristic test for " + technique + "."
-        print(settings.print_debug_msg(debug_msg))
-      for payload in settings.PHPINFO_CHECK_PAYLOADS:
-        payload = checks.perform_payload_modification(payload)
-        if not menu.options.data:
-          request = _urllib.request.Request(url.replace(settings.INJECT_TAG, payload))
-        else:
-          data = menu.options.data.replace(settings.INJECT_TAG, payload)
-          request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
-        headers.do_check(request)
-        response = requests.get_request_response(request)
-        if type(response) is not bool:
-          html_data = checks.page_encoding(response, action="decode")
-          match = re.search(settings.CODE_INJECTION_PHPINFO, html_data)
-          if match:
-            technique = technique + " (possible PHP version: '" + match.group(1) + "')"
-            settings.IDENTIFIED_PHPINFO = True
-          else:
-            for warning in settings.CODE_INJECTION_WARNINGS:
-              if warning in html_data:
-                settings.IDENTIFIED_WARNINGS = True
-                break
-          if settings.IDENTIFIED_WARNINGS or settings.IDENTIFIED_PHPINFO:
-            info_msg = "Heuristic test shows that target might be injectable via " + technique + "." 
-            print(settings.print_bold_info_msg(info_msg))
-            break
 
-    settings.EVAL_BASED_STATE = False
+  if menu.options.skip_heuristics:
+    if settings.VERBOSITY_LEVEL != 0:   
+      debug_msg = "Skipping (basic) heuristic detection for " + technique + "."
+      print(settings.print_debug_msg(debug_msg))
     return url
+  else:
+    settings.EVAL_BASED_STATE = True
+    try:
+      try:
+        if re.findall(r"=(.*)&", url):
+          url = url.replace("/&", "/e&")
+        elif re.findall(r"=(.*)&", menu.options.data):
+          menu.options.data = menu.options.data.replace("/&", "/e&")
+      except TypeError as err_msg:
+        pass
+      if not settings.IDENTIFIED_WARNINGS and not settings.IDENTIFIED_PHPINFO:  
+        if settings.VERBOSITY_LEVEL != 0:   
+          debug_msg = "Starting (basic) heuristic detection for " + technique + "."
+          print(settings.print_debug_msg(debug_msg))
+        for payload in settings.PHPINFO_CHECK_PAYLOADS:
+          payload = checks.perform_payload_modification(payload)
+          if settings.VERBOSITY_LEVEL >= 1:
+            print(settings.print_payload(payload))
+          if not menu.options.data:
+            request = _urllib.request.Request(url.replace(settings.INJECT_TAG, payload))
+          else:
+            data = menu.options.data.replace(settings.INJECT_TAG, payload)
+            request = _urllib.request.Request(url, data.encode(settings.UNICODE_ENCODING))
+          headers.do_check(request)
+          response = requests.get_request_response(request)
+          if type(response) is not bool:
+            html_data = checks.page_encoding(response, action="decode")
+            match = re.search(settings.CODE_INJECTION_PHPINFO, html_data)
+            if match:
+              technique = technique + " (possible PHP version: '" + match.group(1) + "')"
+              settings.IDENTIFIED_PHPINFO = True
+            else:
+              for warning in settings.CODE_INJECTION_WARNINGS:
+                if warning in html_data:
+                  settings.IDENTIFIED_WARNINGS = True
+                  break
+            if settings.IDENTIFIED_WARNINGS or settings.IDENTIFIED_PHPINFO:
+              info_msg = "Heuristic detection shows that target might be injectable via " + technique + "." 
+              print(settings.print_bold_info_msg(info_msg))
+              break
 
-  except (_urllib.error.URLError, _urllib.error.HTTPError) as err_msg:
-    print(settings.print_critical_msg(err_msg))
-    raise SystemExit()
+      settings.EVAL_BASED_STATE = False
+      return url
+
+    except (_urllib.error.URLError, _urllib.error.HTTPError) as err_msg:
+      print(settings.print_critical_msg(err_msg))
+      raise SystemExit()
 
 # Check if it's exploitable via classic command injection technique.
 def classic_command_injection_technique(url, timesec, filename, http_request_method):
@@ -570,31 +579,31 @@ def post_request(url, http_request_method, filename, timesec):
   checks.print_non_listed_params(check_parameters, http_request_method, header_name)
 
   for i in range(0, len(found_parameter)):
-    if settings.INJECT_TAG in found_parameter[i]:
-      parameter = menu.options.data = found_parameter[i]
-      check_parameter = parameters.vuln_POST_param(parameter, url)
-      if check_parameter != parameter:
-        if len(check_parameter) > 0:
-          settings.TESTABLE_PARAMETER = check_parameter
-        # Check if testable parameter(s) are provided
-        if len(settings.TESTABLE_PARAMETER) > 0:
-          if menu.options.test_parameter != None:
-            param_counter = 0
-            for check_parameter in check_parameters:
-              if check_parameter in "".join(settings.TEST_PARAMETER).split(","):
-                menu.options.data = found_parameter[param_counter]
-                check_for_stored_sessions(url, http_request_method)
-                injection_proccess(url, check_parameter, http_request_method, filename, timesec)
-              param_counter += 1
-            break
-          else:
-            # Check for session file 
-            check_for_stored_sessions(url, http_request_method)
-            injection_proccess(url, check_parameter, http_request_method, filename, timesec)
+    #if settings.INJECT_TAG in found_parameter[i]:
+    parameter = menu.options.data = found_parameter[i]
+    check_parameter = parameters.vuln_POST_param(parameter, url)
+    if check_parameter != parameter:
+      if len(check_parameter) > 0:
+        settings.TESTABLE_PARAMETER = check_parameter
+      # Check if testable parameter(s) are provided
+      if len(settings.TESTABLE_PARAMETER) > 0:
+        if menu.options.test_parameter != None:
+          param_counter = 0
+          for check_parameter in check_parameters:
+            if check_parameter in "".join(settings.TEST_PARAMETER).split(","):
+              menu.options.data = found_parameter[param_counter]
+              check_for_stored_sessions(url, http_request_method)
+              injection_proccess(url, check_parameter, http_request_method, filename, timesec)
+            param_counter += 1
+          break
         else:
           # Check for session file 
           check_for_stored_sessions(url, http_request_method)
           injection_proccess(url, check_parameter, http_request_method, filename, timesec)
+      else:
+        # Check for session file 
+        check_for_stored_sessions(url, http_request_method)
+        injection_proccess(url, check_parameter, http_request_method, filename, timesec)
 
   # Enable Cookie Injection
   if menu.options.level > settings.DEFAULT_INJECTION_LEVEL and menu.options.cookie:
@@ -679,14 +688,14 @@ def do_check(url, http_request_method, filename):
       warn_msg = "It is highly recommended to avoid usage of switch '--tor' for "
       warn_msg += "time-based injections because of inherent high latency time."
       print(settings.print_warning_msg(warn_msg))
-  
-  # Check for '--backticks' option.
-  if menu.options.enable_backticks:
+
+  # Check for "backticks" tamper script.
+  if settings.USE_BACKTICKS == True:
     if not menu.options.tech or "e" in menu.options.tech or "t" in menu.options.tech or "f" in menu.options.tech:
-      warn_msg = "The '--backticks' switch is only supported by the classic command injection. "
-      warn_msg += "It will be ignored for all other techniques."
+      warn_msg = "Commands substitution using backtics is only supported by the (results-based) classic command injection technique. "
       print(settings.print_warning_msg(warn_msg) + Style.RESET_ALL)
 
+  # Check for "wizard" switch.
   if menu.options.wizard:
     if perform_checks(url, http_request_method, filename) == False:
       scan_level = menu.options.level

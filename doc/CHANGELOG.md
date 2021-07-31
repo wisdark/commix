@@ -1,6 +1,11 @@
 ## Version 3.3 (TBA)
+* Removed: The "Regsvr32.exe application whitelisting bypass" attack vector has been removed.
+* Updated: Minor update regarding web delivery script (i.e. Python meterpreter reverse TCP shell).
+* Replaced: The `--backticks` switch has been replaced with "backticks.py" tamper script.
+* Added: New tamper script "backticks.py" that uses backticks instead of "$()", for commands substitution. (for *nix targets).
+* Added: New option ( `--skip-heuristic`) for skipping dynamic code evaluation heuristic check.
 * Added: Support for parsing custom wordlists regarding HTTP authentication (Basic / Digest) dictionary-based cracker.
-* Revised: Improvements regarding dynamic code evaluation heuristic test.
+* Revised: Improvements regarding dynamic code evaluation heuristic check.
 * Fixed: Minor bug-fix regarding parsing SOAP/XML data via `--data` option.
 * Revised: Minor improvement regarding parsing GraphQL JSON objects.
 * Added: The .bat files command separator (i.e. ["%1a"](http://seclists.org/fulldisclosure/2016/Nov/67)) has been added.
@@ -14,7 +19,7 @@
 * Added: New tamper script "uninitializedvariable.py" that adds uninitialized bash variables between the characters of each command of the generated payloads (for *nix targets).
 * Revised: Improvement regarding decompressing `deflate`, `x-gzip` and `gzip` HTTP responses.
 * Fixed: Bug-fix regarding several charset-related unhandled exceptions.
-* Revised: Improvements regarding dynamic code evaluation heuristic test.
+* Revised: Improvements regarding dynamic code evaluation heuristic check.
 * Fixed: Bug-fix regarding HTTP authentication (Basic / Digest) dictionary-based cracker.
 * Fixed: Bug-fix regarding logging all HTTP traffic into a textual file.
 * Revised: Improvement regarding crawler.

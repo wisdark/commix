@@ -367,9 +367,6 @@ def main(filename, url):
     if menu.options.skip_calc:
       settings.SKIP_CALC = True
 
-    if menu.options.enable_backticks:
-      settings.USE_BACKTICKS = True
-
     # Target URL reload.
     if menu.options.url_reload and menu.options.data:
       settings.URL_RELOAD = True
@@ -464,7 +461,7 @@ def main(filename, url):
         raise SystemExit()
 
     if not menu.options.tech:
-      menu.options.tech = ""
+      menu.options.tech = "".join(settings.AVAILABLE_TECHNIQUES)
     
     # Check if specified wrong alternative shell
     if menu.options.alter_shell:
@@ -520,6 +517,8 @@ def main(filename, url):
             print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
             raise SystemExit()
         try:
+          info_msg = "Performing identification checks to the target URL."
+          print(settings.print_info_msg(info_msg))
           # Webpage encoding detection.
           requests.encoding_detection(response)
           # Procedure for target application identification
@@ -722,7 +721,7 @@ try:
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
-    if int(menu.options.failed_tries) == 0:
+    if menu.options.failed_tries == 0:
       err_msg = "You must specify '--failed-tries' value, greater than zero."      
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()

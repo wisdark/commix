@@ -44,7 +44,7 @@ def authentication_process():
     #cj = cookielib.CookieJar()
     cj = _http_cookiejar.CookieJar()
     opener = _urllib.request.build_opener(_urllib.request.HTTPCookieProcessor(cj))
-    request = opener.open(_urllib.request.Request(auth_url))
+    # request = opener.open(_urllib.request.Request(auth_url))
     cookies = ""
     for cookie in cj:
         cookie_values = cookie.name + "=" + cookie.value + "; "
@@ -67,6 +67,10 @@ def authentication_process():
   except _urllib.error.HTTPError as err_msg:
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
+
+  except ValueError as err_msg:
+    print(settings.print_critical_msg(err_msg))
+    raise SystemExit() 
 
 """
 Define the HTTP authentication 
