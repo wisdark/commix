@@ -23,8 +23,32 @@ import hashlib
 import traceback
 from src.utils import menu
 from src.utils import settings
+from src.thirdparty import six
 from src.thirdparty.six.moves import input as _input
 from src.thirdparty.six.moves import urllib as _urllib
+
+"""
+Returns True if the current process is run under admin privileges
+"""
+def running_as_admin():
+  is_admin = False
+  if settings.PLATFORM in ("posix", "mac"):
+    _ = os.geteuid()
+    if isinstance(_, (float, six.integer_types)) and _ == 0:
+      is_admin = True  
+
+  elif settings.IS_WINDOWS:
+    import ctypes
+    _ = ctypes.windll.shell32.IsUserAnAdmin()
+    if isinstance(_, (float, six.integer_types)) and _ == 1:
+      is_admin = True
+  else:
+    err_msg = settings.APPLICATION + " is not able to check if you are running it "
+    err_msg += "as an administrator account on this platform. "
+    print(settings.print_error_msg(err_msg))
+    is_admin = True
+
+  return is_admin
 
 """
 Get total number of days from last update
@@ -48,7 +72,7 @@ def create_github_issue(err_msg, exc_msg):
   _ = re.sub(r".+\Z", "", _)
   _ = re.sub(r"(Unicode[^:]*Error:).+", r"\g<1>", _)
   _ = re.sub(r"= _", "= ", _)
-  _ = _.encode(settings.UNICODE_ENCODING)
+  _ = _.encode(settings.DEFAULT_CODEC)
   
   bug_report =  "Bug Report: Unhandled exception \"" + str([i for i in exc_msg.split('\n') if i][-1]) + "\""
 
@@ -100,14 +124,14 @@ def create_github_issue(err_msg, exc_msg):
   data = {"title": str(bug_report), "body": "```" + str(err_msg) + "\n```\n```\n" + str(exc_msg) + "```"}
   request = _urllib.request.Request(url = "https://api.github.com/repos/commixproject/commix/issues", 
                                 data = json.dumps(data).encode(), 
-                                headers = {"Authorization": "token " + base64.b64decode(settings.GITHUB_REPORT_OAUTH_TOKEN.encode(settings.UNICODE_ENCODING)).decode()}
+                                headers = {"Authorization": "token " + base64.b64decode(settings.GITHUB_REPORT_OAUTH_TOKEN.encode(settings.DEFAULT_CODEC)).decode()}
                                 )
   try:
     content = _urllib.request.urlopen(request, timeout=settings.TIMEOUT).read()
   except Exception as err:
     content = None
 
-  issue_url = re.search(r"https://github.com/commixproject/commix/issues/\d+", content.decode(settings.UNICODE_ENCODING) or "")
+  issue_url = re.search(r"https://github.com/commixproject/commix/issues/\d+", content.decode(settings.DEFAULT_CODEC) or "")
   if issue_url:
     info_msg = "The created Github issue can been found at the address '" + str(issue_url.group(0)) + "'.\n"
     print(settings.print_info_msg(info_msg))
@@ -154,7 +178,7 @@ def unhandled_exception():
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
-  elif "MemoryError" in exc_msg:
+  elif any(_ in exc_msg for _ in ("MemoryError", "Cannot allocate memory")):
     err_msg = "Memory exhaustion detected."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()

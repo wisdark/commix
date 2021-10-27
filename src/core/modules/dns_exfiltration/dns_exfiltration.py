@@ -22,6 +22,7 @@ from src.thirdparty.six.moves import urllib as _urllib
 import threading
 from src.utils import menu
 from src.utils import logs
+from src.utils import common
 from src.utils import settings
 from src.thirdparty.colorama import Fore, Back, Style, init
 from src.core.requests import tor
@@ -73,7 +74,7 @@ def cmd_exec(dns_server, http_request_method, cmd, url, vuln_parameter):
     request = url + data
   else:
     values =  {vuln_parameter:payload}
-    data = _urllib.parse.urlencode(values).encode(settings.UNICODE_ENCODING)
+    data = _urllib.parse.urlencode(values).encode(settings.DEFAULT_CODEC)
     request = _urllib.request.Request(url=url, data=data)
     
   sys.stdout.write(Fore.GREEN + Style.BRIGHT + "\n")
@@ -178,9 +179,9 @@ def dns_exfiltration_handler(url, http_request_method):
   # Check injection state
   settings.DETECTION_PHASE = True
   settings.EXPLOITATION_PHASE = False
-  # You need to have root privileges to run this script
-  if os.geteuid() != 0:
-    err_msg = "You need to have root privileges to run this option."
+  # You need to have administrative privileges to run this module.
+  if not common.running_as_admin():
+    err_msg = "You need to have administrative privileges to run this module."
     print("\n" + settings.print_critical_msg(err_msg))
     os._exit(0)
 
