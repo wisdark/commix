@@ -37,6 +37,7 @@ from src.utils import settings
 from src.utils import session_handler
 from src.utils import simple_http_server
 from src.thirdparty.colorama import Fore, Back, Style, init
+from src.core.testing import smoke_test
 from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
@@ -58,6 +59,7 @@ if settings.IS_WINDOWS:
   codecs.register(lambda name: codecs.lookup("utf-8") if name == "cp65001" else None)
   # Use Colorama to make Termcolor work on Windows too :)
   init()
+
 
 """
 Define HTTP User-Agent header.
@@ -627,6 +629,7 @@ def main(filename, url):
     #raise SystemExit()
 
 try:
+
   # Check if defined "--version" option.
   if menu.options.version:
     version.show_version()
@@ -637,7 +640,8 @@ try:
 
   # Get total number of days from last update
   if os.path.isfile(settings.SETTINGS_PATH):
-    common.days_from_last_update()
+    if settings.STABLE_RELEASE == False:
+      common.days_from_last_update()
 
   # Define the level of verbosity.
   if menu.options.verbose > 4:
@@ -647,6 +651,9 @@ try:
     raise SystemExit()
   else:  
     settings.VERBOSITY_LEVEL = menu.options.verbose
+
+  if menu.options.smoke_test:
+    smoke_test()
 
   if not menu.options.batch:
     settings.OS_CHECKS_NUM = 1
