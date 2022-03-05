@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -68,7 +68,8 @@ def cmd_exec(dns_server, http_request_method, cmd, url, vuln_parameter):
   if settings.VERBOSITY_LEVEL != 0:
     sys.stdout.write("\n" + settings.print_payload(payload))
 
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     url = url.replace(settings.INJECT_TAG, "")
     data = payload.replace(" ", "%20")
     request = url + data
@@ -119,7 +120,8 @@ def input_cmd(dns_server, http_request_method, url, vuln_parameter, technique):
         try:
           if not settings.READLINE_ERROR:
             checks.tab_autocompleter()
-          cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+          sys.stdout.write(settings.OS_SHELL)
+          cmd = _input()
           cmd = checks.escaped_cmd(cmd)
           if cmd.lower() in settings.SHELL_OPTIONS:
             if cmd.lower() == "quit" or cmd.lower() == "back":       
@@ -185,7 +187,8 @@ def dns_exfiltration_handler(url, http_request_method):
     print("\n" + settings.print_critical_msg(err_msg))
     os._exit(0)
 
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     #url = parameters.do_GET_check(url, http_request_method)
     vuln_parameter = parameters.vuln_GET_param(url)
     request = _urllib.request.Request(url)
@@ -193,7 +196,7 @@ def dns_exfiltration_handler(url, http_request_method):
     
   else:
     parameter = menu.options.data
-    parameter = _urllib.parse.unquote(parameter)
+    #parameter = _urllib.parse.unquote(parameter)
     parameter = parameters.do_POST_check(parameter, http_request_method)
     request = _urllib.request.Request(url, parameter)
     headers.do_check(request)

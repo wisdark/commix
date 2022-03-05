@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -202,7 +202,7 @@ def estimate_response_time(url, timesec):
   except _urllib.error.URLError as err_msg:
     if settings.VERBOSITY_LEVEL != 0:
       print(settings.SINGLE_WHITESPACE)
-    print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
+    print(settings.print_critical_msg(str(err_msg.reason) + "."))
     raise SystemExit()
 
   except ValueError as err_msg:
@@ -410,7 +410,7 @@ def cookie_injection(url, vuln_parameter, payload):
   # Check if defined Tor.
   elif menu.options.tor:
     try:
-      proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
+      proxy = _urllib.request.ProxyHandler({settings.TOR_HTTP_PROXY_SCHEME:settings.TOR_HTTP_PROXY_IP + ":" + settings.TOR_HTTP_PROXY_PORT})
       response = inject_cookie(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
@@ -542,7 +542,7 @@ def user_agent_injection(url, vuln_parameter, payload):
   # Check if defined Tor.
   elif menu.options.tor:
     try:
-      proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
+      proxy = _urllib.request.ProxyHandler({settings.TOR_HTTP_PROXY_SCHEME:settings.TOR_HTTP_PROXY_IP + ":" + settings.TOR_HTTP_PROXY_PORT})
       response = inject_user_agent(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
@@ -674,7 +674,7 @@ def referer_injection(url, vuln_parameter, payload):
   # Check if defined Tor.
   elif menu.options.tor:
     try:
-      proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
+      proxy = _urllib.request.ProxyHandler({settings.TOR_HTTP_PROXY_SCHEME:settings.TOR_HTTP_PROXY_IP + ":" + settings.TOR_HTTP_PROXY_PORT})
       response = inject_referer(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
@@ -809,7 +809,7 @@ def host_injection(url, vuln_parameter, payload):
   # Check if defined Tor.
   elif menu.options.tor:
     try:
-      proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
+      proxy = _urllib.request.ProxyHandler({settings.TOR_HTTP_PROXY_SCHEME:settings.TOR_HTTP_PROXY_IP + ":" + settings.TOR_HTTP_PROXY_PORT})
       response = inject_host(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:
@@ -944,7 +944,7 @@ def custom_header_injection(url, vuln_parameter, payload):
   # Check if defined Tor.
   elif menu.options.tor:
     try:
-      proxy = _urllib.request.ProxyHandler({settings.SCHEME:settings.PRIVOXY_IP + ":" + settings.PRIVOXY_PORT})
+      proxy = _urllib.request.ProxyHandler({settings.TOR_HTTP_PROXY_SCHEME:settings.TOR_HTTP_PROXY_IP + ":" + settings.TOR_HTTP_PROXY_PORT})
       response = inject_custom_header(url, vuln_parameter, payload, proxy)
     except _urllib.error.HTTPError as err_msg:
       if str(err_msg.code) == settings.INTERNAL_SERVER_ERROR or str(err_msg.code) == settings.BAD_REQUEST:

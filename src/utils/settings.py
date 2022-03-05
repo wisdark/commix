@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -62,6 +62,9 @@ ABORTION_SIGN = ERROR_SIGN
 DEBUG_SIGN = "[" + Back.BLUE + Fore.WHITE + "debug" + Style.RESET_ALL + "] " 
 DEBUG_BOLD_SIGN = "[" + Back.BLUE + Style.BRIGHT + Fore.WHITE + "debug" + Style.RESET_ALL + "] " + Style.BRIGHT
 CHECK_SIGN = DEBUG_SIGN + "Checking pair of credentials: "
+OS_SHELL = """commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """
+REVERSE_TCP_SHELL = """commix(""" + Style.BRIGHT + Fore.RED + """reverse_tcp""" + Style.RESET_ALL + """) > """
+BIND_TCP_SHELL = """commix(""" + Style.BRIGHT + Fore.RED + """bind_tcp""" + Style.RESET_ALL + """) > """
 
 # Print error message
 def print_error_msg(err_msg):
@@ -222,13 +225,13 @@ DESCRIPTION_FULL = "Automated All-in-One OS Command Injection Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
 VERSION_NUM = "3.4"
-REVISION = "22"
-STABLE_RELEASE = False
+REVISION = "66"
+STABLE_RELEASE = True
 if STABLE_RELEASE:
   VERSION = "v" + VERSION_NUM + "-stable"
 else:
   VERSION = "v" + VERSION_NUM + "-dev#" + REVISION
-YEAR = "2014-2021"
+YEAR = "2014-2022"
 AUTHOR_TWITTER = "@ancst" 
 APPLICATION_URL = "https://commixproject.com" 
 APPLICATION_TWITTER = "@commixproject" 
@@ -292,7 +295,7 @@ SKIP_CODE_INJECTIONS = False
 SKIP_COMMAND_INJECTIONS = False
 
 # User-defined stored post data.
-USER_DEFINED_POST_DATA = ""
+USER_DEFINED_POST_DATA = False
 
 # The wildcard character
 WILDCARD_CHAR = "*"
@@ -557,9 +560,10 @@ MOBILE_USER_AGENT_LIST = [
 # Default Scheme
 SCHEME = ""
 
-# Privoxy Proxy
-PRIVOXY_IP = "127.0.0.1"
-PRIVOXY_PORT = "8118"
+# TOR HTTP Proxy
+TOR_HTTP_PROXY_IP = "127.0.0.1"
+TOR_HTTP_PROXY_PORT = "8118"
+TOR_HTTP_PROXY_SCHEME = "https"
 
 # Cookie injection
 COOKIE_INJECTION = False
@@ -718,8 +722,9 @@ ENCODING_LIST = [
   "utf-8-sig"
  ]
 
-# Default value for HTTP Accept-Encoding header
 HTTP_ACCEPT_ENCODING_HEADER_VALUE = "gzip, deflate"
+HTTP_CONTENT_TYPE_JSON_HEADER_VALUE = "application/json"
+HTTP_CONTENT_TYPE_XML_HEADER_VALUE = "text/xml"
 
 # Default server banner
 SERVER_BANNER = ""
@@ -1048,5 +1053,9 @@ PAGE_COMPRESSION = None
 
 # Force usage of given HTTP method (e.g. PUT).
 HTTP_METHOD = ""
+
+DECLARED_COOKIES = ""
+
+CRAWLED_SKIPPED_URLS = 0
 
 # eof

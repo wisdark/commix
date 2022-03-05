@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -246,7 +246,8 @@ def cb_injection_handler(url, timesec, filename, http_request_method, injection_
             else:    
               header_name = ""
               the_type = " parameter"
-              if not menu.options.data:
+              # Check if defined POST data
+              if not settings.USER_DEFINED_POST_DATA:
                 found_vuln_parameter = parameters.vuln_GET_param(url)
               else :
                 found_vuln_parameter = vuln_parameter
@@ -376,7 +377,8 @@ def cb_injection_handler(url, timesec, filename, http_request_method, injection_
                   try:
                     if not settings.READLINE_ERROR:
                       checks.tab_autocompleter()
-                    cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+                    sys.stdout.write(settings.OS_SHELL)
+                    cmd = _input()
                     cmd = checks.escaped_cmd(cmd)
                     if cmd.lower() in settings.SHELL_OPTIONS:
                       go_back, go_back_again = shell_options.check_option(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, technique, go_back, no_result, timesec, go_back_again, payload, OUTPUT_TEXTFILE="")

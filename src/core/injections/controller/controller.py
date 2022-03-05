@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -95,13 +95,22 @@ def heuristic_basic(url, http_request_method):
           payload = checks.perform_payload_modification(payload)
           if settings.VERBOSITY_LEVEL >= 1:
             print(settings.print_payload(payload))
-          if not menu.options.data:
-            request = _urllib.request.Request(url.replace(settings.INJECT_TAG, payload))
+          data = None
+          cookie = None
+          tmp_url = url
+          if menu.options.cookie and settings.INJECT_TAG in menu.options.cookie:
+            cookie = menu.options.cookie.replace(settings.INJECT_TAG, payload).encode(settings.DEFAULT_CODEC)
+          elif menu.options.data and http_request_method == settings.HTTPMETHOD.POST:
+            data = menu.options.data.replace(settings.INJECT_TAG, payload).encode(settings.DEFAULT_CODEC)
           else:
-            data = menu.options.data.replace(settings.INJECT_TAG, payload)
-            request = _urllib.request.Request(url, data.encode(settings.DEFAULT_CODEC))
+            if settings.INJECT_TAG in url:
+              tmp_url = url.replace(settings.INJECT_TAG, payload)
+          request = _urllib.request.Request(tmp_url, data)
+          if cookie:
+            request.add_header(settings.COOKIE, cookie)
           headers.do_check(request)
           response = requests.get_request_response(request)
+
           if type(response) is not bool:
             html_data = checks.page_encoding(response, action="decode")
             match = re.search(settings.CODE_INJECTION_PHPINFO, html_data)
@@ -241,6 +250,9 @@ def filebased_command_injection_technique(url, timesec, filename, http_request_m
 Proceed to the injection process for the appropriate parameter.
 """
 def injection_proccess(url, check_parameter, http_request_method, filename, timesec):
+  inject_http_headers = False
+  if any(x in check_parameter.lower() for x in settings.HTTP_HEADERS):
+    inject_http_headers = True
 
   if menu.options.ignore_code: 
     info_msg = "Ignoring '" + str(menu.options.ignore_code) + "' HTTP error code. "
@@ -278,7 +290,8 @@ def injection_proccess(url, check_parameter, http_request_method, filename, time
   if not settings.LOAD_SESSION:
     if (len(menu.options.tech) == 0 or "e" in menu.options.tech):
       # Check for identified warnings
-      url = heuristic_basic(url, http_request_method)
+      if not inject_http_headers:
+        url = heuristic_basic(url, http_request_method)
       if settings.IDENTIFIED_WARNINGS or settings.IDENTIFIED_PHPINFO:
         while True:
           if not menu.options.batch:
@@ -343,7 +356,7 @@ def injection_proccess(url, check_parameter, http_request_method, filename, time
       warn_msg += " " + str(http_request_method) + ""
     warn_msg += str(the_type) + str(header_name) + str(check_parameter)
     warn_msg += " seems to be not injectable."
-    print(settings.print_warning_msg(warn_msg))
+    print(settings.print_bold_warning_msg(warn_msg))
 
 """
 Inject HTTP headers (User-agent / Referer / Host) (if level > 2).
@@ -501,7 +514,6 @@ Check if HTTP Method is GET.
 """ 
 def get_request(url, http_request_method, filename, timesec):
 
-  #if not settings.COOKIE_INJECTION:
   found_url = parameters.do_GET_check(url, http_request_method)
   if found_url != False:
 
@@ -542,16 +554,11 @@ def get_request(url, http_request_method, filename, timesec):
           check_for_stored_sessions(url, http_request_method)
           injection_proccess(url, check_parameter, http_request_method, filename, timesec)
 
-  # Enable Cookie Injection
-  if menu.options.level > settings.DEFAULT_INJECTION_LEVEL and menu.options.cookie:
-    settings.COOKIE_INJECTION = True
-
 """
 Check if HTTP Method is POST.
 """ 
 def post_request(url, http_request_method, filename, timesec):
 
-  # Check if HTTP Method is POST.
   parameter = menu.options.data
   found_parameter = parameters.do_POST_check(parameter, http_request_method)
 
@@ -605,10 +612,6 @@ def post_request(url, http_request_method, filename, timesec):
         check_for_stored_sessions(url, http_request_method)
         injection_proccess(url, check_parameter, http_request_method, filename, timesec)
 
-  # Enable Cookie Injection
-  if menu.options.level > settings.DEFAULT_INJECTION_LEVEL and menu.options.cookie:
-    settings.COOKIE_INJECTION = True
-
 """
 Perform checks
 """
@@ -623,10 +626,10 @@ def perform_checks(url, http_request_method, filename):
       settings.SKIP_COMMAND_INJECTIONS = False
       settings.IDENTIFIED_WARNINGS = False
       settings.IDENTIFIED_PHPINFO = False
-    # Check if HTTP Method is GET.
-    if not menu.options.data:
-      get_request(url, http_request_method, filename, timesec)
-    # Check if HTTP Method is POST.      
+
+    # Check if defined POST data
+    if not settings.USER_DEFINED_POST_DATA:
+      get_request(url, http_request_method, filename, timesec)  
     else:
       post_request(url, http_request_method, filename, timesec)
 
@@ -659,28 +662,28 @@ def perform_checks(url, http_request_method, filename):
   if settings.PERFORM_BASIC_SCANS:
     basic_level_checks()
 
-  # Check for stored injections on User-agent / Referer / Host HTTP headers (if level > 2).
-  if menu.options.level >= settings.HTTP_HEADER_INJECTION_LEVEL:
-    if settings.INJECTED_HTTP_HEADER == False :
-      check_parameter = ""
-      stored_http_header_injection(url, check_parameter, http_request_method, filename, timesec)
-  else:
+  if menu.options.level >= settings.COOKIE_INJECTION_LEVEL:
     # Enable Cookie Injection
-    if menu.options.level > settings.DEFAULT_INJECTION_LEVEL:
-      if menu.options.cookie:
-        cookie_injection(url, http_request_method, filename, timesec)
-      else:
-        warn_msg = "The HTTP Cookie header is not provided, "
-        warn_msg += "so this test is going to be skipped."
-        print(settings.print_warning_msg(warn_msg))
+    if menu.options.cookie:
+      cookie_injection(url, http_request_method, filename, timesec)
     else:
-      # Custom header Injection
-      if settings.CUSTOM_HEADER_INJECTION == True:
-        check_parameter =  header_name = " " + settings.CUSTOM_HEADER_NAME
-        settings.HTTP_HEADER = header_name[1:].lower()
-        check_for_stored_sessions(url, http_request_method)
-        injection_proccess(url, check_parameter, http_request_method, filename, timesec)
-        settings.CUSTOM_HEADER_INJECTION = None
+      warn_msg = "The HTTP Cookie header is not provided, "
+      warn_msg += "so this test is going to be skipped."
+      print(settings.print_warning_msg(warn_msg))
+
+    if menu.options.level == settings.HTTP_HEADER_INJECTION_LEVEL:
+      if settings.INJECTED_HTTP_HEADER == False :
+        check_parameter = ""
+        # Check for stored injections on User-agent / Referer / Host HTTP headers (if level > 2).
+        stored_http_header_injection(url, check_parameter, http_request_method, filename, timesec)
+
+  # Custom header Injection
+  if settings.CUSTOM_HEADER_INJECTION == True:
+    check_parameter =  header_name = " " + settings.CUSTOM_HEADER_NAME
+    settings.HTTP_HEADER = header_name[1:].lower()
+    check_for_stored_sessions(url, http_request_method)
+    injection_proccess(url, check_parameter, http_request_method, filename, timesec)
+    settings.CUSTOM_HEADER_INJECTION = None
   
 
   if settings.INJECTION_CHECKER == False:

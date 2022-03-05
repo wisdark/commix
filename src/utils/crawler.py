@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@ from src.thirdparty.beautifulsoup.beautifulsoup import BeautifulSoup
 
 SITEMAP_LOC = []
 HREF_LIST = []
-SKIPPED_URLS = 0
 
 def store_crawling():
   while True:
@@ -57,7 +56,6 @@ def store_crawling():
 Do a request to target URL.
 """
 def request(url):
-  global SKIPPED_URLS
   try:
     # Check if defined POST data
     if menu.options.data:
@@ -72,9 +70,8 @@ def request(url):
     err_msg = str(err_msg) + " - Skipping " + str(url) 
     sys.stdout.write(settings.print_critical_msg(err_msg))
     if settings.VERBOSITY_LEVEL >= 2:
-      print("")
-    SKIPPED_URLS += 1
-
+      print(settings.SINGLE_WHITESPACE)
+    settings.CRAWLED_SKIPPED_URLS += 1
 
 """
 Check for URLs in sitemap.xml.
@@ -114,6 +111,8 @@ def sitemap(url):
             pass
     return SITEMAP_LOC
   except:
+    if not menu.options.crawldepth:
+      raise SystemExit()
     pass
 
 """
@@ -170,47 +169,67 @@ The main crawler.
 """
 def crawler(url):
   if not menu.options.sitemap_url:
-    if menu.options.crawldepth > 2:
-      err_msg = "Depth level '" + str(menu.options.crawldepth) + "' is not a valid."  
-      print(settings.print_error_msg(err_msg))
-      raise SystemExit()
     info_msg = "Starting crawler and searching for "
     info_msg += "links with depth " + str(menu.options.crawldepth) + "." 
     print(settings.print_info_msg(info_msg))
   else:
-    while True:
-      if not menu.options.batch:
-        question_msg = "Do you want to change the crawling depth level? [Y/n] > "
-        message = _input(settings.print_question_msg(question_msg))
-      else:
-        message = ""
-      if len(message) == 0:
-         message = "Y"
-      if message in settings.CHOICE_YES or message in settings.CHOICE_NO:
-        break  
-      elif message in settings.CHOICE_QUIT:
-        raise SystemExit()
-      else:
-        err_msg = "'" + message + "' is not a valid answer."  
-        print(settings.print_error_msg(err_msg))
-        pass
-    # Change the crawling depth level.
-    if message in settings.CHOICE_YES:
+    message = ""
+    if not menu.options.crawldepth:
       while True:
-        question_msg = "Please enter the crawling depth level (1-2) > "
-        message = _input(settings.print_question_msg(question_msg))
+        if not menu.options.batch:
+          question_msg = "Do you want to enable crawler? [y/N] > "
+          message = _input(settings.print_question_msg(question_msg))
+        else:
+          message = ""
         if len(message) == 0:
-          message = 1
-          break
-        elif str(message) != "1" and str(message) != "2":
-          err_msg = "Depth level '" + message + "' is not a valid answer."  
+           message = "N"
+        if message in settings.CHOICE_YES:
+          menu.options.crawldepth = 1
+          break  
+        if message in settings.CHOICE_NO:
+          break  
+        elif message in settings.CHOICE_QUIT:
+          raise SystemExit()
+        else:
+          err_msg = "'" + message + "' is not a valid answer."  
           print(settings.print_error_msg(err_msg))
           pass
-        else: 
-          menu.options.crawldepth = message
-          break
+
+    if menu.options.crawldepth:
+      while True:
+        if not menu.options.batch:
+          question_msg = "Do you want to change the crawling depth level (" + str(menu.options.crawldepth) + ")? [y/N] > "
+          message = _input(settings.print_question_msg(question_msg))
+        else:
+          message = ""
+        if len(message) == 0:
+           message = "N"
+        if message in settings.CHOICE_YES or message in settings.CHOICE_NO:
+          break  
+        elif message in settings.CHOICE_QUIT:
+          raise SystemExit()
+        else:
+          err_msg = "'" + message + "' is not a valid answer."  
+          print(settings.print_error_msg(err_msg))
+          pass
+      # Change the crawling depth level.
+      if message in settings.CHOICE_YES:
+        while True:
+          question_msg = "Please enter the crawling depth level (1-2) > "
+          message = _input(settings.print_question_msg(question_msg))
+          if len(message) == 0:
+            message = 1
+            break
+          elif str(message) != "1" and str(message) != "2":
+            err_msg = "Depth level '" + message + "' is not a valid answer."  
+            print(settings.print_error_msg(err_msg))
+            pass
+          else: 
+            menu.options.crawldepth = message
+            break
 
   while True:
+    sitemap_check = None
     if not menu.options.sitemap_url:
       if not menu.options.batch:
         question_msg = "Do you want to check target for "
@@ -233,6 +252,7 @@ def crawler(url):
         print(settings.print_error_msg(err_msg))
         pass
     else:
+      message = "n"
       sitemap_check = True
       break
   
@@ -245,19 +265,22 @@ def crawler(url):
   if sitemap_check:
     info_msg += "identified 'sitemap.xml' "
   info_msg += "for usable links (with GET parameters). "
-  sys.stdout.write("\r" + settings.print_info_msg(info_msg))
+  if message in settings.CHOICE_NO and not menu.options.sitemap_url:
+    sys.stdout.write("\r" + settings.print_info_msg(info_msg))
+  else:
+    sys.stdout.write("\n" + settings.print_info_msg(info_msg))
   sys.stdout.flush()
 
   if not sitemap_check:
     output_href = do_process(url)
-    if menu.options.crawldepth > 1:
+    if int(menu.options.crawldepth) > 1:
       for url in output_href:
         output_href = do_process(url)
-  if SKIPPED_URLS == 0:
+  if settings.CRAWLED_SKIPPED_URLS == 0:
     print(settings.SINGLE_WHITESPACE)
 
-  if not settings.VERBOSITY_LEVEL >= 2:
-    print("")
+  if not settings.VERBOSITY_LEVEL >= 2 and not settings.DECLARED_COOKIES:
+    print(settings.SINGLE_WHITESPACE)
   info_msg = "Visited " + str(len(output_href)) + " link"+ "s"[len(output_href) == 1:] + "."
   print(settings.print_info_msg(info_msg))
   filename = store_crawling()

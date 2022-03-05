@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -516,7 +516,7 @@ def main(filename, url):
             print(settings.print_critical_msg(str(err_msg.code)))
             raise SystemExit()
           except _urllib.error.URLError as err_msg:
-            print(settings.print_critical_msg(str(err_msg.args[0]).split("] ")[1] + "."))
+            print(settings.print_critical_msg(str(err_msg.reason) + "."))
             raise SystemExit()
         try:
           info_msg = "Performing identification checks to the target URL."
@@ -606,14 +606,6 @@ def main(filename, url):
     if menu.options.enum_all:
       checks.enable_all_enumeration_options()
 
-    # Launch injection and exploitation controller.
-    if len(settings.HTTP_METHOD) != 0:
-      http_request_method = settings.HTTP_METHOD
-    else:
-      if menu.options.data:
-        http_request_method = settings.HTTPMETHOD.POST
-      else:
-        http_request_method = settings.HTTPMETHOD.GET
     controller.do_check(url, http_request_method, filename)
     return filename
 
@@ -755,6 +747,11 @@ try:
     if menu.options.os:
       checks.user_defined_os()
 
+    if menu.options.crawldepth > 2:
+      err_msg = "Depth level '" + str(menu.options.crawldepth) + "' is not a valid."  
+      print(settings.print_error_msg(err_msg))
+      raise SystemExit()
+
     # Check if defined "--check-tor" option. 
     if menu.options.tor_check and not menu.options.tor:
       err_msg = "The '--check-tor' swich requires usage of switch '--tor'."
@@ -776,11 +773,10 @@ try:
             pass
           else: 
             break
-      if not menu.options.data:
-        question_msg = "Please enter POST data (--data) [Enter for none] > "
-        menu.options.data = _input(settings.print_question_msg(question_msg))
-        if len(menu.options.data) == 0:
-          menu.options.data = False
+      question_msg = "Please enter POST data (--data) [Enter for none] > "
+      menu.options.data = _input(settings.print_question_msg(question_msg))
+      if len(menu.options.data) == 0:
+        menu.options.data = False
 
     # Retries when the connection timeouts.
     if menu.options.retries:
@@ -817,6 +813,22 @@ try:
       if inject_tag_regex_match:
         settings.INJECT_TAG = inject_tag_regex_match.group(0)
 
+    # Check provided parameters for tests
+    if menu.options.test_parameter or menu.options.skip_parameter:     
+      if menu.options.test_parameter != None :
+        if menu.options.test_parameter.startswith("="):
+          menu.options.test_parameter = menu.options.test_parameter[1:]
+        settings.TEST_PARAMETER = menu.options.test_parameter.split(settings.PARAMETER_SPLITTING_REGEX)  
+      
+      elif menu.options.skip_parameter != None :
+        if menu.options.skip_parameter.startswith("="):
+          menu.options.skip_parameter = menu.options.skip_parameter[1:]
+        settings.TEST_PARAMETER = menu.options.skip_parameter.split(settings.PARAMETER_SPLITTING_REGEX)
+
+      for i in range(0,len(settings.TEST_PARAMETER)):
+        if "=" in settings.TEST_PARAMETER[i]:
+          settings.TEST_PARAMETER[i] = settings.TEST_PARAMETER[i].split("=")[0]
+
     # Define the level of tests to perform.
     if menu.options.level > 3:
       err_msg = "The value for option '--level' "
@@ -838,6 +850,18 @@ try:
       raise SystemExit()
     elif menu.options.requestfile or menu.options.logfile:
       parser.logfile_parser()
+
+    # Check for HTTP Method
+    if len(settings.HTTP_METHOD) != 0:
+      http_request_method = settings.HTTP_METHOD.upper()
+    else:
+      if not menu.options.data or \
+         not settings.WILDCARD_CHAR is None and settings.WILDCARD_CHAR in menu.options.url or \
+         settings.INJECT_TAG in menu.options.url or \
+         [x for x in settings.TEST_PARAMETER if(x + "=" in menu.options.url and not x in menu.options.data)]:
+        http_request_method = settings.HTTPMETHOD.GET
+      else:
+        http_request_method = settings.HTTPMETHOD.POST
 
     if menu.options.offline:
       settings.CHECK_FOR_UPDATES_ON_START = False

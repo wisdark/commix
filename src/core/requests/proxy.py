@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@ For more see the file 'readme/COPYING' for copying permission.
 """
 
 import sys
+import socket
 from src.utils import menu
 from src.utils import settings
 from src.core.requests import headers
@@ -40,6 +41,10 @@ def do_check(url):
   except (_urllib.error.URLError, _urllib.error.HTTPError, _http_client.BadStatusLine) as err:
     err_msg = "Unable to connect to the target URL or proxy."
     print(settings.print_critical_msg(err_msg))
+    raise SystemExit()
+  except socket.timeout:
+    err_msg = "The connection to target URL or proxy has timed out."
+    print(settings.print_critical_msg(err_msg) + "\n")
     raise SystemExit()
 
 """

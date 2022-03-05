@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ Check if target host is vulnerable.
 """
 def injection_test(payload, http_request_method, url):
                       
-  # Check if defined method is GET (Default).
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     
     # Check if its not specified the 'INJECT_HERE' tag
     #url = parameters.do_GET_check(url, http_request_method)
@@ -69,7 +69,7 @@ def injection_test(payload, http_request_method, url):
   # Check if defined method is POST.
   else:
     parameter = menu.options.data
-    parameter = _urllib.parse.unquote(parameter)
+    #parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
     parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
@@ -188,8 +188,8 @@ def injection(separator, payload, TAG, cmd, prefix, suffix, whitespace, http_req
       response = custom_header_injection_test(url, vuln_parameter, payload)
 
     else:
-      # Check if defined method is GET (Default).
-      if not menu.options.data:
+      # Check if defined POST data
+      if not settings.USER_DEFINED_POST_DATA:
         # Check if its not specified the 'INJECT_HERE' tag
         #url = parameters.do_GET_check(url, http_request_method)
         payload = payload.replace(" ","%20")
@@ -201,12 +201,15 @@ def injection(separator, payload, TAG, cmd, prefix, suffix, whitespace, http_req
         # Get the response of the request
         response = requests.get_request_response(request) 
 
-      else :
+      else:
         # Check if defined method is POST.
         parameter = menu.options.data
-        parameter = _urllib.parse.unquote(parameter)
+        #parameter = _urllib.parse.unquote(parameter)
         # Check if its not specified the 'INJECT_HERE' tag
         parameter = parameters.do_POST_check(parameter, http_request_method)
+        parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
+        # Define the vulnerable parameter
+        vuln_parameter = parameters.vuln_POST_param(parameter, url)
         # Define the POST data  
         if settings.IS_JSON:
           data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))

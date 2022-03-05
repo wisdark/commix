@@ -1,4 +1,10 @@
-## Version 3.4 (TBA)
+## Version 3.4 (2022-02-25)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Fixed: Bug-fix regarding forcing usage of provided HTTP method (e.g. `PUT`).
+* Fixed: Bug-fix regarding parsing raw HTTP headers from a file (i.e. `-r` option).
+* Fixed: Minor bug-fix regarding parsing JSON objects.
+* Added: New option ( `--drop-set-cookie`) for ignoring Set-Cookie header from response.
+* Added: Support for checking for not declared cookie(s).
 * Added: New (hidden) option `--smoke-test` that runs the basic smoke testing.
 * Revised: Improvement regarding mechanism which nagging if used "dev" version is > 30 days old.
 * Revised: Improvements regarding dynamic code evaluation heuristic check.

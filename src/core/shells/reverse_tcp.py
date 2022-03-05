@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -735,7 +735,8 @@ Set up the reverse TCP connection
 def configure_reverse_tcp(separator):
   # Set up LHOST for the reverse TCP connection
   while True:
-    option = _input("""commix(""" + Style.BRIGHT + Fore.RED + """reverse_tcp""" + Style.RESET_ALL + """) > """)
+    sys.stdout.write(settings.REVERSE_TCP_SHELL)
+    option = _input()
     if option.lower() == "reverse_tcp": 
       warn_msg = "You are already into the '" + option.lower() + "' mode."
       print(settings.print_warning_msg(warn_msg))

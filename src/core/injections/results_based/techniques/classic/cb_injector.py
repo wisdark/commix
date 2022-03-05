@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,8 +46,8 @@ Check if target host is vulnerable.
 """
 def injection_test(payload, http_request_method, url):       
 
-  # Check if defined method is GET (Default).
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     if " " in payload:
       payload = payload.replace(" ","%20")
     # Define the vulnerable parameter
@@ -64,7 +64,7 @@ def injection_test(payload, http_request_method, url):
   # Check if defined method is POST.
   else:
     parameter = menu.options.data
-    parameter = _urllib.parse.unquote(parameter)
+    #parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
     parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
@@ -197,8 +197,8 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
       response = custom_header_injection_test(url, vuln_parameter, payload)
 
     else:
-      # Check if defined method is GET (Default).
-      if not menu.options.data:
+      # Check if defined POST data
+      if not settings.USER_DEFINED_POST_DATA:
         
         # Check if its not specified the 'INJECT_HERE' tag
         #url = parameters.do_GET_check(url, http_request_method)
@@ -215,7 +215,7 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
       else :
         # Check if defined method is POST.
         parameter = menu.options.data
-        parameter = _urllib.parse.unquote(parameter)
+        #parameter = _urllib.parse.unquote(parameter)
         # Check if its not specified the 'INJECT_HERE' tag
         parameter = parameters.do_POST_check(parameter, http_request_method)
         parameter = ''.join(str(e) for e in parameter).replace("+","%2B")

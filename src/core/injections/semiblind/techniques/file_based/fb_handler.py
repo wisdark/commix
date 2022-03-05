@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -465,7 +465,8 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
             else:
               header_name = ""
               the_type = " parameter"
-              if not menu.options.data:
+              # Check if defined POST data
+              if not settings.USER_DEFINED_POST_DATA:
                 found_vuln_parameter = parameters.vuln_GET_param(url)
               else :
                 found_vuln_parameter = vuln_parameter
@@ -609,7 +610,8 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                   while True:
                     if not settings.READLINE_ERROR:
                       checks.tab_autocompleter()
-                    cmd = _input("""commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """)
+                    sys.stdout.write(settings.OS_SHELL)
+                    cmd = _input()
                     cmd = checks.escaped_cmd(cmd)
                     # if settings.VERBOSITY_LEVEL != 0:
                     #   print(settings.SINGLE_WHITESPACE)

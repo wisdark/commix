@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -188,15 +188,21 @@ def check_http_traffic(request):
       if [True for err_code in settings.HTTP_ERROR_CODES if err_code in str(err_msg)]:
         break
 
-    except (_urllib.error.URLError, _http_client.BadStatusLine) as err_msg:
+    except (_urllib.error.URLError, _http_client.BadStatusLine, _http_client.IncompleteRead) as err_msg:
       if current_attempt == 0:
         if settings.VERBOSITY_LEVEL < 2 and "has closed the connection" in str(err_msg):
           print(settings.SINGLE_WHITESPACE)
-        warn_msg = "The provided target URL seems not reachable. "
-        warn_msg += "In case that it is, please try to re-run using "
+
+        if "IncompleteRead" in str(err_msg):
+          warn_msg = "There was an incomplete read error while retrieving data "
+          warn_msg += "from the target URL "
+        else:
+          warn_msg = "The provided target URL seems not reachable. "
+          warn_msg += "In case that it is, please try to re-run using "
         if not menu.options.random_agent:
             warn_msg += "'--random-agent' switch and/or "
         warn_msg += "'--proxy' option."
+        
         print(settings.print_warning_msg(warn_msg))
         info_msg = settings.APPLICATION.capitalize() + " is going to retry the request(s)."
         print(settings.print_info_msg(info_msg))
@@ -227,7 +233,10 @@ def check_http_traffic(request):
     # Checks regarding a potential browser verification protection mechanism.
     checks.browser_verification(page)
     # Checks regarding recognition of generic "your ip has been blocked" messages.
-    checks.blocked_ip(page) 
+    checks.blocked_ip(page)
+    # Checks for not declared cookie(s), while server wants to set its own.
+    if menu.options.cookie == None and not menu.options.drop_set_cookie:
+      checks.not_declared_cookies(response)
 
   # This is useful when handling exotic HTTP errors (i.e requests for authentication).
   except _urllib.error.HTTPError as err:
@@ -238,7 +247,8 @@ def check_http_traffic(request):
        not settings.IS_JSON and \
        not settings.IS_XML and \
        not str(err.code) == settings.INTERNAL_SERVER_ERROR and \
-       not str(err.code) == settings.BAD_REQUEST:
+       not str(err.code) == settings.BAD_REQUEST and \
+       not settings.CRAWLED_SKIPPED_URLS == 0:
       print(settings.SINGLE_WHITESPACE)
     # error_msg = "Got " + str(err).replace(": "," (")
     # Check for 3xx, 4xx, 5xx HTTP error codes.
@@ -292,7 +302,7 @@ def do_check(request):
     request.add_header(settings.HOST, menu.options.host)
 
   # Check if defined any User-Agent HTTP header.
-  if menu.options.agent:
+  if menu.options.agent and settings.USER_AGENT_INJECTION == None:
     request.add_header(settings.USER_AGENT, menu.options.agent)
 
   # Check if defined any Referer HTTP header.
@@ -307,19 +317,22 @@ def do_check(request):
     request.add_header(settings.HTTP_ACCEPT_HEADER, settings.HTTP_ACCEPT_HEADER_VALUE)
 
   # The MIME media type for JSON.
-  if menu.options.data:
+  if menu.options.data and not (menu.options.requestfile or menu.options.logfile):
     if re.search(settings.JSON_RECOGNITION_REGEX, menu.options.data) or \
        re.search(settings.JSON_LIKE_RECOGNITION_REGEX, menu.options.data):
-      request.add_header("Content-Type", "application/json")
+      request.add_header("Content-Type", settings.HTTP_CONTENT_TYPE_JSON_HEADER_VALUE)
+    elif re.search(settings.XML_RECOGNITION_REGEX, menu.options.data):
+      request.add_header("Content-Type", settings.HTTP_CONTENT_TYPE_XML_HEADER_VALUE)
+
+  # Default value for "Accept-Encoding" HTTP header
+  if not (menu.options.requestfile or menu.options.logfile):
+    request.add_header('Accept-Encoding', settings.HTTP_ACCEPT_ENCODING_HEADER_VALUE)
 
   # Appends a fake HTTP header 'X-Forwarded-For'
   if settings.TAMPER_SCRIPTS["xforwardedfor"]:
     from src.core.tamper import xforwardedfor
     xforwardedfor.tamper(request)
   
-  # Default value for "Accept-Encoding" HTTP header
-  request.add_header('Accept-Encoding', settings.HTTP_ACCEPT_ENCODING_HEADER_VALUE)
-
   # Check if defined any HTTP Authentication credentials.
   # HTTP Authentication: Basic / Digest Access Authentication.
   if menu.options.auth_cred and menu.options.auth_type:
@@ -371,6 +384,7 @@ def do_check(request):
       extra_headers = menu.options.header
   
     extra_headers = extra_headers.replace(":",": ")
+
     if ": //" in extra_headers:
       extra_headers = extra_headers.replace(": //" ,"://")
 
@@ -385,7 +399,18 @@ def do_check(request):
 
     # Remove empty strings
     extra_headers = [x for x in extra_headers if x]
-    
+    if menu.options.data:
+      # The MIME media type for JSON.
+      if re.search(settings.JSON_RECOGNITION_REGEX, menu.options.data) or \
+         re.search(settings.JSON_LIKE_RECOGNITION_REGEX, menu.options.data):
+         if "Content-Type" not in str(extra_headers):
+          request.add_header("Content-Type", settings.HTTP_CONTENT_TYPE_JSON_HEADER_VALUE)
+      elif re.search(settings.XML_RECOGNITION_REGEX, menu.options.data):
+         if "Content-Type" not in str(extra_headers):
+          request.add_header("Content-Type", settings.HTTP_CONTENT_TYPE_XML_HEADER_VALUE)
+    if "Accept-Encoding" not in str(extra_headers):
+      request.add_header('Accept-Encoding', settings.HTTP_ACCEPT_ENCODING_HEADER_VALUE)
+          
     for extra_header in extra_headers:
       try:
         # Extra HTTP Header name 
@@ -401,7 +426,7 @@ def do_check(request):
           settings.CUSTOM_HEADER_NAME = http_header_name
         # Add HTTP Header name / value to the HTTP request
         if http_header_name not in [settings.HOST, settings.USER_AGENT, settings.REFERER, settings.COOKIE]:
-          request.add_header(http_header_name.encode(settings.DEFAULT_CODEC), http_header_value.encode(settings.DEFAULT_CODEC))
+          request.add_header(http_header_name, http_header_value)
       except:
         pass
         

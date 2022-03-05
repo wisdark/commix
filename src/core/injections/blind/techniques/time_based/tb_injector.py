@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,8 +45,8 @@ def examine_requests(payload, vuln_parameter, http_request_method, url, timesec,
   end = 0
   start = time.time()
 
-  # Check if defined method is GET (Default).
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     # Encoding non-ASCII characters payload.
     # payload = _urllib.parse.quote(payload)   
     target = url.replace(settings.INJECT_TAG, payload)
@@ -54,9 +54,9 @@ def examine_requests(payload, vuln_parameter, http_request_method, url, timesec,
     request = _urllib.request.Request(target)
 
   # Check if defined method is POST.
-  else :
+  else:
     parameter = menu.options.data
-    parameter = _urllib.parse.unquote(parameter)
+    #parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
     parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
@@ -92,8 +92,8 @@ def injection_test(payload, http_request_method, url):
   end = 0
   start = time.time()
 
-  # Check if defined method is GET (Default).
-  if not menu.options.data:
+  # Check if defined POST data
+  if not settings.USER_DEFINED_POST_DATA:
     # Encoding non-ASCII characters payload.
     # payload = _urllib.parse.quote(payload)
 
@@ -105,7 +105,7 @@ def injection_test(payload, http_request_method, url):
   # Check if defined method is POST.
   else:
     parameter = menu.options.data
-    parameter = _urllib.parse.unquote(parameter)
+    #parameter = _urllib.parse.unquote(parameter)
     # Check if its not specified the 'INJECT_HERE' tag
     parameter = parameters.do_POST_check(parameter, http_request_method)
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")

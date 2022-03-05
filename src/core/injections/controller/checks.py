@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2021 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,45 +29,73 @@ import traceback
 from src.utils import menu
 from src.utils import settings
 from src.utils import simple_http_server
-from collections import OrderedDict 
+from src.thirdparty.odict import OrderedDict
 from src.core.convert import hexdecode
 from src.thirdparty.six.moves import input as _input
 from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.colorama import Fore, Back, Style, init
 from src.thirdparty.flatten_json.flatten_json import flatten, unflatten_list
 
-if settings.IS_WINDOWS:
-  try:
-    import readline
-  except ImportError:
-    try:
-      import pyreadline as readline
-    except ImportError:
-      settings.READLINE_ERROR = True
-else:
-  try:
-    import readline
+try:
+  from readline import *
+  import readline as readline
+  if settings.PLATFORM == "mac":
     if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
       import gnureadline as readline
-  except ImportError:
-    try:
-      import gnureadline as readline
-    except ImportError:
-      settings.READLINE_ERROR = True
+except:
+  try:
+    from pyreadline import *
+    import pyreadline as readline
+  except:
+    settings.READLINE_ERROR = True
+
+"""
+check for not declared cookie(s)
+"""
+def not_declared_cookies(response):
+  try:
+    candidate = re.search(r'([^;]+);?', response.headers['set-cookie']).group(1)
+    if candidate and settings.DECLARED_COOKIES is not False:
+      settings.DECLARED_COOKIES = True
+      if settings.CRAWLED_SKIPPED_URLS != 0:
+        print(settings.SINGLE_WHITESPACE)
+      while True:
+        if not menu.options.batch:
+          question_msg = "You have not declared cookie(s), while "
+          question_msg += "server wants to set its own ('" + str(candidate) + "'). "
+          question_msg += "Do you want to use those [Y/n] > "
+          set_cookies = _input(settings.print_question_msg(question_msg)).lower()
+        else:
+          set_cookies = ""
+        if len(set_cookies) == 0:
+          set_cookies = "Y"
+        if set_cookies in settings.CHOICE_YES:
+          menu.options.cookie = candidate
+          break
+        elif set_cookies in settings.CHOICE_NO:
+          settings.DECLARED_COOKIES = False 
+          break
+        elif set_cookies in settings.CHOICE_QUIT:
+          raise SystemExit()
+        else:
+          err_msg = "'" + set_cookies + "' is not a valid answer."  
+          print(settings.print_error_msg(err_msg))
+          pass
+  except (KeyError, TypeError):
+    pass
 
 """
 Tab Autocompleter
 """
 def tab_autocompleter():
   try:
-    # Tab compliter
-    readline.set_completer(menu.tab_completer)
     # MacOSX tab compliter
-    if getattr(readline, '__doc__', '') is not None and 'libedit' in getattr(readline, '__doc__', ''):
+    if 'libedit' in readline.__doc__:
       readline.parse_and_bind("bind ^I rl_complete")
-    # Unix tab compliter
     else:
       readline.parse_and_bind("tab: complete")
+    # Tab compliter
+    readline.set_completer(menu.tab_completer)
   except AttributeError:
     error_msg = "Failed while trying to use platform's readline library."
     print(settings.print_error_msg(error_msg))
@@ -95,6 +123,11 @@ def load_cmd_history():
   except (IOError, AttributeError) as e:
     warn_msg = "There was a problem loading the history file '" + cli_history + "'."
     print(settings.print_warning_msg(warn_msg))
+  except UnicodeError:
+    if settings.IS_WINDOWS:
+      warn_msg = "There was a problem loading the history file '" + cli_history + "'. "
+      warn_msg += "More info can be found at 'https://github.com/pyreadline/pyreadline/issues/30'"
+      print(settings.print_warning_msg(warn_msg))     
 
 # If the value has boundaries.
 def value_boundaries(value):
@@ -493,7 +526,7 @@ def no_readline_module():
   err_msg += " Download the"
   if settings.IS_WINDOWS:
     err_msg += " 'pyreadline' module (https://pypi.python.org/pypi/pyreadline)."
-  else:  
+  elif settings.PLATFORM == "mac":  
     err_msg += " 'gnureadline' module (https://pypi.python.org/pypi/gnureadline)." 
   print(settings.print_critical_msg(err_msg)) 
 
@@ -712,7 +745,7 @@ def third_party_dependencies():
         err_msg += "completion and history support features. "
         print(settings.print_critical_msg(err_msg)) 
         raise SystemExit()
-    else:
+    elif settings.PLATFORM == "mac":
       try:
         import gnureadline
       except ImportError:
@@ -799,7 +832,10 @@ def wildcard_character(data):
   _ = ""
   for data in data.split("\\n"):
     # Ignore the Accept HTTP Header
-    if not data.startswith("Accept: ") and settings.WILDCARD_CHAR in data :
+    if not data.startswith("Accept: ") and \
+       not settings.WILDCARD_CHAR is None and \
+       not settings.INJECT_TAG in data and \
+       settings.WILDCARD_CHAR in data :
       data = data.replace(settings.WILDCARD_CHAR, settings.INJECT_TAG)
     _ = _ + data + "\\n"
   data = _.rstrip("\\n")
@@ -1392,9 +1428,11 @@ def is_JSON_check(parameter):
        re.search(settings.JSON_LIKE_RECOGNITION_REGEX, parameter):
       return True
   except ValueError as err_msg:
+    _ = False
+    if "Expecting" in str(err_msg) and any(_ in str(err_msg) for _ in ("value", "delimiter")):
+      _ = True
     if not "No JSON object could be decoded" in str(err_msg) and \
-       not "Expecting value" in str(err_msg) and \
-       not "Expecting , delimiter" in str(err_msg):
+       not _:
       err_msg = "JSON " + str(err_msg) + ". "
       print(settings.print_critical_msg(err_msg) + "\n")
       raise SystemExit()
