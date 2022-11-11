@@ -21,6 +21,7 @@ import random
 from src.utils import menu
 from src.utils import logs
 from src.utils import settings
+from src.utils import common
 from src.core.compat import xrange
 from src.utils import session_handler
 from src.core.requests import headers
@@ -56,12 +57,12 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
   how_long = 0
 
   if settings.VERBOSITY_LEVEL != 0:
-    info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + ". "
+    info_msg = "Testing the " + "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + ". "
     print(settings.print_info_msg(info_msg))
 
   # Check if defined "--maxlen" option.
   if menu.options.maxlen:
-    maxlen = settings.MAXLEN
+    settings.MAXLEN = maxlen = menu.options.maxlen
     
   # Check if defined "--url-reload" option.
   if menu.options.url_reload == True:
@@ -98,7 +99,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
           if settings.RETEST == True:
             settings.RETEST = False
             from src.core.injections.results_based.techniques.classic import cb_handler
-            cb_handler.exploitation(url, timesec, filename, http_request_method)
+            cb_handler.exploitation(url, timesec, filename, http_request_method, injection_type, technique)
 
           if not settings.LOAD_SESSION:
             num_of_chars = num_of_chars + 1
@@ -134,15 +135,9 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 payload = checks.perform_payload_modification(payload)
 
                 # Check if defined "--verbose" option.
-                if settings.VERBOSITY_LEVEL == 1:
+                if settings.VERBOSITY_LEVEL != 0:
                   payload_msg = payload.replace("\n", "\\n")
                   print(settings.print_payload(payload_msg))
-                # Check if defined "--verbose" option.
-                elif settings.VERBOSITY_LEVEL >= 2:
-                  debug_msg = "Generating payload for the injection."
-                  print(settings.print_debug_msg(debug_msg))
-                  payload_msg = payload.replace("\n", "\\n") 
-                  sys.stdout.write(settings.print_payload(payload_msg) + "\n")
 
                 # Cookie header injection
                 if settings.COOKIE_INJECTION == True:
@@ -213,17 +208,12 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
 
                     # Identified false positive warning message.
                     if false_positive_warning:
-                      warn_msg = "Unexpected time delays have been identified due to unstable "
-                      warn_msg += "requests. This behavior may lead to false-positive results.\n"
-                      sys.stdout.write("\r" + settings.print_warning_msg(warn_msg))
+                      message = "Unexpected time delays have been identified due to unstable "
+                      message += "requests. This behavior may lead to false positive results. "
+                      sys.stdout.write("\r")
                       while True:
-                        if not menu.options.batch:
-                          question_msg = "How do you want to proceed? [(C)ontinue/(s)kip/(q)uit] > "
-                          proceed_option = _input(settings.print_question_msg(question_msg))
-                        else:
-                          proceed_option = ""  
-                        if len(proceed_option) == 0:
-                           proceed_option = "c" 
+                        message = message + "How do you want to proceed? [(C)ontinue/(s)kip/(q)uit] > "
+                        proceed_option = common.read_input(message, default="C", check_batch=True) 
                         if proceed_option.lower() in settings.CHOICE_PROCEED :
                           if proceed_option.lower() == "s":
                             false_positive_fixation = False
@@ -235,13 +225,12 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                           elif proceed_option.lower() == "q":
                             raise SystemExit()
                         else:
-                          err_msg = "'" + proceed_option + "' is not a valid answer."
-                          print(settings.print_error_msg(err_msg))
+                          common.invalid_option(proceed_option)
                           pass
                     
                     if settings.VERBOSITY_LEVEL == 0:
                       percent = ".. (" + str(float_percent) + "%)"
-                      info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
+                      info_msg = "Testing the " + "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + "." + "" + percent + ""
                       sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                       sys.stdout.flush()
 
@@ -260,7 +249,8 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                         if alter_shell:
                           cmd = settings.WIN_PYTHON_INTERPRETER + "python.exe -c \"print (" + str(randv1) + " + " + str(randv2) + ")\""
                         else:
-                          cmd = "powershell.exe -InputFormat none write (" + str(randv1) + " + " + str(randv2) + ")"
+                          rand_num = randv1 + randv2
+                          cmd = "powershell.exe -InputFormat none write (" + str(rand_num) + ")"
                       else:
                         cmd = "expr " + str(randv1) + " %2B " + str(randv2) + ""
 
@@ -268,7 +258,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                       original_how_long = how_long
                       
                       # Check for false positive resutls
-                      how_long, output = tb_injector.false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timesec, http_request_method, url, vuln_parameter, randvcalc, alter_shell, how_long, url_time_response)
+                      how_long, output = tb_injector.false_positive_check(separator, TAG, cmd, whitespace, prefix, suffix, timesec, http_request_method, url, vuln_parameter, randvcalc, alter_shell, how_long, url_time_response, false_positive_warning)
 
                       if (url_time_response == 0 and (how_long - timesec) >= 0) or \
                          (url_time_response != 0 and (how_long - timesec) == 0 and (how_long == timesec)) or \
@@ -287,29 +277,29 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                     else:
                       if settings.VERBOSITY_LEVEL == 0:
                         percent = ".. (" + str(float_percent) + "%)"
-                        info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
+                        info_msg = "Testing the " + "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + "." + "" + percent + ""
                         sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                         sys.stdout.flush()
                       continue    
                   else:
                     if settings.VERBOSITY_LEVEL == 0:
                       percent = ".. (" + str(float_percent) + "%)"
-                      info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
+                      info_msg = "Testing the " + "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + "." + "" + percent + ""
                       sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                       sys.stdout.flush()
                     continue
-                if settings.VERBOSITY_LEVEL == 0:
-                  info_msg = "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
-                  sys.stdout.write("\r" + settings.print_info_msg(info_msg))
-                  sys.stdout.flush()
+                # if settings.VERBOSITY_LEVEL == 0:
+                #   info_msg = "Testing the " + "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + "." + "" + percent + ""
+                #   sys.stdout.write("\r" + settings.print_info_msg(info_msg))
+                #   sys.stdout.flush()
 
-              except KeyboardInterrupt: 
-                raise
-
-              except SystemExit:
+              except (KeyboardInterrupt, SystemExit):
+                print(settings.SINGLE_WHITESPACE)
                 raise
 
               except EOFError:
+                if settings.STDIN_PARSING:
+                  print(settings.SINGLE_WHITESPACE)
                 err_msg = "Exiting, due to EOFError."
                 print(settings.print_error_msg(err_msg))
                 raise
@@ -321,7 +311,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                   if no_result == True:
                     if settings.VERBOSITY_LEVEL == 0:
                       percent = settings.FAIL_STATUS
-                      info_msg =  "Testing the " + "(" + injection_type.split(" ")[0] + ") " + technique + "." + "" + percent + ""
+                      info_msg =  "Testing the " + "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + "." + "" + percent + ""
                       sys.stdout.write("\r" + settings.print_info_msg(info_msg))
                       sys.stdout.flush()
                     else:
@@ -368,7 +358,7 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 the_type = " HTTP header"
 
               elif settings.CUSTOM_HEADER_INJECTION == True: 
-                header_name = " " + settings.CUSTOM_HEADER_NAME
+                header_name = settings.SINGLE_WHITESPACE + settings.CUSTOM_HEADER_NAME
                 found_vuln_parameter = ""
                 the_type = " HTTP header"
 
@@ -399,12 +389,8 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                   checks.total_of_requests()
 
               # Print the findings to terminal.
-              info_msg = "The"
-              if len(found_vuln_parameter) > 0 and not "cookie" in header_name : 
-                info_msg += " " + http_request_method 
-              info_msg += ('', ' (JSON)')[settings.IS_JSON] + ('', ' (SOAP/XML)')[settings.IS_XML] + the_type + header_name
-              info_msg += found_vuln_parameter + " seems injectable via "
-              info_msg += "(" + injection_type.split(" ")[0] + ") " + technique + "."
+              info_msg = settings.CHECKING_PARAMETER + " appears to be injectable via "
+              info_msg += "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") " + technique + "."
               print(settings.print_bold_info_msg(info_msg))
               sub_content = str(checks.url_decode(payload))
               print(settings.print_sub_content(sub_content))
@@ -412,111 +398,83 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
               if not settings.LOAD_SESSION:
                 shell = ""
                 session_handler.injection_point_importation(url, technique, injection_type, separator, shell, vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response, timesec, original_how_long, output_length, is_vulnerable=menu.options.level)
-                #possibly_vulnerable = False
               else:
+                whitespace = settings.WHITESPACES[0]
                 settings.LOAD_SESSION = False 
               
-              new_line = False   
               # Check for any enumeration options.
               if settings.ENUMERATION_DONE == True:
                 while True:
-                  if not menu.options.batch:
-                    question_msg = "Do you want to enumerate again? [Y/n] > "
-                    enumerate_again = _input("\n" + settings.print_question_msg(question_msg)).lower()
-                  else:
-                    enumerate_again = ""
-                  if len(enumerate_again) == 0:
-                    enumerate_again = "Y"
+                  message = "Do you want to ignore stored session and enumerate again? [y/N] > "
+                  enumerate_again = common.read_input(message, default="N", check_batch=True)
                   if enumerate_again in settings.CHOICE_YES:
+                    if not menu.options.ignore_session:
+                      menu.options.ignore_session = True
                     tb_enumeration.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
-                    print(settings.SINGLE_WHITESPACE)
                     break
-                  elif enumerate_again in settings.CHOICE_NO: 
-                    new_line = True
+                  elif enumerate_again in settings.CHOICE_NO:
                     break
                   elif enumerate_again in settings.CHOICE_QUIT:
                     raise SystemExit()
                   else:
-                    err_msg = "'" + enumerate_again + "' is not a valid answer."  
-                    print(settings.print_error_msg(err_msg))
+                    common.invalid_option(enumerate_again)  
                     pass
               else:
                 if menu.enumeration_options():
                   tb_enumeration.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
-                  print(settings.SINGLE_WHITESPACE)
 
               # Check for any system file access options.
               if settings.FILE_ACCESS_DONE == True:
-                print(settings.SINGLE_WHITESPACE)
                 while True:
-                  if not menu.options.batch:
-                    question_msg = "Do you want to access files again? [Y/n] > "
-                    file_access_again = _input(settings.print_question_msg(question_msg))
-                  else:
-                    file_access_again = "" 
-                  if len(file_access_again) == 0:
-                     file_access_again = "Y" 
+                  message = "Do you want to ignore stored session and access files again? [y/N] > "
+                  file_access_again = common.read_input(message, default="N", check_batch=True)
                   if file_access_again in settings.CHOICE_YES:
+                    if not menu.options.ignore_session:
+                      menu.options.ignore_session = True
                     tb_file_access.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
                     break
-                  elif file_access_again in settings.CHOICE_NO: 
-                    if not new_line:
-                      new_line = True
+                  elif file_access_again in settings.CHOICE_NO:
                     break 
                   elif file_access_again in settings.CHOICE_QUIT:
                     raise SystemExit()
                   else:
-                    err_msg = "'" + file_access_again  + "' is not a valid answer."  
-                    print(settings.print_error_msg(err_msg))
+                    common.invalid_option(file_access_again)  
                     pass
               else:
-                # if not menu.enumeration_options() and not menu.options.os_cmd:
-                #   print(settings.SINGLE_WHITESPACE)
-                tb_file_access.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
+                if menu.file_access_options():      
+                  tb_file_access.do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
 
               # Check if defined single cmd.
               if menu.options.os_cmd:
                 cmd = menu.options.os_cmd
                 check_how_long, output = tb_enumeration.single_os_cmd_exec(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, alter_shell, filename, url_time_response)
-                # Export injection result
-                tb_injector.export_injection_results(cmd, separator, output, check_how_long)
-                print(settings.SINGLE_WHITESPACE)
-                logs.print_logs_notification(filename, url) 
-                raise SystemExit()
-
-              if not new_line :
-                print(settings.SINGLE_WHITESPACE)
 
               # Pseudo-Terminal shell
-              go_back = False
-              go_back_again = False
-              while True:
-                if go_back == True:
-                  break 
-                if not menu.options.batch:  
-                  question_msg = "Do you want a Pseudo-Terminal shell? [Y/n] > "
-                  gotshell = _input(settings.print_question_msg(question_msg))
-                else:
-                  gotshell = "" 
-                if len(gotshell) == 0:
-                  gotshell = "Y"
-                if gotshell in settings.CHOICE_YES:
-                  # if not menu.options.batch:
-                  #   print(settings.SINGLE_WHITESPACE)
-                  print("Pseudo-Terminal (type '" + Style.BRIGHT + "?" + Style.RESET_ALL + "' for available options)")
-                  if settings.READLINE_ERROR:
-                    checks.no_readline_module()
-                  while True:
-                    if false_positive_warning:
-                      warn_msg = "Due to unexpected time delays, it is highly "
-                      warn_msg += "recommended to enable the 'reverse_tcp' option.\n"
-                      sys.stdout.write("\r" + settings.print_warning_msg(warn_msg))
-                      false_positive_warning = False
-                    try:
+              try:
+                go_back = False
+                go_back_again = False
+                while True:
+                  if go_back == True:
+                    break
+                  message = settings.CHECKING_PARAMETER + " is vulnerable. Do you want to prompt for a pseudo-terminal shell? [Y/n] > "
+                  if not settings.STDIN_PARSING:
+                    gotshell = common.read_input(message, default="Y", check_batch=True)
+                  else:
+                    gotshell = common.read_input(message, default="n", check_batch=True)
+                  if gotshell in settings.CHOICE_YES:
+                    print(settings.OS_SHELL_TITLE)
+                    if settings.READLINE_ERROR:
+                      checks.no_readline_module()
+                    while True:
+                      if false_positive_warning:
+                        warn_msg = "Due to unexpected time delays, it is highly "
+                        warn_msg += "recommended to enable the 'reverse_tcp' option.\n"
+                        sys.stdout.write("\r" + settings.print_warning_msg(warn_msg))
+                        false_positive_warning = False
                       if not settings.READLINE_ERROR:
                         checks.tab_autocompleter()
                       sys.stdout.write(settings.OS_SHELL)
-                      cmd = _input()
+                      cmd = common.read_input(message="", default="os_shell", check_batch=True)
                       cmd = checks.escaped_cmd(cmd)
                       if cmd.lower() in settings.SHELL_OPTIONS:
                         go_back, go_back_again = shell_options.check_option(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, technique, go_back, no_result, timesec, go_back_again, payload, OUTPUT_TEXTFILE="")
@@ -535,40 +493,34 @@ def tb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                             session_handler.store_cmd(url, cmd, output, vuln_parameter)
                         else:
                           output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
-                          print("\n" + settings.print_output(output))
+                          print(settings.print_output(output))
                         # Update logs with executed cmds and execution results.
                         logs.executed_command(filename, cmd, output)
-                        print(settings.SINGLE_WHITESPACE)
-
-                    except KeyboardInterrupt: 
-                      raise
-
-                    except SystemExit: 
-                      raise
-
-                    except EOFError:
-                      err_msg = "Exiting, due to EOFError."
-                      print(settings.print_error_msg(err_msg))
-                      raise
-
-                elif gotshell in settings.CHOICE_NO:
-                  if checks.next_attack_vector(technique, go_back) == True:
-                    break
-                  else:
-                    if no_result == True:
-                      return False 
+                  elif gotshell in settings.CHOICE_NO:
+                    if checks.next_attack_vector(technique, go_back) == True:
+                      break
                     else:
-                      return True  
-                      
-                elif gotshell in settings.CHOICE_QUIT:
-                  raise SystemExit()
+                      if no_result == True:
+                        return False 
+                      else:
+                        return True  
+                  elif gotshell in settings.CHOICE_QUIT:
+                    raise SystemExit()
 
-                else:
-                  err_msg = "'" + gotshell + "' is not a valid answer."
-                  print(settings.print_error_msg(err_msg))
-                  pass
-                break
-            
+                  else:
+                    common.invalid_option(gotshell)
+                    pass
+                  # break
+
+              except (KeyboardInterrupt, SystemExit): 
+                raise
+
+              except EOFError:
+                if settings.STDIN_PARSING:
+                  print(settings.SINGLE_WHITESPACE)
+                err_msg = "Exiting, due to EOFError."
+                print(settings.print_error_msg(err_msg))
+                raise
     
   if no_result == True:
     if settings.VERBOSITY_LEVEL == 0:
@@ -599,25 +551,19 @@ def exploitation(url, timesec, filename, http_request_method, url_time_response,
     while True:
       if go_back == True:
         return False
-      if not menu.options.batch:
-        question_msg = "How do you want to proceed? [(C)ontinue/(s)kip/(q)uit] > "
-        proceed_option = _input(settings.print_question_msg(question_msg))
-      else:
-        proceed_option = ""  
-      if len(proceed_option) == 0:
-         proceed_option = "c"
+      message = "How do you want to proceed? [(C)ontinue/(s)kip/(q)uit] > "
+      proceed_option = common.read_input(message, default="C", check_batch=True)
       if proceed_option.lower() in settings.CHOICE_PROCEED :
         if proceed_option.lower() == "s":
           from src.core.injections.semiblind.techniques.file_based import fb_handler
-          fb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response)
+          fb_handler.exploitation(url, timesec, filename, http_request_method, url_time_response, injection_type, technique)
         elif proceed_option.lower() == "c":
           if tb_injection_handler(url, timesec, filename, http_request_method, url_time_response, injection_type, technique) == False:
             return False
         elif proceed_option.lower() == "q":
           raise SystemExit()
       else:
-        err_msg = "'" + proceed_option + "' is not a valid answer."
-        print(settings.print_error_msg(err_msg))
+        common.invalid_option(proceed_option)
         pass
   else:
     if tb_injection_handler(url, timesec, filename, http_request_method, url_time_response, injection_type, technique) == False:

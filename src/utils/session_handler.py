@@ -20,6 +20,7 @@ import base64
 import sqlite3
 from src.utils import menu
 from src.utils import settings
+from src.utils import common
 from src.thirdparty.six.moves import input as _input
 from src.thirdparty.colorama import Fore, Back, Style, init
 
@@ -136,6 +137,10 @@ Export successful applied techniques from session file.
 def applied_techniques(url, http_request_method):
   try:
     conn = sqlite3.connect(settings.SESSION_FILE)
+    if not menu.options.tech:
+      applied_techniques = conn.execute("SELECT technique FROM " + table_name(url) + "_ip "\
+                                        "ORDER BY id DESC;")
+
     if settings.TESTABLE_PARAMETER: 
       applied_techniques = conn.execute("SELECT technique FROM " + table_name(url) + "_ip WHERE "\
                                         "url = '" + url + "' AND "\
@@ -222,6 +227,7 @@ def injection_point_exportation(url, http_request_method):
           check_injection_technique = "d"
         else:
           check_injection_technique = menu.options.tech[:1]
+
         if settings.TESTABLE_PARAMETER:
           cursor = conn.execute("SELECT * FROM " + table_name(url) + "_ip WHERE "\
                                 "url = '" + url + "' AND "\
@@ -276,29 +282,21 @@ Notification about session.
 def notification(url, technique, injection_type):
   try:
     if settings.LOAD_SESSION == True:
-      info_msg = "A previously stored session has been held against that host."
-      print(settings.print_info_msg(info_msg))
       while True:
-        if not menu.options.batch:
-          question_msg = "Do you want to resume to the "
-          question_msg += "(" + injection_type.split(" ")[0] + ") "
-          question_msg += technique.rsplit(' ', 2)[0] 
-          question_msg += " injection point? [Y/n] > "
-          settings.LOAD_SESSION = _input(settings.print_question_msg(question_msg))
-        else:
-          settings.LOAD_SESSION = ""  
-        if len(settings.LOAD_SESSION) == 0:
-           settings.LOAD_SESSION = "Y"
+        message = "A previously stored session has been held against that target. "
+        message += "Do you want to resume to "
+        message += "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") "
+        message += technique.rsplit(' ', 2)[0] 
+        message += " injection point? [Y/n] > "
+        settings.LOAD_SESSION = common.read_input(message, default="Y", check_batch=True)
         if settings.LOAD_SESSION in settings.CHOICE_YES:
           return True
         elif settings.LOAD_SESSION in settings.CHOICE_NO:
           settings.LOAD_SESSION = False
           if technique[:1] != "c":
             while True:
-              question_msg = "Which technique do you want to re-evaluate? [(C)urrent/(a)ll/(n)one] > "
-              proceed_option = _input(settings.print_question_msg(question_msg))
-              if len(proceed_option) == 0:
-                 proceed_option = "c"
+              message = "Which technique do you want to re-evaluate? [(C)urrent/(a)ll/(n)one] > "
+              proceed_option = common.read_input(message, default="C", check_batch=True)
               if proceed_option.lower() in settings.CHOICE_PROCEED :
                 if proceed_option.lower() == "a":
                   settings.RETEST = True
@@ -311,8 +309,7 @@ def notification(url, technique, injection_type):
                 else:
                   pass  
               else:
-                err_msg = "'" +  proceed_option + "' is not a valid answer."   
-                print(settings.print_error_msg(err_msg))
+                common.invalid_option(proceed_option)   
                 pass   
           if settings.SESSION_APPLIED_TECHNIQUES:
             menu.options.tech = ''.join(settings.AVAILABLE_TECHNIQUES)
@@ -320,11 +317,12 @@ def notification(url, technique, injection_type):
         elif settings.LOAD_SESSION in settings.CHOICE_QUIT:
           raise SystemExit()
         else:
-          err_msg = "'" + settings.LOAD_SESSION + "' is not a valid answer."  
-          print(settings.print_error_msg(err_msg))
+          common.invalid_option(settings.LOAD_SESSION)  
           pass
   except sqlite3.OperationalError as err_msg:
     print(settings.print_critical_msg(err_msg))
+  except (KeyboardInterrupt, SystemExit):
+    raise
 
 """
 Check for specific stored parameter.
@@ -366,7 +364,7 @@ def store_cmd(url, cmd, shell, vuln_parameter):
       conn.close() 
     except sqlite3.OperationalError as err_msg:
       print(settings.print_critical_msg(err_msg))
-    except TypeError as err_msg:
+    except (TypeError, AttributeError) as err_msg:
       pass
 
 """

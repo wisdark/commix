@@ -24,6 +24,7 @@ from src.utils import session_handler
 from src.thirdparty.six.moves import http_client as _http_client
 # accept overly long result lines
 _http_client._MAXLINE = 1 * 1024 * 1024
+from src.utils import common
 from src.core.requests import tor
 from src.core.requests import proxy
 from src.core.requests import headers
@@ -72,9 +73,10 @@ def estimate_response_time(url, timesec):
         err_msg += " (Reason: " + str(err.args[0]).split("] ")[-1].lower() + ")."
       except IndexError:
         err_msg += " (" + str(err) + ")."
-      print(settings.print_critical_msg(err_msg))
+      if str(err.getcode()) != settings.UNAUTHORIZED_ERROR:
+        print(settings.print_critical_msg(err_msg))
       # Check for HTTP Error 401 (Unauthorized).
-      if str(err.getcode()) == settings.UNAUTHORIZED_ERROR:
+      else:
         try:
           # Get the auth header value
           auth_line = err.headers.get('www-authenticate', '')
@@ -126,13 +128,8 @@ def estimate_response_time(url, timesec):
                 warn_msg += "HTTP authentication credentials are required."
                 print(settings.print_warning_msg(warn_msg))
                 while True:
-                  if not menu.options.batch:
-                    question_msg = "Do you want to perform a dictionary-based attack? [Y/n] > "
-                    do_update = _input(settings.print_question_msg(question_msg))
-                  else:
-                    do_update = ""  
-                  if len(do_update) == 0:
-                     do_update = "Y" 
+                  message = "Do you want to perform a dictionary-based attack? [Y/n] > "
+                  do_update = common.read_input(message, default="Y", check_batch=True)
                   if do_update in settings.CHOICE_YES:
                     auth_creds = authentication.http_auth_cracker(url, realm)
                     if auth_creds != False:
@@ -146,8 +143,7 @@ def estimate_response_time(url, timesec):
                   elif do_update in settings.CHOICE_QUIT:
                     raise SystemExit()
                   else:
-                    err_msg = "'" + do_update + "' is not a valid answer."  
-                    print(settings.print_error_msg(err_msg))
+                    common.invalid_option(do_update)  
                     pass
 
             # Digest authentication         
@@ -161,13 +157,8 @@ def estimate_response_time(url, timesec):
                   warn_msg = "Heuristics have failed to identify the realm attribute." 
                   print(settings.print_warning_msg(warn_msg))
                 while True:
-                  if not menu.options.batch:
-                    question_msg = "Do you want to perform a dictionary-based attack? [Y/n] > "
-                    do_update = _input(settings.print_question_msg(question_msg))
-                  else:
-                    do_update = ""
-                  if len(do_update) == 0:
-                     do_update = "Y" 
+                  message = "Do you want to perform a dictionary-based attack? [Y/n] > "
+                  do_update = common.read_input(message, default="Y", check_batch=True)
                   if do_update in settings.CHOICE_YES:
                     auth_creds = authentication.http_auth_cracker(url, realm)
                     if auth_creds != False:
@@ -181,8 +172,7 @@ def estimate_response_time(url, timesec):
                   elif do_update in settings.CHOICE_QUIT:
                     raise SystemExit()
                   else:
-                    err_msg = "'" + do_update + "' is not a valid answer."  
-                    print(settings.print_error_msg(err_msg))
+                    common.invalid_option(do_update)  
                     pass
                 else:   
                   checks.http_auth_err_msg()      
@@ -220,13 +210,13 @@ def estimate_response_time(url, timesec):
     url_time_response = int(diff)
     if settings.TARGET_OS == "win":
       warn_msg = "Due to the relatively slow response of 'cmd.exe' in target "
-      warn_msg += "host, there may be delays during the data extraction procedure."
+      warn_msg += "host, there might be delays during the data extraction procedure."
       print(settings.print_warning_msg(warn_msg))
   else:
     if settings.VERBOSITY_LEVEL != 0:
       print(settings.SINGLE_WHITESPACE)
     url_time_response = int(round(diff))
-    warn_msg = "The estimated response time is " + str(url_time_response)
+    warn_msg = "Target's estimated response time is " + str(url_time_response)
     warn_msg += " second" + "s"[url_time_response == 1:] + ". That may cause" 
     if url_time_response >= 3:
       warn_msg += " serious"
@@ -234,7 +224,7 @@ def estimate_response_time(url, timesec):
     if url_time_response >= 3:
       warn_msg += " and/or possible corruptions over the extracted data"
     warn_msg += "."
-    print(settings.print_bold_warning_msg(warn_msg))
+    print(settings.print_warning_msg(warn_msg))
 
   if int(timesec) == int(url_time_response):
     timesec = int(timesec) + int(url_time_response)
@@ -308,7 +298,7 @@ def get_request_response(request):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -325,7 +315,7 @@ def get_request_response(request):
         if not str(err_msg.code) == str(menu.options.ignore_code):
           err = str(err_msg) + "."
           if settings.VERBOSITY_LEVEL < 2:
-            print("\r" + settings.print_critical_msg(err) + 30 * " ")
+            print("\r" + settings.print_critical_msg(err) + 30 * settings.SINGLE_WHITESPACE)
 
         continue_tests = checks.continue_tests(err_msg)
         if continue_tests == True:
@@ -334,13 +324,77 @@ def get_request_response(request):
           raise SystemExit()
       response = False  
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
   return response
+
+"""
+Exceptions regarding requests failure(s)
+"""
+def request_failed(err_msg):
+  try:
+    error_msg = str(err_msg.args[0]).split("] ")[1] 
+  except IndexError:
+    try:
+      error_msg = str(err_msg.args[0])
+    except IndexError:
+      error_msg = str(err_msg)
+  if any(x in str(error_msg).lower() for x in ["connection refused", "timeout"]):
+    err = "Unable to connect to "
+    if menu.options.proxy:
+      err += "proxy"
+    else:
+      err += "the target URL"
+    err = err + " (Reason: " + str(error_msg)  + ")."
+    print(settings.print_critical_msg(err))
+    raise SystemExit()
+
+  settings.VALID_URL = False
+  reason = ""
+  if settings.UNAUTHORIZED_ERROR in str(err_msg).lower():
+    reason = str(err_msg)
+    if menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
+      pass
+    else:
+      err_msg = "Not authorized (" + settings.UNAUTHORIZED_ERROR + "). "
+
+      err_msg += "Try to provide right HTTP authentication type ('--auth-type') and valid credentials ('--auth-cred')"
+      if menu.options.auth_type and menu.options.auth_cred:
+        if settings.MULTI_TARGETS:
+          err_msg += ". "
+        else:
+          err_msg += " or rerun without providing them, in order to perform a dictionary-based attack. "
+      else:
+        err_msg += " or rerun by providing option '--ignore-code=" +settings.UNAUTHORIZED_ERROR +"'. "
+      if settings.MULTI_TARGETS:
+        err_msg += "Skipping to the next target."
+      print(settings.print_critical_msg(err_msg))
+      if menu.options.auth_type and menu.options.auth_cred or settings.MULTI_TARGETS:
+        raise SystemExit()
+  if settings.INTERNAL_SERVER_ERROR in str(err_msg).lower() or \
+     settings.FORBIDDEN_ERROR in str(err_msg).lower() or \
+     settings.NOT_FOUND_ERROR in str(err_msg).lower():
+    reason = str(err_msg)    
+  if settings.MULTI_TARGETS:
+    if len(reason) != 0 and menu.options.ignore_code != settings.UNAUTHORIZED_ERROR:
+      reason = reason + ". Skipping to the next target."
+      print(settings.print_critical_msg(reason))
+      raise SystemExit()
+    if settings.EOF:
+      print(settings.SINGLE_WHITESPACE) 
+    return False 
+  else:
+    err_msg = reason
+    if settings.UNAUTHORIZED_ERROR in str(err_msg).lower():
+      return True
+    else:
+      if len(err_msg) != 0:
+        print(settings.print_critical_msg(err_msg)) 
+      raise SystemExit() 
 
 """
 Check if target host is vulnerable. (Cookie-based injection)
@@ -366,7 +420,11 @@ def cookie_injection(url, vuln_parameter, payload):
     #Check if defined extra headers.
     headers.do_check(request)
     payload = checks.newline_fixation(payload)
-    request.add_header('Cookie', menu.options.cookie.replace(settings.INJECT_TAG, payload.replace("+", "%2B")))
+    payload = payload.replace("+", "%2B")
+    if settings.INJECT_TAG in menu.options.cookie:
+      request.add_header('Cookie', menu.options.cookie.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload))
+    else:
+      request.add_header('Cookie', menu.options.cookie.replace(settings.INJECT_TAG, payload))
     try:
       headers.check_http_traffic(request)
       response = opener.open(request)
@@ -400,7 +458,7 @@ def cookie_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False  
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -430,7 +488,7 @@ def cookie_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -459,7 +517,7 @@ def cookie_injection(url, vuln_parameter, payload):
       response = False 
 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -532,7 +590,7 @@ def user_agent_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -562,7 +620,7 @@ def user_agent_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -590,7 +648,7 @@ def user_agent_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -664,7 +722,7 @@ def referer_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -694,7 +752,7 @@ def referer_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -723,7 +781,7 @@ def referer_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -799,7 +857,7 @@ def host_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -829,7 +887,7 @@ def host_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -858,7 +916,7 @@ def host_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -894,8 +952,11 @@ def custom_header_injection(url, vuln_parameter, payload):
       request = _urllib.request.Request(url)
     #Check if defined extra headers.
     headers.do_check(request)
-    payload = checks.newline_fixation(payload) 
-    request.add_header(settings.CUSTOM_HEADER_NAME, payload)
+    payload = checks.newline_fixation(payload)
+    if settings.INJECT_TAG in settings.CUSTOM_HEADER_VALUE:
+      request.add_header(settings.CUSTOM_HEADER_NAME, settings.CUSTOM_HEADER_VALUE.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload))
+    else:
+      request.add_header(settings.CUSTOM_HEADER_NAME, settings.CUSTOM_HEADER_VALUE + payload)
     try:
       headers.check_http_traffic(request)
       response = opener.open(request)
@@ -934,7 +995,7 @@ def custom_header_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -964,7 +1025,7 @@ def custom_header_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -992,7 +1053,7 @@ def custom_header_injection(url, vuln_parameter, payload):
           raise SystemExit()
       response = False 
     except _urllib.error.URLError as err_msg:
-      err_msg = str(err_msg.reason).split(" ")[2:]
+      err_msg = str(err_msg.reason).split(settings.SINGLE_WHITESPACE)[2:]
       err_msg = ' '.join(err_msg)+ "."
       if settings.VERBOSITY_LEVEL != 0 and settings.LOAD_SESSION == False:
         print(settings.SINGLE_WHITESPACE)
@@ -1159,7 +1220,7 @@ def check_target_os(server_banner):
     user_defined_os = settings.TARGET_OS
 
   if settings.VERBOSITY_LEVEL != 0:
-    debug_msg = "Identifying the target operating system. " 
+    debug_msg = "Identifying The underlying operating system. " 
     sys.stdout.write(settings.print_debug_msg(debug_msg))
     sys.stdout.flush()
 
@@ -1178,7 +1239,9 @@ def check_target_os(server_banner):
 
         settings.TARGET_OS = identified_os[:3].lower()
         if menu.options.shellshock:
-          err_msg = "The shellshock module is not available for " 
+          if settings.VERBOSITY_LEVEL != 0:
+            print(settings.SINGLE_WHITESPACE)
+          err_msg = "The shellshock module ('--shellshock') is not available for " 
           err_msg += identified_os + " targets."
           print(settings.print_critical_msg(err_msg))
           raise SystemExit()
@@ -1191,7 +1254,7 @@ def check_target_os(server_banner):
   if settings.VERBOSITY_LEVEL != 0 :
     if found_os_server:
       print(settings.SINGLE_WHITESPACE)
-      debug_msg = "The target operating system appears to be " 
+      debug_msg = "The underlying operating system appears to be " 
       debug_msg += identified_os.title() + Style.RESET_ALL + "."
       print(settings.print_bold_debug_msg(debug_msg))
     else:
@@ -1200,27 +1263,26 @@ def check_target_os(server_banner):
       print(settings.print_warning_msg(warn_msg))
 
   if found_os_server == False and not menu.options.os:
-    # If "--shellshock" option is provided then,
-    # by default is a Linux/Unix operating system.
+    # If "--shellshock" option is provided then, by default is a Linux/Unix operating system.
     if menu.options.shellshock:
       pass 
     else:
       if menu.options.batch:
         if not settings.CHECK_BOTH_OS:
           settings.CHECK_BOTH_OS = True
-          check_type = "unix-based"
+          check_type = "Unix-like based"
         elif settings.CHECK_BOTH_OS:
           settings.TARGET_OS = "win"
           settings.CHECK_BOTH_OS = False
           settings.PERFORM_BASIC_SCANS = True
-          check_type = "windows-based"
+          check_type = "windows based"
         info_msg = "Setting the " + check_type + " payloads."
         print(settings.print_info_msg(info_msg))
       else:
         while True:
-          question_msg = "Do you recognise the server's operating system? "
-          question_msg += "[(W)indows/(U)nix/(q)uit] > "
-          got_os = _input(settings.print_question_msg(question_msg))
+          message = "Do you recognise the server's operating system? "
+          message += "[(W)indows/(U)nix-like/(q)uit] > "
+          got_os = common.read_input(message, default="", check_batch=True)
           if got_os.lower() in settings.CHOICE_OS :
             if got_os.lower() == "w":
               settings.TARGET_OS = "win"
@@ -1230,8 +1292,7 @@ def check_target_os(server_banner):
             elif got_os.lower() == "q":
               raise SystemExit()
           else:
-            err_msg = "'" + got_os + "' is not a valid answer."  
-            print(settings.print_error_msg(err_msg))
+            common.invalid_option(got_os)  
             pass
 
 """

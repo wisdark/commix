@@ -1,3 +1,32 @@
+## Version 3.6 (TBA)
+* Revised: Improvements regarding dynamic code evaluation heuristic check.
+* Revised: Minor improvement regarding session handler.
+* Revised: Minor improvement regarding `--wizard` option.
+* Added: New tamper script "printf2echo.py" that replaces the printf-based ASCII to Decimal `printf "%d" "'$char'"` with `echo -n $char | od -An -tuC | xargs`.
+* Revised: Minor improvement regarding parsing HTTP requests through HTTP proxy (i.e `--proxy` option).
+* Revised: Minor improvement regarding handling HTTP Error 401 (Unauthorized).
+
+## Version 3.5 (2022-07-03)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Revised: Improvements regarding Windows-based payloads for every supported technique.
+* Revised: Improvement regarding alternative shell (i.e.`--alter-shell`) for generating Python 3x payloads.
+* Removed: The depricated modules "ICMP exfiltration" and "DNS exfiltration" have been removed.
+* Revised: Improvement regarding identifying injection marker (i.e. asterisk) in provided options.
+* Revised: Improvement regarding shellshock module.
+* Added: Support regarding parsing target(s) from piped-input (i.e. stdin).
+* Added: New option `--answers` to set user answers to asked questions during commix run.
+* Added: Support regarding combining `--crawl` option with scanning multiple targets given in a textual file (i.e. via option `-m`).
+* Added: Support for normalizing crawling results.
+* Revised: Improvement regarding crawler.
+* Revised: Minor bug-fix regarding `--file-upload` option.
+* Revised: Minor improvement regarding identifying 'hex' and/or 'base64' encoded parameter(s) value(s).
+* Added: New option `--no-logging` for disabling logging to a file.
+* Revised: Minor improvement regarding redirect handler.
+* Updated: Minor update regarding scanning multiple targets given in a textual file (i.e. via option `-m`).
+* Added: Support for heuristic detection regarding command injections. 
+* Revised: Ιmprovement regarding `--level` option, which not only adds more injection points (i.e Cookies, HTTP headers) but also performs more tests for each injection point.
+* Revised: Improvement regarding injecting into custom HTTP Header(s).
+
 ## Version 3.4 (2022-02-25)
 * Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
 * Fixed: Bug-fix regarding forcing usage of provided HTTP method (e.g. `PUT`).
@@ -226,9 +255,9 @@
 * Added: New option `--retries` that retries request(s) when the connection timeouts.
 
 ## Version 1.9 (2017-05-02)
-* Revised: Minor improvement in results-based techniques, for delaying the OS responses depending on the user-provided time delay.
+* Revised: Minor improvement in results-based techniques, for delaying the OS responses depending on the user-supplied time delay.
 * Revised: The time-related ("time-based"/"tempfile-based") payloads, have been shortly revised.
-* Revised: Minor improvement in file-based technique, for delaying the OS responses depending on the user-provided time delay.
+* Revised: Minor improvement in file-based technique, for delaying the OS responses depending on the user-supplied time delay.
 * Fixed: Minor improvement in file-based technique, regarding τhe directory path that the output file is saved.
 * Added: New option `--ignore-redirects` that ignoring redirection attempts.
 * Added: New functionality for identifying and following URL redirections.

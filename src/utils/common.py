@@ -28,6 +28,85 @@ from src.thirdparty.six.moves import input as _input
 from src.thirdparty.six.moves import urllib as _urllib
 
 """
+Invalid option msg
+"""
+def invalid_option(option):
+  err_msg = "'" + option + "' is not a valid answer."
+  print(settings.print_error_msg(err_msg))
+
+"""
+Invalid cmd output
+"""
+def invalid_cmd_output(cmd):
+  err_msg = "The execution of '" + cmd + "' command, does not return any output."
+  return err_msg 
+
+"""
+Reads input from terminal
+"""
+def read_input(message, default=None, check_batch=True):
+
+  def is_empty():
+    value = _input(settings.print_message(message))
+    if len(value) == 0:
+      return default
+    else:
+      return value
+
+  try:
+    value = None
+    if "\n" in message:
+      message += ("\n" if message.count("\n") > 1 else "")
+
+    elif len(message) == 0:
+      return is_empty()
+
+    if settings.ANSWERS:
+      if not any(_ in settings.ANSWERS for _ in ",="):
+        return is_empty()
+      else:
+        for item in settings.ANSWERS.split(','):
+          question = item.split('=')[0].strip()
+          answer = item.split('=')[1] if len(item.split('=')) > 1 else None
+          if answer and question.lower() in message.lower():
+            value = answer
+            print(settings.print_message(message + str(value)))
+            return value
+          elif answer is None and value:
+            return is_empty()
+
+    if value:
+      if settings.VERBOSITY_LEVEL != 0:
+        debug_msg = "Used the given answer."
+        print(settings.print_debug_msg(debug_msg))
+      print(settings.print_message(message + str(value)))
+      return value
+
+    elif value is None:
+      if check_batch and menu.options.batch:
+        if settings.VERBOSITY_LEVEL != 0:
+          debug_msg = "Used the default behavior, running in batch mode."
+          print(settings.print_debug_msg(debug_msg))
+        print(settings.print_message(message + str(default)))
+        return default
+      else:
+        return is_empty()
+  except KeyboardInterrupt:
+    print(settings.SINGLE_WHITESPACE)
+    raise
+
+"""
+Extract regex result
+"""
+def extract_regex_result(regex, content):
+  result = None
+  if regex and content and "?P<result>" in regex:
+    match = re.search(regex, content)
+    if match:
+      result = match.group("result")
+  return result
+
+"""
 Returns True if the current process is run under admin privileges
 """
 def running_as_admin():
@@ -78,23 +157,17 @@ def create_github_issue(err_msg, exc_msg):
 
   while True:
     try:
-      if not menu.options.batch:
-        question_msg = "Do you want to automatically create a new (anonymized) issue "
-        question_msg += "with the unhandled exception information at "
-        question_msg += "the official Github repository? [y/N] "
-        choise = _input(settings.print_question_msg(question_msg))
-      else:
-        choise = ""
-      if len(choise) == 0:
-        choise = "n"
+      message = "Do you want to automatically create a new (anonymized) issue "
+      message += "with the unhandled exception information at "
+      message += "the official Github repository? [y/N] "
+      choise = common.read_input(message, default="N", check_batch=True)
       if choise in settings.CHOICE_YES:
         break
       elif choise in settings.CHOICE_NO:
         print(settings.SINGLE_WHITESPACE)
         return
       else:
-        err_msg = "'" + choise + "' is not a valid answer."  
-        print(settings.print_error_msg(err_msg))
+        invalid_option(choise)  
         pass
     except: 
       print("\n")
@@ -102,7 +175,7 @@ def create_github_issue(err_msg, exc_msg):
 
   err_msg = err_msg[err_msg.find("\n"):]
   request = _urllib.request.Request(url="https://api.github.com/search/issues?q=" + \
-        _urllib.parse.quote("repo:commixproject/commix" + " " + str(bug_report))
+        _urllib.parse.quote("repo:commixproject/commix" + settings.SINGLE_WHITESPACE + str(bug_report))
         )
 
   try:
@@ -146,9 +219,10 @@ Masks sensitive data in the supplied message.
 """
 def mask_sensitive_data(err_msg):
   for item in settings.SENSITIVE_OPTIONS:
-    match = re.search(r"(?i)commix.+("+str(item)+")(\s+|=)([^ ]+)", err_msg)
+    match = re.search(r"(?i)commix.+("+str(item)+")(\s+|=)([^-]+)", err_msg)
     if match:
-      err_msg = err_msg.replace(match.group(3), '*' * len(match.group(3)))
+      err_msg = err_msg.replace(match.group(3), '*' * len(match.group(3)) + settings.SINGLE_WHITESPACE)
+
   return err_msg
 
 """

