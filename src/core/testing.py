@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,8 +41,8 @@ def smoke_test():
             if settings.VERBOSITY_LEVEL != 0:
               debug_msg = "Succeeded importing '" + str(path) + "' module."
               print(settings.print_debug_msg(debug_msg))
-          except Exception as ex:
-            error_msg = "Failed importing '" + path + "' module due to '" + str(ex) + "'."
+          except Exception as e:
+            error_msg = "Failed importing '" + path + "' module due to '" + str(e) + "'."
             print(settings.print_error_msg(error_msg))
             _ = False
 

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -61,74 +61,6 @@ if settings.IS_WINDOWS:
   init()
 
 """
-Check for custom injection marker (*)
-"""
-def check_custom_injection_marker(url):
-  parameter = ""
-  if url and settings.WILDCARD_CHAR in url:
-    option = "'-u'"
-    settings.WILDCARD_CHAR_APPLIED = True
-    parameter = parameters.do_GET_check(url, http_request_method)
-    parameter = parameters.vuln_GET_param(parameter[0])
-  elif menu.options.data and settings.WILDCARD_CHAR in menu.options.data:
-    option = "POST body"
-    settings.WILDCARD_CHAR_APPLIED = True
-    parameter = parameters.do_POST_check(menu.options.data, http_request_method)
-    parameter = parameters.vuln_POST_param(parameter, url)
-  else:
-    option = "option '--headers/--user-agent/--referer/--cookie'"
-    if menu.options.cookie and settings.WILDCARD_CHAR in menu.options.cookie:
-      settings.WILDCARD_CHAR_APPLIED = True
-      menu.options.level = settings.COOKIE_INJECTION_LEVEL
-      cookie = parameters.do_cookie_check(menu.options.cookie)
-      parameter = parameters.specify_cookie_parameter(cookie)
-
-    elif menu.options.agent and settings.WILDCARD_CHAR in menu.options.agent:
-      settings.WILDCARD_CHAR_APPLIED = True
-      menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
-      parameter = "user-agent"
-
-    elif menu.options.referer and settings.WILDCARD_CHAR in menu.options.referer:
-      settings.WILDCARD_CHAR_APPLIED = True
-      menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
-      parameter = "referer"
-
-    elif menu.options.headers and settings.WILDCARD_CHAR in menu.options.headers:
-      _ = True
-      for data in menu.options.headers.split("\\n"):
-        # Ignore the Accept HTTP Header
-        if not data.startswith(settings.ACCEPT):
-          _ = False
-      if _:    
-        settings.WILDCARD_CHAR_APPLIED = True
-        menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
-        parameter = parameters.specify_custom_header_parameter(settings.WILDCARD_CHAR)
-
-  if settings.WILDCARD_CHAR_APPLIED:
-    if menu.options.test_parameter:
-      if not settings.MULTI_TARGETS or settings.STDIN_PARSING:
-        err_msg = "The options '-p' and the custom injection marker (" + settings.WILDCARD_CHAR + ") "
-        err_msg += "cannot be used simultaneously (i.e. only one option must be set)."
-        print(settings.print_critical_msg(err_msg))
-        raise SystemExit 
-
-    while True:
-      message = "Custom injection marker (" + settings.WILDCARD_CHAR + ") found in " + option +". "
-      message += "Do you want to process it? [Y/n] > "
-      procced_option = common.read_input(message, default="Y", check_batch=True)
-      if procced_option in settings.CHOICE_YES:
-        menu.options.test_parameter = parameter
-        return
-      elif procced_option in settings.CHOICE_NO:
-        settings.WILDCARD_CHAR_APPLIED = None
-        return
-      elif procced_option in settings.CHOICE_QUIT:
-        raise SystemExit()
-      else:
-        common.invalid_option(procced_option)  
-        pass
-
-"""
 Define HTTP User-Agent header.
 """
 def user_agent_header():
@@ -164,6 +96,7 @@ def user_agent_header():
         print(settings.print_info_msg(info_msg))
       except:
         print(settings.SINGLE_WHITESPACE)
+
   if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Setting the HTTP User-Agent header."
     print(settings.print_debug_msg(debug_msg))
@@ -219,9 +152,6 @@ def check_internet(url):
   try:
     request = _urllib.request.Request(settings.CHECK_INTERNET_ADDRESS)
     headers.do_check(request)
-    # Check if defined any HTTP Proxy (--proxy option).
-    if menu.options.proxy:
-      proxy.do_check(settings.CHECK_INTERNET_ADDRESS)
     examine_request(request, url)
   except:
     print(settings.SINGLE_WHITESPACE)
@@ -257,6 +187,7 @@ def init_request(url):
     if menu.options.pdel and menu.options.pdel in url:
       settings.PARAMETER_DELIMITER = menu.options.pdel
     request = _urllib.request.Request(url)
+    # Check if defined any HTTP Proxy (--proxy option).
   headers.do_check(request)
   if settings.VERBOSITY_LEVEL != 0:
     debug_msg = "Creating " + str(settings.SCHEME).upper() + " requests opener object."
@@ -266,12 +197,17 @@ def init_request(url):
     debug_msg = "Using '" + menu.options.auth_cred + "' pair of " + menu.options.auth_type 
     debug_msg += " HTTP authentication credentials."
     print(settings.print_debug_msg(debug_msg))
+  if menu.options.proxy:
+    proxy.do_check()
   return request
 
 """
 Get the URL response.
 """
 def url_response(url):
+  if settings.INIT_TEST == True:
+    info_msg = "Testing connection to the target URL. "
+    print(settings.print_info_msg(info_msg))
   # Check if http / https
   url = checks.check_http_s(url)
   # Check if defined Tor (--tor option).
@@ -284,22 +220,29 @@ def url_response(url):
   request = init_request(url)
   if settings.CHECK_INTERNET:
     settings.CHECK_INTERNET = False
-  if settings.INIT_TEST == True:
-    info_msg = "Testing connection to the target URL. "
-    sys.stdout.write(settings.print_info_msg(info_msg))
-    sys.stdout.flush()
-    if settings.VERBOSITY_LEVEL >= 2:
-      print(settings.SINGLE_WHITESPACE)
   response = examine_request(request, url)
   # Check for URL redirection
-  if not menu.options.ignore_redirects:
-    url = redirection.do_check(request, url)
+  if type(response) is not bool and settings.FOLLOW_REDIRECT and response is not None:
+    if response.geturl() != url:
+      redirect_url = redirection.do_check(request, url, response.geturl())
+      if redirect_url is not None:
+        url = redirect_url
   return response, url
 
 """
 Injection states initiation.
 """
 def init_injection(url):
+  if settings.VERBOSITY_LEVEL != 0:
+    debug_msg = "Initializing the knowledge base."
+    print(settings.print_debug_msg(debug_msg))
+  # Initiate heuristic checks.
+  if not settings.FOLLOW_REDIRECT:
+    settings.FOLLOW_REDIRECT = True
+  if settings.SKIP_CODE_INJECTIONS:
+    settings.SKIP_CODE_INJECTIONS = False
+  if settings.SKIP_COMMAND_INJECTIONS:
+    settings.SKIP_COMMAND_INJECTIONS = False
   # Initiate injection checker.
   if settings.INJECTION_CHECKER:
     settings.INJECTION_CHECKER = False
@@ -318,10 +261,42 @@ def init_injection(url):
     settings.TIME_RELATIVE_ATTACK = False
 
 """
+Using 'stdin' for parsing targets.
+"""
+def stdin_parsing_target(os_checks_num):
+  _ = []
+  if os_checks_num == 0:
+    info_msg = "Using 'stdin' for parsing targets list."
+    print(settings.print_info_msg(info_msg))
+  menu.options.batch = True
+  settings.MULTI_TARGETS = True
+  for url in sys.stdin:
+    if re.search(r"\b(https?://[^\s'\"]+|[\w.]+\.\w{2,3}[/\w+]*\?[^\s'\"]+)", url, re.I):
+      url = url.replace(settings.SINGLE_WHITESPACE, _urllib.parse.quote_plus(settings.SINGLE_WHITESPACE)).strip()
+      _.append(url.rstrip())
+  return _
+
+"""
+Check if an injection point has already been detected against target.
+"""
+def check_for_injected_url(url):
+  _ = True
+  if _urllib.parse.urlparse(url).netloc not in settings.CRAWLED_URLS_INJECTED:
+    _ = False
+  return _
+
+"""
 The main function.
 """
 def main(filename, url):
   try:
+    if menu.options.alert:
+      if menu.options.alert.startswith('-'):
+        err_msg = "Value for option '--alert' must be valid operating system command(s)."
+        print(settings.print_error_msg(err_msg))
+      else:
+        settings.ALERT = True
+
     if menu.options.offline:
       settings.CHECK_FOR_UPDATES_ON_START = False
 
@@ -336,8 +311,13 @@ def main(filename, url):
     if settings.WILDCARD_CHAR_APPLIED and settings.MULTI_TARGETS or settings.STDIN_PARSING:
       settings.WILDCARD_CHAR_APPLIED = False
 
-    check_custom_injection_marker(url)
+    checks.check_custom_injection_marker(url)
 
+    # Check injection level, due to the provided testable parameters.
+    if menu.options.level == settings.DEFAULT_INJECTION_LEVEL and \
+    menu.options.test_parameter != None:
+      checks.check_injection_level()
+    
     # Define the level of tests to perform.
     if menu.options.level == settings.DEFAULT_INJECTION_LEVEL:
       settings.SEPARATORS = sorted(set(settings.SEPARATORS_LVL1), key=settings.SEPARATORS_LVL1.index)
@@ -384,26 +364,8 @@ def main(filename, url):
       session_handler.ignore(url)      
 
     # Check provided parameters for tests
-    if menu.options.test_parameter or menu.options.skip_parameter:     
-      if menu.options.test_parameter != None :
-        if menu.options.test_parameter.startswith("="):
-          menu.options.test_parameter = menu.options.test_parameter[1:]
-        settings.TEST_PARAMETER = menu.options.test_parameter.split(settings.PARAMETER_SPLITTING_REGEX)  
-      
-      elif menu.options.skip_parameter != None :
-        if menu.options.skip_parameter.startswith("="):
-          menu.options.skip_parameter = menu.options.skip_parameter[1:]
-        settings.TEST_PARAMETER = menu.options.skip_parameter.split(settings.PARAMETER_SPLITTING_REGEX)
-
-      for i in range(0,len(settings.TEST_PARAMETER)):
-        if "=" in settings.TEST_PARAMETER[i]:
-          settings.TEST_PARAMETER[i] = settings.TEST_PARAMETER[i].split("=")[0]
+    checks.check_provided_parameters()
           
-    # Check injection level, due to the provided testable parameters.
-    if menu.options.level == settings.DEFAULT_INJECTION_LEVEL and \
-    menu.options.test_parameter != None:
-      checks.check_injection_level()
-
     # Check if defined character used for splitting cookie values.
     if menu.options.cdel:
      settings.COOKIE_DELIMITER = menu.options.cdel
@@ -415,25 +377,39 @@ def main(filename, url):
         else:
           settings.USER_SUPPLIED_TECHNIQUE = True
       else:
-        menu.options.tech = list(menu.options.tech)
+        menu.options.tech = list(menu.options.tech.lower())
         _ = {settings.AVAILABLE_TECHNIQUES[i] : i for i in range(len(settings.AVAILABLE_TECHNIQUES))}
-        menu.options.tech.sort(key=lambda x:_[x])
+        try:
+          menu.options.tech.sort(key=lambda x:_[x])
+        except KeyError:
+          pass
         menu.options.tech = ''.join(menu.options.tech)
     else:
       menu.options.tech = ''.join([str(x) for x in settings.AVAILABLE_TECHNIQUES]) 
 
     # Check for skipping injection techniques.
     if menu.options.skip_tech:
+      # Convert injection technique(s) to lowercase
+      menu.options.skip_tech = menu.options.skip_tech.lower()
       settings.SKIP_TECHNIQUES = True
-      menu.options.tech = menu.options.skip_tech
+      if menu.options.tech:
+        err_msg = "The options '--technique' and '--skip-technique' cannot be used "
+        err_msg += "simultaneously (i.e. only one option must be set)."
+        print(settings.print_critical_msg(err_msg))
+        raise SystemExit
+      else:
+        menu.options.tech = "".join(settings.AVAILABLE_TECHNIQUES)
+      for skip_tech_name in settings.AVAILABLE_TECHNIQUES:
+        if skip_tech_name in menu.options.skip_tech:
+          menu.options.tech = menu.options.tech.replace(skip_tech_name,"")
+      if len(menu.options.tech) == 0:
+        err_msg = "Detection procedure was aborted due to skipping all injection techniques."
+        print(settings.print_critical_msg(err_msg))
+        raise SystemExit
 
     # Check if specified wrong injection technique
     if menu.options.tech and menu.options.tech not in settings.AVAILABLE_TECHNIQUES:
       found_tech = False
-
-      # Convert injection technique(s) to lowercase
-      menu.options.tech = menu.options.tech.lower()
-
       # Check if used the ',' separator
       if settings.PARAMETER_SPLITTING_REGEX in menu.options.tech:
         split_techniques_names = menu.options.tech.split(settings.PARAMETER_SPLITTING_REGEX)
@@ -453,20 +429,22 @@ def main(filename, url):
          found_tech == False:
         err_msg = "You specified wrong value '" + split_techniques_names[i] 
         err_msg += "' as injection technique. "
-        err_msg += "The value for '"
+        err_msg += "The value for option '"
         if not settings.SKIP_TECHNIQUES :
           err_msg += "--technique"
         else:
-          err_msg += "--skip-technique"
-          
-        err_msg += "' must be a string composed by the letters C, E, T, F. "
-        err_msg += "Refer to the official wiki for details."
+          err_msg += "--skip-technique"    
+        err_msg += "' must be a string composed by the letters "
+        err_msg += ', '.join(settings.AVAILABLE_TECHNIQUES).upper()
+        err_msg += ". Refer to the official wiki for details."
         print(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
     if not menu.options.tech:
       menu.options.tech = "".join(settings.AVAILABLE_TECHNIQUES)
-    
+    else:
+      settings.USER_SUPPLIED_TECHNIQUE = True
+
     # Check the file-destination
     if menu.options.file_write and not menu.options.file_dest or \
     menu.options.file_upload  and not menu.options.file_dest:
@@ -495,10 +473,6 @@ def main(filename, url):
           session_handler.flush(url)
         # Check for CGI scripts on url
         checks.check_CGI_scripts(url)
-        # Modification on payload
-        # if not menu.options.shellshock and not settings.USE_BACKTICKS and not settings.MULTI_TARGETS:
-        #   settings.SYS_USERS  = checks.add_command_substitution(settings.SYS_USERS)
-        #   settings.SYS_PASSES = checks.add_command_substitution(settings.SYS_PASSES)
         # Check if defined "--file-upload" option.
         if menu.options.file_upload:
           checks.file_upload()
@@ -601,6 +575,9 @@ try:
   if menu.options.smoke_test:
     smoke_test()
 
+  if menu.options.ignore_redirects:
+    settings.FOLLOW_REDIRECT = False
+
   if settings.STDIN_PARSING or settings.CRAWLING or menu.options.bulkfile or menu.options.shellshock:
     settings.OS_CHECKS_NUM = 1
 
@@ -632,14 +609,15 @@ try:
     # Check if defined "--purge" option.
     if menu.options.purge:
       purge.purge()
-    
+
     # Check for missing mandatory option(s).
     if not settings.STDIN_PARSING and not any((menu.options.url, menu.options.logfile, menu.options.bulkfile, \
                 menu.options.requestfile, menu.options.sitemap_url, menu.options.wizard, \
-                menu.options.update, menu.options.list_tampers, menu.options.purge, menu.options.noncore_dependencies)):
-      err_msg = "Missing a mandatory option (-u, -l, -m, -r, -x, --wizard, --update, --list-tampers, --purge or --dependencies). "
-      err_msg += "Use -h for help."
-      print(settings.print_critical_msg(err_msg))
+                menu.options.update, menu.options.list_tampers, menu.options.noncore_dependencies)):
+      if not menu.options.purge:
+        err_msg = "Missing a mandatory option (-u, -l, -m, -r, -x, --wizard, --update, --list-tampers, --purge or --dependencies). "
+        err_msg += "Use -h for help."
+        print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
     if menu.options.codec:
@@ -703,7 +681,7 @@ try:
 
     # Check if defined "--check-tor" option. 
     if menu.options.tor_check and not menu.options.tor:
-      err_msg = "The '--check-tor' swich requires usage of switch '--tor'."
+      err_msg = "The '--check-tor' swich requires usage of '--tor' switch."
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
 
@@ -732,14 +710,17 @@ try:
           menu.options.data = False
       while True:
         message = "Enter injection level (--level) [1-3, Default: 1] > "
-        if settings.STDIN_PARSING or menu.options.level > settings.DEFAULT_INJECTION_LEVEL:
+        if settings.STDIN_PARSING:
           print(settings.print_message(message + str(menu.options.level)))
           break
-        menu.options.level = int(common.read_input(message, default=settings.DEFAULT_INJECTION_LEVEL, check_batch=True))
-        if menu.options.level > settings.HTTP_HEADER_INJECTION_LEVEL:
+        try:
+          menu.options.level = int(common.read_input(message, default=settings.DEFAULT_INJECTION_LEVEL, check_batch=True))
+          if menu.options.level > int(settings.HTTP_HEADER_INJECTION_LEVEL):
+            pass
+          else:
+            break
+        except ValueError:
           pass
-        else:
-          break
 
     # Seconds to delay between each HTTP request.
     if menu.options.delay > 0:
@@ -767,6 +748,18 @@ try:
     if menu.options.crawldepth > 0 or settings.SITEMAP_CHECK:
       settings.CRAWLING = True
 
+    if menu.options.crawl_exclude:
+      if not settings.CRAWLING:
+        err_msg = "The '--crawl-exclude' option requires usage of '--crawl' option."
+        print(settings.print_critical_msg(err_msg))
+        raise SystemExit()
+      try:
+        re.compile(menu.options.crawl_exclude)
+      except Exception as e:
+        err_msg = "invalid regular expression '" + menu.options.crawl_exclude + "' (" + str(e) + ")."
+        print(settings.print_critical_msg(err_msg))
+        raise SystemExit()
+
     # Check arguments
     if len(sys.argv) == 1 and not settings.STDIN_PARSING:
       menu.parser.print_help()
@@ -779,20 +772,7 @@ try:
         settings.INJECT_TAG = inject_tag_regex_match.group(0)
 
     # Check provided parameters for tests
-    if menu.options.test_parameter or menu.options.skip_parameter:     
-      if menu.options.test_parameter != None :
-        if menu.options.test_parameter.startswith("="):
-          menu.options.test_parameter = menu.options.test_parameter[1:]
-        settings.TEST_PARAMETER = menu.options.test_parameter.split(settings.PARAMETER_SPLITTING_REGEX)  
-      
-      elif menu.options.skip_parameter != None :
-        if menu.options.skip_parameter.startswith("="):
-          menu.options.skip_parameter = menu.options.skip_parameter[1:]
-        settings.TEST_PARAMETER = menu.options.skip_parameter.split(settings.PARAMETER_SPLITTING_REGEX)
-
-      for i in range(0,len(settings.TEST_PARAMETER)):
-        if "=" in settings.TEST_PARAMETER[i]:
-          settings.TEST_PARAMETER[i] = settings.TEST_PARAMETER[i].split("=")[0]
+    checks.check_provided_parameters()
 
     if menu.options.level != settings.DEFAULT_INJECTION_LEVEL:
       settings.USER_SUPPLIED_LEVEL = menu.options.level
@@ -862,11 +842,13 @@ try:
       if settings.CRAWLING:
         settings.CRAWLING_PHASE = True
         url_num = 1
-        if not menu.options.bulkfile:
+        if not menu.options.bulkfile and not settings.STDIN_PARSING:
           crawling_list = 1
           output_href = crawler.crawler(url, url_num, crawling_list)
           output_href.append(url)
         else:
+          if settings.STDIN_PARSING:
+            bulkfile = stdin_parsing_target(os_checks_num)
           crawling_list = len(bulkfile)
           for url in bulkfile:
             output_href += (crawler.crawler(url, url_num, crawling_list))
@@ -881,15 +863,7 @@ try:
         if not settings.STDIN_PARSING:
           output_href = output_href + bulkfile
         else:
-          if os_checks_num == 0:
-            info_msg = "Using 'stdin' for parsing targets list."
-            print(settings.print_info_msg(info_msg))
-          menu.options.batch = True
-          bulkfile = sys.stdin
-          settings.MULTI_TARGETS = True
-          for url in bulkfile:
-            if re.search(r"\b(https?://[^\s'\"]+|[\w.]+\.\w{2,3}[/\w+]*\?[^\s'\"]+)", url, re.I):
-              output_href.append(url.rstrip())
+          output_href = stdin_parsing_target(os_checks_num)
 
       # Removing duplicates from list.
       clean_output_href = []
@@ -903,32 +877,75 @@ try:
         print(settings.print_info_msg(info_msg))
       url_num = 0
       for url in clean_output_href:
-        http_request_method  = checks.check_http_method(url)
-        if (settings.CRAWLING and re.search(r"(.*?)\?(.+)", url) or menu.options.shellshock) or settings.MULTI_TARGETS:
-          url_num += 1
-          print(settings.print_message("[" + str(url_num) + "/" + str(len(clean_output_href)) + "] URL - " + url) + "")
-          message = "Do you want to use URL #" + str(url_num) + " to perform tests? [Y/n] > "
-          message = common.read_input(message, default="Y", check_batch=True)
-          if message in settings.CHOICE_YES:
-            if os_checks_num == 0:
-              settings.INIT_TEST = True
-            if url == clean_output_href[-1]:
-              settings.EOF = True
-            # Reset the injection level
-            if menu.options.level > settings.HTTP_HEADER_INJECTION_LEVEL:
-              menu.options.level = 1
-            init_injection(url)
-            try:
-              response, url = url_response(url)
-              if response != False:
-                filename = logs.logs_filename_creation(url)
-                main(filename, url)
-            except:
-              pass 
-          elif message in settings.CHOICE_NO:
-            pass 
-          elif message in settings.CHOICE_QUIT:
-            raise SystemExit()
+        if check_for_injected_url(url):
+          if settings.SKIP_VULNERABLE_HOST is None:
+            while True:
+              message = "An injection point has already been detected against '" + _urllib.parse.urlparse(url).netloc + "'. "
+              message += "Do you want to skip further tests involving it? [Y/n] > "
+              skip_host = common.read_input(message, default="Y", check_batch=True)
+              if skip_host in settings.CHOICE_YES:
+                settings.SKIP_VULNERABLE_HOST = True
+                break
+              elif skip_host in settings.CHOICE_NO:
+                settings.SKIP_VULNERABLE_HOST = False
+                break
+              elif skip_host in settings.CHOICE_QUIT:
+                raise SystemExit()
+              else:
+                common.invalid_option(skip_host)  
+                pass
+
+          if settings.SKIP_VULNERABLE_HOST:
+            url_num += 1
+            info_msg = "Skipping URL '" + url + "' (" + str(url_num) + "/" + str(len(clean_output_href)) + ")."
+            print(settings.print_info_msg(info_msg))   
+
+        if not check_for_injected_url(url) or settings.SKIP_VULNERABLE_HOST is False:
+          if not check_for_injected_url(url):
+            settings.SKIP_VULNERABLE_HOST = None
+          http_request_method = checks.check_http_method(url)
+          if (settings.CRAWLING and re.search(r"(.*?)\?(.+)", url) or menu.options.shellshock) or settings.MULTI_TARGETS:    
+            url_num += 1
+            perform_check = True
+            while True:
+              print(settings.print_message("[" + str(url_num) + "/" + str(len(clean_output_href)) + "] URL - " + url))
+              message = "Do you want to use URL #" + str(url_num) + " to perform tests? [Y/n] > "
+              next_url = common.read_input(message, default="Y", check_batch=True)
+              if next_url in settings.CHOICE_YES:
+                break
+              elif next_url in settings.CHOICE_NO:
+                perform_check = False
+                if url_num == len(clean_output_href):
+                  raise SystemExit()
+                else:
+                  break
+              elif next_url in settings.CHOICE_QUIT:
+                raise SystemExit()
+              else:
+                common.invalid_option(next_url)  
+                pass
+            if perform_check:
+              if os_checks_num == 0:
+                settings.INIT_TEST = True
+              if url == clean_output_href[-1]:
+                settings.EOF = True
+              # Reset the injection level
+              if menu.options.level > settings.HTTP_HEADER_INJECTION_LEVEL:
+                menu.options.level = 1
+              init_injection(url)
+              try:
+                response, url = url_response(url)
+                if response != False:
+                  filename = logs.logs_filename_creation(url)
+                  main(filename, url)
+              except:
+                pass 
+          else:
+            url_num += 1
+            print(settings.print_message("[" + str(url_num) + "/" + str(len(clean_output_href)) + "] Skipping URL - " + url))
+
+        if url_num == len(clean_output_href):
+          raise SystemExit()
 
 except KeyboardInterrupt:
   try:

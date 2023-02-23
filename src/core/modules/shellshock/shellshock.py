@@ -22,6 +22,8 @@ from src.core.requests import headers as log_http_headers
 from src.core.injections.controller import checks
 
 default_user_agent = menu.options.agent
+default_cookie = ""
+
 if menu.options.cookie:
   if settings.INJECT_TAG in menu.options.cookie:
     menu.options.cookie = menu.options.cookie.replace(settings.INJECT_TAG ,"")
@@ -412,14 +414,17 @@ def shellshock_handler(url, http_request_method, filename):
             shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
             checks.print_single_os_cmd(cmd, shell)
 
+          # Pseudo-Terminal shell
           try:
-            # Pseudo-Terminal shell
+            checks.alert()
             go_back = False
             go_back_again = False
             while True:
               if go_back == True:
                 break
               message = settings.CHECKING_PARAMETER + " is vulnerable. Do you want to prompt for a pseudo-terminal shell? [Y/n] > "
+              if settings.CRAWLING:
+                settings.CRAWLED_URLS_INJECTED.append(_urllib.parse.urlparse(url).netloc)
               if not settings.STDIN_PARSING:
                 gotshell = common.read_input(message, default="Y", check_batch=True)
               else:

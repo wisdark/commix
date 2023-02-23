@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ def injection_test(payload, http_request_method, url):
 Evaluate test results.
 """
 def injection_test_results(response, TAG, randvcalc):
-  if response == False:
+  if type(response) is bool and response != True or response is None:
     return False
   else:
     html_data = checks.page_encoding(response, action="decode")

@@ -1,4 +1,18 @@
-## Version 3.6 (TBA)
+## Version 3.8 (TBA)
+* Added: New option `--alert` to run host OS command(s) when injection point is found.
+
+## Version 3.7 (2023-02-17)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Revised: Improvements regarding parsing HTTP requests through HTTP proxy (i.e `--proxy` option).
+* Revised: Improvements regarding identifying injection marker (i.e. asterisk `*`) in provided parameter values (e.g. GET, POST or HTTP headers). 
+* Added: New option ` --crawl-exclude` regarding setting regular expression for excluding pages from crawling (e.g. "logout").
+* Revised: Improvement regarding `--crawl` option, for skipping further tests involving target that an injection point has already been detected.
+* Added: Support regarding combining `--crawl` option with scanning multiple targets given from piped-input (i.e. stdin).
+* Revised: Minor improvement regarding adding PCRE `/e` modifier (i.e. dynamic code evaluation technique).
+* Revised: Minor bug-fix regarding logging all HTTP traffic into a textual file (i.e `-t` option).
+
+## Version 3.6 (2022-11-18)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
 * Revised: Improvements regarding dynamic code evaluation heuristic check.
 * Revised: Minor improvement regarding session handler.
 * Revised: Minor improvement regarding `--wizard` option.
@@ -87,7 +101,7 @@
 * Revised: Minor improvement regarding verbose mode (i.e. debug messages).
 * Fixed: Bug-fix regarding Basic HTTP authentication.
 * Revised: Minor improvement regarding redirection mechanism.
-* Fixed: Bug-fix regarding defining wildcard character "*" in nested JSON objects.
+* Fixed: Bug-fix regarding defining wildcard character `*` in nested JSON objects.
 * Revised: Minor improvement regarding Flatten_json (third party) module.
 * Revised: Minor improvement regarding parsing nested JSON objects.
 * Added: New tamper script "doublequotes.py" that adds double-quotes ("") between the characters of the generated payloads (for *nix targets).
@@ -390,7 +404,7 @@
 ## Version 0.8b (2016-05-06)
 * Fixed: The `--file-read` option to ignore the carriage return ("\r") character in a text file.
 * Added: The ability to check for empty value(s) in the defined GET/POST/Cookie(s) data and skip.
-* Replaced: The "INJECT_HERE" tag has been replaced with the "*" (asterisk) wildcard character.
+* Replaced: The "INJECT_HERE" tag has been replaced with the `*` (asterisk) wildcard character.
 * Added: New option `--level` (1-3) that specifies level of tests to perform.
 * Added: New option `-p` that specifies a comma-separated list of GET/POST parameter.
 * Added: The ability to check every parameter in the provided cookie data.

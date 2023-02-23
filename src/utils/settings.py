@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -240,8 +240,8 @@ APPLICATION = "commix"
 DESCRIPTION_FULL = "Automated All-in-One OS Command Injection Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
-VERSION_NUM = "3.6"
-REVISION = "32"
+VERSION_NUM = "3.8"
+REVISION = "1"
 STABLE_RELEASE = False
 VERSION = "v"
 if STABLE_RELEASE:
@@ -251,7 +251,7 @@ else:
   VERSION = VERSION + VERSION_NUM + "-dev#" + REVISION
   COLOR_VERSION = Style.UNDERLINE + Fore.WHITE + VERSION + Style.RESET_ALL
 
-YEAR = "2014-2022"
+YEAR = "2014-2023"
 AUTHOR_TWITTER = "@ancst" 
 APPLICATION_URL = "https://commixproject.com" 
 APPLICATION_TWITTER = "@commixproject" 
@@ -283,6 +283,7 @@ PROXY_REGEX = r"((http[^:]*)://)?([\w\-.]+):(\d+)"
 INJECT_TAG = "INJECT_HERE"
 INJECT_TAG_REGEX = r"(?i)INJECT[_]?HERE"
 VALUE_BOUNDARIES = r'[\\/](.+?)[\\/]'
+INJECT_INSIDE_BOUNDARIES = None
 
 # Default (windows) target host's python interpreter
 WIN_PYTHON_INTERPRETER = "python.exe"
@@ -345,6 +346,7 @@ USER_DEFINED_POST_DATA = False
 # The wildcard character
 WILDCARD_CHAR = "*"
 WILDCARD_CHAR_APPLIED = False
+POST_WILDCARD_CHAR = ""
 
 # Testable parameter(s) - comma separated. 
 TEST_PARAMETER = ""
@@ -467,13 +469,13 @@ EVAL_SEPARATORS_LVL3 = EVAL_SEPARATORS_LVL2 + ["%0d%0a"]
 
 # The code injection prefixes.
 EVAL_PREFIXES = []
-EVAL_PREFIXES_LVL1 = ["{${", "'.", "."]
+EVAL_PREFIXES_LVL1 = [".", "'.", "{${"]
 EVAL_PREFIXES_LVL2 = EVAL_PREFIXES_LVL1 + [")'}", "');}"]
 EVAL_PREFIXES_LVL3 = EVAL_PREFIXES_LVL2 + ["\".", "')", "\")", ");}", "\");}", ")", ";", "'", ""] 
 
 # The code injection suffixes.
 EVAL_SUFFIXES = []
-EVAL_SUFFIXES_LVL1 = ["}}",  ".'", ""]
+EVAL_SUFFIXES_LVL1 = [ "",  ".'", "}}"]
 EVAL_SUFFIXES_LVL2 = EVAL_SUFFIXES_LVL1 + ["'#"]
 EVAL_SUFFIXES_LVL3 = EVAL_SUFFIXES_LVL2 + [".\"", "\\\\", "//", ")}", "#"]
 
@@ -601,7 +603,7 @@ CHOICE_PROCEED = ['C','c','S','s','Q','q','a','A','n','N']
 AVAILABLE_SHELLS = ["python"]
 
 # Available injection techniques.
-AVAILABLE_TECHNIQUES = [ "c", "e", "t", "f" ]
+AVAILABLE_TECHNIQUES = ['c','e','t','f']
 USER_SUPPLIED_TECHNIQUE = False
 SKIP_TECHNIQUES = False
 
@@ -1071,6 +1073,8 @@ HTTP_ERROR_CODES = [  BAD_REQUEST,
                       GATEWAY_TIMEOUT
                     ]
 
+HTTP_ERROR_CODES_SUM = []
+
 # End line
 END_LINE = ["\r", "\n", "\r\n"]
 
@@ -1213,6 +1217,8 @@ BASE64_PADDING = "=="
 CRAWLING = CRAWLING_PHASE = False
 CRAWLED_SKIPPED_URLS_NUM = 0
 CRAWLED_URLS_NUM = 0
+CRAWLED_URLS_INJECTED = []
+SKIP_VULNERABLE_HOST = None
 
 # Skipped crawled hrefs
 HREF_SKIPPED = []
@@ -1222,10 +1228,17 @@ DEFAULT_CRAWLING_DEPTH = 1
 
 SITEMAP_CHECK = None
 
-FOLLOW_REDIRECT = False
+FOLLOW_REDIRECT = True
 
 # Set predefined answers (e.g. "quit=N,follow=N").
 ANSWERS = ""
 
 CHECKING_PARAMETER = ""
+
+# Run host OS command(s) when injection point is found.
+ALERT = False
+
+USE_PCRE_E_MODIFIER = None
+PCRE_MODIFIER = "/e"
+
 # eof

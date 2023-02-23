@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -168,6 +168,11 @@ target.add_option("--crawl",
                 dest="crawldepth",
                 type="int",
                 help="Crawl the website starting from the target URL (Default: 1).")
+
+target.add_option("--crawl-exclude",
+                dest="crawl_exclude",
+                default=None,
+                help="Regexp to exclude pages from crawling (e.g. \"logout\").")
 
 target.add_option("-x",
                 dest="sitemap_url",
@@ -555,6 +560,12 @@ misc.add_option("--list-tampers",
                 dest="list_tampers",
                 default=False,
                 help="Display list of available tamper scripts.")
+
+misc.add_option("--alert", 
+                action="store",
+                dest="alert",
+                default=False,
+                help="Run host OS command(s) when injection point is found.")
 
 misc.add_option("--no-logging", 
                 action="store_true",

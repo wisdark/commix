@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -553,8 +553,9 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
               # Delete previous shell (text) files (output)
               delete_previous_shell(separator, payload, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename)
                   
+            # Pseudo-Terminal shell
             try:
-              # Pseudo-Terminal shell
+              checks.alert()
               go_back = False
               go_back_again = False
               while True:
@@ -563,6 +564,8 @@ def fb_injection_handler(url, timesec, filename, http_request_method, url_time_r
                 if go_back == True:
                   break
                 message = settings.CHECKING_PARAMETER + " is vulnerable. Do you want to prompt for a pseudo-terminal shell? [Y/n] > "
+                if settings.CRAWLING:
+                  settings.CRAWLED_URLS_INJECTED.append(_urllib.parse.urlparse(url).netloc)
                 if not settings.STDIN_PARSING:
                   gotshell = common.read_input(message, default="Y", check_batch=True)
                 else:

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -141,6 +141,16 @@ def days_from_last_update():
     print(settings.print_warning_msg(warn_msg))
 
 """
+Shows all HTTP error codes raised
+"""
+def show_http_error_codes():
+  if settings.HTTP_ERROR_CODES_SUM and settings.VERBOSITY_LEVEL != 0:
+    if any((str(_).startswith('4') or str(_).startswith('5')) and _ != settings.INTERNAL_SERVER_ERROR for _ in settings.HTTP_ERROR_CODES_SUM):
+      debug_msg = "Too many 4xx and/or 5xx HTTP error codes "
+      debug_msg += "could mean that some kind of protection is involved."
+      print(settings.print_bold_debug_msg(debug_msg))
+
+"""
 Automatically create a Github issue with unhandled exception information.
 PS: Greetz @ sqlmap dev team for that great idea! :)
 """
@@ -153,14 +163,16 @@ def create_github_issue(err_msg, exc_msg):
   _ = re.sub(r"= _", "= ", _)
   _ = _.encode(settings.DEFAULT_CODEC)
   
-  bug_report =  "Bug Report: Unhandled exception \"" + str([i for i in exc_msg.split('\n') if i][-1]) + "\""
+  key = hashlib.md5(_).hexdigest()[:8]
+
+  bug_report =  "Bug Report: Unhandled exception \"" + str([i for i in exc_msg.split('\n') if i][-1]) + "\" " +  "(#" + key + ")"
 
   while True:
     try:
       message = "Do you want to automatically create a new (anonymized) issue "
       message += "with the unhandled exception information at "
       message += "the official Github repository? [y/N] "
-      choise = common.read_input(message, default="N", check_batch=True)
+      choise = read_input(message, default="N", check_batch=True)
       if choise in settings.CHOICE_YES:
         break
       elif choise in settings.CHOICE_NO:
@@ -295,7 +307,7 @@ def unhandled_exception():
 
   elif all(_ in exc_msg for _ in ("SyntaxError: Non-ASCII character", ".py on line", "but no encoding declared")) or \
        any(_ in exc_msg for _ in ("source code string cannot contain null bytes", "No module named")) or \
-       any(_ in exc_msg for _ in ("ImportError", "ModuleNotFoundError", "Can't find file for module")):
+       any(_ in exc_msg for _ in ("ImportError", "ModuleNotFoundError", "<frozen", "Can't find file for module")):
     err_msg = "Invalid runtime environment ('" + exc_msg.split("Error: ")[-1].strip() + "')."
     print(settings.print_critical_msg(err_msg))
     raise SystemExit()

@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -170,7 +170,6 @@ def cb_injection_handler(url, timesec, filename, http_request_method, injection_
               # Evaluate test results.
               time.sleep(timesec)
               shell = cb_injector.injection_test_results(response, TAG, randvcalc)
-
               if settings.VERBOSITY_LEVEL == 0:
                 percent = ((i*100)/total)
                 float_percent = "{0:.1f}".format(round(((i*100)/(total*1.0)),2))
@@ -327,14 +326,17 @@ def cb_injection_handler(url, timesec, filename, http_request_method, injection_
             if menu.options.os_cmd:
               cb_enumeration.single_os_cmd_exec(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
             
+            # Pseudo-Terminal shell
             try:
-              # Pseudo-Terminal shell
+              checks.alert()
               go_back = False
               go_back_again = False
               while True :
                 if go_back == True:
                   break 
                 message = settings.CHECKING_PARAMETER + " is vulnerable. Do you want to prompt for a pseudo-terminal shell? [Y/n] > "
+                if settings.CRAWLING:
+                  settings.CRAWLED_URLS_INJECTED.append(_urllib.parse.urlparse(url).netloc)
                 if not settings.STDIN_PARSING:
                   gotshell = common.read_input(message, default="Y", check_batch=True)
                 else:

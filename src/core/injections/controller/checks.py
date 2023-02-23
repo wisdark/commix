@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@ import io
 import re
 import os
 import sys
-import glob
 import json
 import time
 import socket
@@ -27,6 +26,8 @@ import base64
 import gzip
 import zlib
 import traceback
+import subprocess
+from glob import glob
 from src.utils import common
 from src.utils import logs
 from src.utils import menu
@@ -35,6 +36,7 @@ from src.utils import simple_http_server
 from src.thirdparty.odict import OrderedDict
 from src.core.convert import hexdecode
 from socket import error as SocketError
+from src.core.requests import requests
 from src.thirdparty.six.moves import input as _input
 from src.thirdparty.six.moves import urllib as _urllib
 from src.thirdparty.colorama import Fore, Back, Style, init
@@ -52,6 +54,63 @@ except:
     import pyreadline as readline
   except:
     settings.READLINE_ERROR = True
+
+"""
+Check for custom injection marker (*)
+"""
+def check_custom_injection_marker(url):
+  if url and settings.WILDCARD_CHAR in url:
+    option = "'-u'"
+    settings.WILDCARD_CHAR_APPLIED = True
+  elif menu.options.data and settings.WILDCARD_CHAR in menu.options.data:
+    option = "POST body"
+    settings.WILDCARD_CHAR_APPLIED = True
+  else:
+    option = "option '--headers/--user-agent/--referer/--cookie'"
+    if menu.options.cookie and settings.WILDCARD_CHAR in menu.options.cookie:
+      settings.WILDCARD_CHAR_APPLIED = settings.COOKIE_INJECTION = True
+      menu.options.level = settings.COOKIE_INJECTION_LEVEL
+
+    elif menu.options.agent and settings.WILDCARD_CHAR in menu.options.agent:
+      settings.WILDCARD_CHAR_APPLIED = settings.USER_AGENT_INJECTION = True
+      menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
+
+    elif menu.options.referer and settings.WILDCARD_CHAR in menu.options.referer:
+      settings.WILDCARD_CHAR_APPLIED = settings.REFERER_INJECTION = True
+      menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
+
+    elif menu.options.headers and settings.WILDCARD_CHAR in menu.options.headers:
+      _ = True
+      for data in menu.options.headers.split("\\n"):
+        # Ignore the Accept HTTP Header
+        if not data.startswith(settings.ACCEPT):
+          _ = False
+      if _:    
+        settings.WILDCARD_CHAR_APPLIED = True
+        menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
+
+  if settings.WILDCARD_CHAR_APPLIED:
+    if menu.options.test_parameter:
+      if not settings.MULTI_TARGETS or settings.STDIN_PARSING:
+        err_msg = "The options '-p' and the custom injection marker (" + settings.WILDCARD_CHAR + ") "
+        err_msg += "cannot be used simultaneously (i.e. only one option must be set)."
+        print(settings.print_critical_msg(err_msg))
+        raise SystemExit 
+
+    while True:
+      message = "Custom injection marker (" + settings.WILDCARD_CHAR + ") found in " + option +". "
+      message += "Do you want to process it? [Y/n] > "
+      procced_option = common.read_input(message, default="Y", check_batch=True)
+      if procced_option in settings.CHOICE_YES:
+        return
+      elif procced_option in settings.CHOICE_NO:
+        settings.WILDCARD_CHAR_APPLIED = None
+        return
+      elif procced_option in settings.CHOICE_QUIT:
+        raise SystemExit()
+      else:
+        common.invalid_option(procced_option)  
+        pass
 
 """
 The available mobile user agents.
@@ -72,6 +131,20 @@ def mobile_user_agents():
     except ValueError:
       common.invalid_option(mobile_user_agent)  
       pass     
+
+"""
+Run host OS command(s) when injection point is found.
+"""
+def alert():
+  if settings.ALERT:
+    info_msg = "Executing alerting shell command(s) '" + str(menu.options.alert) + "'."
+    print(settings.print_info_msg(info_msg))
+    try:
+      process = subprocess.Popen(menu.options.alert, shell=True)
+      process.wait()
+    except Exception as ex:
+      err_msg = "Error occurred while executing command(s) '" + str(menu.options.alert) + "'."
+      print(settings.print_error_msg(err_msg))
 
 """
 Check for HTTP Method
@@ -98,73 +171,20 @@ def user_aborted(filename, url):
   abort_msg += " phase (Ctrl-C was pressed)."
   print(settings.print_abort_msg(abort_msg))
   logs.print_logs_notification(filename, url)
+  common.show_http_error_codes()
   os._exit(0)
 
 """
 Connection exceptions
 """
-def connection_exceptions(err_msg, url):
-  settings.VALID_URL = False
-  try:
-    error_msg = str(err_msg.args[0]).split("] ")[1] 
-  except IndexError:
-    try:
-      error_msg = str(err_msg.args[0])
-    except IndexError:
-      error_msg = str(err_msg)
-  if settings.TOTAL_OF_REQUESTS == 1 and settings.VERBOSITY_LEVEL < 2 and not settings.CRAWLING:
-    print(settings.SINGLE_WHITESPACE)
-  if any(x in str(error_msg).lower() for x in ["wrong version number", "ssl", "https"]):
-    settings.MAX_RETRIES = 1
-    error_msg = "Can't establish SSL connection"
-  elif "connection refused" in str(error_msg).lower():
-    settings.MAX_RETRIES = 1
-  else:
-    if settings.TOTAL_OF_REQUESTS == 1:
-      if settings.VERBOSITY_LEVEL < 2 and "has closed the connection" in str(error_msg):
-        print(settings.SINGLE_WHITESPACE)
-      if "IncompleteRead" in str(error_msg):
-        warn_msg = "There was an incomplete read error while retrieving data "
-        warn_msg += "from the target URL "
-      else:
-        warn_msg = "The provided target URL seems not reachable. "
-        warn_msg += "In case that it is, please try to re-run using "
-        if not menu.options.random_agent:
-            warn_msg += "'--random-agent' switch and/or "
-        warn_msg += "'--proxy' option."
-        print(settings.print_warning_msg(warn_msg))
-        if not settings.MULTI_TARGETS and not settings.CRAWLING:
-          raise SystemExit()
-    elif "infinite loop" in str(error_msg):
-      error_msg = "Infinite redirect loop detected. " 
-      error_msg += "Please check all provided parameters and/or provide missing ones"
-    elif "BadStatusLine" in str(error_msg):
-      error_msg = "connection dropped or unknown HTTP "
-      error_msg += "status code received."
-    elif "forcibly closed" in str(error_msg) or "Connection is already closed" in str(error_msg):
-      error_msg = "connection was forcibly closed by the target URL."
-    elif settings.UNAUTHORIZED_ERROR in str(error_msg) and not menu.options.ignore_code:
-      error_msg = "Not authorized, try to provide right HTTP "
-      error_msg += "authentication type and valid credentials."
-      if not menu.options.ignore_code == settings.UNAUTHORIZED_ERROR:
-        error_msg += " If this is intended, try to rerun by providing "
-        error_msg += "a valid value for option '--ignore-code'"
-    if settings.MAX_RETRIES > 1 and not settings.CRAWLING:
-      info_msg = settings.APPLICATION.capitalize() + " is going to retry the request(s)."
-      print(settings.print_info_msg(info_msg))
-  error_msg = "Unable to connect to the target URL (Reason: " + str(error_msg.replace("Http", "Http".upper()))  + ")."
-  _ = ""
-  if isinstance(url, str):
-    _ = " Skipping URL '" + str(url) + "'."
-  if settings.MULTI_TARGETS or settings.CRAWLING:
-    if len(_) == 0:
-      _ = " Skipping to the next target."
-    error_msg = error_msg + _
-  if len(_) != 0 or not settings.MULTI_TARGETS or not settings.CRAWLING:
-    print(settings.print_critical_msg(error_msg))
+def connection_exceptions(err_msg):
+  requests.request_failed(err_msg)
   settings.TOTAL_OF_REQUESTS = settings.TOTAL_OF_REQUESTS + 1
   if settings.MAX_RETRIES > 1:
     time.sleep(settings.DELAY_RETRY)
+    if not settings.MULTI_TARGETS and not settings.CRAWLING:
+      info_msg = settings.APPLICATION.capitalize() + " is going to retry the request(s)."
+      print(settings.print_info_msg(info_msg))
   if not settings.VALID_URL :
     if settings.TOTAL_OF_REQUESTS == settings.MAX_RETRIES and not settings.MULTI_TARGETS:
       raise SystemExit()
@@ -174,27 +194,37 @@ check for not declared cookie(s)
 """
 def not_declared_cookies(response):
   try:
-    candidate = re.search(r'([^;]+);?', response.headers[settings.SET_COOKIE]).group(1)
+    set_cookie_headers = []
+    for set_cookie_header in response.getheaders():
+      if settings.SET_COOKIE in set_cookie_header:
+        set_cookie_headers.append(re.search(r'([^;]+);?', set_cookie_header[1]).group(1))
+
+    candidate = settings.COOKIE_DELIMITER.join(str(value) for value in set_cookie_headers)
     if candidate and settings.DECLARED_COOKIES is not False and settings.CRAWLING is False:
       settings.DECLARED_COOKIES = True
-      if settings.CRAWLED_SKIPPED_URLS_NUM != 0:
-        print(settings.SINGLE_WHITESPACE)
-      while True:
-        message = "You have not declared cookie(s), while "
-        message += "server wants to set its own ('" + str(candidate) + "'). "
-        message += "Do you want to use those [Y/n] > "
-        set_cookies = common.read_input(message, default="Y", check_batch=True)
-        if set_cookies in settings.CHOICE_YES:
-          menu.options.cookie = candidate
-          break
-        elif set_cookies in settings.CHOICE_NO:
-          settings.DECLARED_COOKIES = False 
-          break
-        elif set_cookies in settings.CHOICE_QUIT:
-          raise SystemExit()
-        else:
-          common.invalid_option(set_cookies)  
-          pass
+      if menu.options.cookie:
+        menu.options.cookie = menu.options.cookie + settings.COOKIE_DELIMITER + candidate
+        settings.DECLARED_COOKIES = False
+      else:
+        if settings.CRAWLED_SKIPPED_URLS_NUM != 0:
+          print(settings.SINGLE_WHITESPACE)
+        while True:
+          message = "You have not declared cookie(s), while "
+          message += "server wants to set its own ('" 
+          message += str(re.sub(r"(=[^=;]{10}[^=;])[^=;]+([^=;]{10})", r"\g<1>...\g<2>", candidate))
+          message += "'). Do you want to use those [Y/n] > "
+          set_cookies = common.read_input(message, default="Y", check_batch=True)
+          if set_cookies in settings.CHOICE_YES:
+            menu.options.cookie = candidate
+            break
+          elif set_cookies in settings.CHOICE_NO:
+            settings.DECLARED_COOKIES = False 
+            break
+          elif set_cookies in settings.CHOICE_QUIT:
+            raise SystemExit()
+          else:
+            common.invalid_option(set_cookies)  
+            pass
   except (KeyError, TypeError):
     pass
 
@@ -241,22 +271,86 @@ def load_cmd_history():
     print(settings.print_warning_msg(warn_msg))     
 
 """
-Check if the value has boundaries.
+Get value inside boundaries.
 """
-def value_boundaries(value):
-  message =  "It appears that the value '" + value + "' has boundaries. "
-  message += "Do you want to inject inside? [Y/n] > "
-  procced_option = common.read_input(message, default="Y", check_batch=True)
-  if procced_option in settings.CHOICE_YES:
+def get_value_inside_boundaries(value):
+  try:
     value = re.search(settings.VALUE_BOUNDARIES, value).group(1)
-  elif procced_option in settings.CHOICE_NO:
-    pass
-  elif procced_option in settings.CHOICE_QUIT:
-    raise SystemExit()
-  else:
-    common.invalid_option(procced_option)  
+  except Exception as ex:
     pass
   return value
+
+"""
+Check if the value has boundaries.
+"""
+def value_boundaries(parameter, value, http_request_method):
+  def check_boundaries_value(parameter, value, http_request_method):
+    _ = get_value_inside_boundaries(value)
+
+    if settings.INJECT_TAG in _:
+      settings.INJECT_INSIDE_BOUNDARIES = False
+      return ""
+    if settings.INJECT_TAG in value:
+      settings.INJECT_INSIDE_BOUNDARIES = True
+      return _
+    while True:
+      message = "Do you want to inject the provided value for " + http_request_method + " parameter '" + parameter.split("=")[0] + "' inside boundaries?"
+      message += " ('" + str(value.replace(_ ,_ + settings.WILDCARD_CHAR)) + "') [Y/n] > "
+      procced_option = common.read_input(message, default="Y", check_batch=True)
+      if procced_option in settings.CHOICE_YES:
+        settings.INJECT_INSIDE_BOUNDARIES = True
+        return _
+      elif procced_option in settings.CHOICE_NO:
+        settings.INJECT_INSIDE_BOUNDARIES = False
+        return ""
+      elif procced_option in settings.CHOICE_QUIT:
+        raise SystemExit()
+      else:
+        common.invalid_option(procced_option)  
+        pass
+
+  if menu.options.skip_parameter != None:
+    for skip_parameter in re.split(settings.PARAMETER_SPLITTING_REGEX, menu.options.skip_parameter):
+      if parameter.split("=")[0] != skip_parameter:
+        return check_boundaries_value(skip_parameter, value, http_request_method)
+      else:
+        return value
+
+  elif menu.options.test_parameter != None :
+    for test_parameter in re.split(settings.PARAMETER_SPLITTING_REGEX, menu.options.test_parameter):
+      if parameter.split("=")[0] == test_parameter:
+        return check_boundaries_value(test_parameter, value, http_request_method)
+      else:
+        return value
+  else:
+    return check_boundaries_value(parameter, value, http_request_method)
+
+"""
+Add the PCRE '/e' modifier outside boundaries.
+"""
+def PCRE_e_modifier(parameter, http_request_method):
+  original_parameter = parameter
+  if not settings.PCRE_MODIFIER in parameter:
+    try:
+      if get_value_inside_boundaries(parameter.split("=")[1]) != parameter.split("=")[1]:
+        while True:
+          message = "It appears that provided value for " + http_request_method + " parameter '" + parameter.split("=")[0] + "' has boundaries. "
+          message += "Do you want to add the PCRE '" + settings.PCRE_MODIFIER + "' modifier outside boundaries? ('" 
+          message += parameter.split("=")[1].replace(settings.INJECT_TAG, settings.WILDCARD_CHAR) + settings.PCRE_MODIFIER[1:2] + "') [Y/n] > "
+          modifier_check = common.read_input(message, default="Y", check_batch=True)
+          if modifier_check in settings.CHOICE_YES:
+            return original_parameter + settings.PCRE_MODIFIER[1:2]
+          elif modifier_check in settings.CHOICE_NO:
+            return original_parameter
+          elif modifier_check in settings.CHOICE_QUIT:
+            print(settings.SINGLE_WHITESPACE)
+            os._exit(0)
+          else:  
+            common.invalid_option(modifier_check)  
+            pass
+    except Exception as ex:
+      pass
+  return parameter
 
 """
 Ignoring the anti-CSRF parameter(s).
@@ -307,7 +401,7 @@ def page_encoding(response, action):
         data = gzip.GzipFile("", "rb", 9, io.BytesIO(page))
       page = data.read()
       settings.PAGE_COMPRESSION = True
-    except Exception as ex:
+    except Exception as e:
       if settings.PAGE_COMPRESSION is None:
         warn_msg = "Turning off page compression."
         print(settings.print_warning_msg(warn_msg))
@@ -465,21 +559,24 @@ def assessment_phase():
 Check current assessment phase.
 """
 def check_injection_level():
-  # Checking testable parameters for cookies
-  if menu.options.cookie:
-    if settings.COOKIE_DELIMITER in menu.options.cookie:
-      cookies = menu.options.cookie.split(settings.COOKIE_DELIMITER)
-      for cookie in cookies:
-        if cookie.split("=")[0].strip() in menu.options.test_parameter:
-          menu.options.level = settings.COOKIE_INJECTION_LEVEL
-    elif menu.options.cookie.split("=")[0] in menu.options.test_parameter:
-      menu.options.level = settings.COOKIE_INJECTION_LEVEL
+  try:
+    # Checking testable parameters for cookies
+    if menu.options.cookie:
+      if settings.COOKIE_DELIMITER in menu.options.cookie:
+        cookies = menu.options.cookie.split(settings.COOKIE_DELIMITER)
+        for cookie in cookies:
+          if cookie.split("=")[0].strip() in menu.options.test_parameter:
+            menu.options.level = settings.COOKIE_INJECTION_LEVEL
+      elif menu.options.cookie.split("=")[0] in menu.options.test_parameter:
+        menu.options.level = settings.COOKIE_INJECTION_LEVEL
+    
+    # Checking testable HTTP headers for user-agent / referer / host      
+    if any(x in menu.options.test_parameter for x in settings.HTTP_HEADERS):
+      menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
 
-  # Checking testable HTTP headers for user-agent / referer / host
-  if "user-agent" in menu.options.test_parameter or \
-     "referer" in menu.options.test_parameter or \
-     "host" in menu.options.test_parameter:
-    menu.options.level = settings.HTTP_HEADER_INJECTION_LEVEL
+  except Exception as ex:
+    return
+
 
 """
 Procced to the next attack vector.
@@ -598,19 +695,19 @@ def continue_tests(err):
         return True
 
   # Possible WAF/IPS/IDS
-  if (str(err.code) == settings.FORBIDDEN_ERROR or settings.NOT_ACCEPTABLE_ERROR) and \
-    not menu.options.skip_waf and \
-    not settings.HOST_INJECTION :
-    # Check if "--skip-waf" option is defined 
-    # that skips heuristic detection of WAF/IPS/IDS protection.
-    settings.WAF_ENABLED = True
-    warn_msg = "It seems that target is protected by some kind of WAF/IPS/IDS."
-    print(settings.print_warning_msg(warn_msg))
-
   try:
+    if (str(err.code) == settings.FORBIDDEN_ERROR or \
+       str(err.code) == settings.NOT_ACCEPTABLE_ERROR) and \
+       not menu.options.skip_waf and \
+       not settings.HOST_INJECTION :
+      # Check if "--skip-waf" option is defined (to skip heuristic detection of WAF/IPS/IDS protection).
+      settings.WAF_ENABLED = True
+      warn_msg = "It seems that target is protected by some kind of WAF/IPS/IDS."
+      print(settings.print_warning_msg(warn_msg))
+
     while True:
-      message = "Do you want to ignore the error (" + str(err.code) 
-      message += ") message and continue the tests? [Y/n] > "
+      message = "Do you want to ignore the response HTTP error code '" + str(err.code) 
+      message += "' and continue the tests? [Y/n] > "
       continue_tests = common.read_input(message, default="Y", check_batch=True)
       if continue_tests in settings.CHOICE_YES:
         return True
@@ -621,6 +718,8 @@ def continue_tests(err):
       else:
         common.invalid_option(continue_tests)  
         pass
+  except AttributeError:
+    pass
   except KeyboardInterrupt:
     raise
 
@@ -760,6 +859,9 @@ def check_CGI_scripts(url):
 Check if http / https.
 """
 def check_http_s(url):
+  if settings.SINGLE_WHITESPACE in url:
+    url = url.replace(settings.SINGLE_WHITESPACE, _urllib.parse.quote_plus(settings.SINGLE_WHITESPACE)) 
+    
   if settings.CHECK_INTERNET:
       url = settings.CHECK_INTERNET_ADDRESS
   else:
@@ -946,12 +1048,35 @@ def wildcard_character(data):
   return data
 
 """
-Skip defined
+Check provided parameters for tests
 """
-def check_skipped_params(check_parameters):
+def check_provided_parameters():    
+  if menu.options.test_parameter or menu.options.skip_parameter:     
+    if menu.options.test_parameter != None :
+      if menu.options.test_parameter.startswith("="):
+        menu.options.test_parameter = menu.options.test_parameter[1:]
+      settings.TEST_PARAMETER = menu.options.test_parameter.split(settings.PARAMETER_SPLITTING_REGEX)  
+    
+    elif menu.options.skip_parameter != None :
+      if menu.options.skip_parameter.startswith("="):
+        menu.options.skip_parameter = menu.options.skip_parameter[1:]
+      settings.TEST_PARAMETER = menu.options.skip_parameter.split(settings.PARAMETER_SPLITTING_REGEX)
+
+    for i in range(0,len(settings.TEST_PARAMETER)):
+      if "=" in settings.TEST_PARAMETER[i]:
+        settings.TEST_PARAMETER[i] = settings.TEST_PARAMETER[i].split("=")[0]
+
+"""
+Check defined skipped parameters
+"""
+def check_skipped_params(check_parameters, http_request_method):
   settings.TEST_PARAMETER = [x + "," for x in settings.TEST_PARAMETER]
+  for parameter in check_parameters:
+    if parameter in ",".join(settings.TEST_PARAMETER).split(","):
+      info_msg = "Skipping " + http_request_method + " parameter '" + parameter + "'."
+      print(settings.print_info_msg(info_msg))
   settings.TEST_PARAMETER = [x for x in check_parameters if x not in ",".join(settings.TEST_PARAMETER).split(",")]
-  settings.TEST_PARAMETER = ",".join(settings.TEST_PARAMETER) 
+  settings.TEST_PARAMETER = ",".join(settings.TEST_PARAMETER)
   menu.options.test_parameter = True
 
 """
@@ -1004,7 +1129,7 @@ def print_non_listed_params(check_parameters, http_request_method, header_name):
         print(settings.print_warning_msg(warn_msg))
 
   if menu.options.skip_parameter != None:
-    check_skipped_params(check_parameters)
+    check_skipped_params(check_parameters, http_request_method)
 
 """
 Only time-relative injection techniques support tamper
@@ -1023,7 +1148,7 @@ def list_tamper_scripts():
   info_msg = "Listing available tamper scripts."
   print(settings.print_info_msg(info_msg))
   if menu.options.list_tampers:
-    for script in sorted(glob.glob(os.path.join(settings.TAMPER_SCRIPTS_PATH, "*.py"))):
+    for script in sorted(glob(os.path.join(settings.TAMPER_SCRIPTS_PATH, "*.py"))):
       content = open(script, "rb").read().decode(settings.DEFAULT_CODEC)
       match = re.search(r"About:(.*)\n", content)
       if match:
@@ -1038,7 +1163,7 @@ def tamper_scripts(stored_tamper_scripts):
     # Check the provided tamper script(s)
     available_scripts = []
     provided_scripts = list(set(re.split(settings.PARAMETER_SPLITTING_REGEX, menu.options.tamper.lower())))
-    for script in sorted(glob.glob(os.path.join(settings.TAMPER_SCRIPTS_PATH, "*.py"))):
+    for script in sorted(glob(os.path.join(settings.TAMPER_SCRIPTS_PATH, "*.py"))):
       available_scripts.append(os.path.basename(script.split(".py")[0]))
     for script in provided_scripts:
       if script in available_scripts:
@@ -1168,7 +1293,7 @@ def whitespace_check(payload):
     settings.WHITESPACES[0] = settings.WHITESPACES[0] * int(count_spaces / 2)
       
 """
-Check for added caret between the characters of the generated payloads.
+Check for symbols (i.e "`", "^", "$@" etc) between the characters of the generated payloads.
 """
 def other_symbols(payload):
   # Check for (multiple) backticks (instead of "$()") for commands substitution on the generated payloads.
@@ -1404,7 +1529,7 @@ def perform_payload_modification(payload):
     if encode_type == 'singlequotes':
       from src.core.tamper import singlequotes
       payload = singlequotes.tamper(payload)
-    # Add caret symbol.  
+    # Add backslashes.  
     elif encode_type == 'backslashes':
       from src.core.tamper import backslashes
       payload = backslashes.tamper(payload) 
@@ -1484,8 +1609,9 @@ def is_empty(multi_parameters, http_request_method):
   if settings.IS_JSON:
     try:
       multi_params = ','.join(multi_params)
-      json_data = json.loads(multi_params, object_pairs_hook=OrderedDict)
-      multi_params = flatten(json_data)
+      if is_JSON_check(multi_params):
+        json_data = json.loads(multi_params, object_pairs_hook=OrderedDict)
+        multi_params = flatten(json_data)
     except ValueError as err_msg:
       print(settings.print_critical_msg(err_msg))
       raise SystemExit()
@@ -1493,7 +1619,7 @@ def is_empty(multi_parameters, http_request_method):
     try:
       if settings.IS_JSON:
         try:
-          param = re.sub("[^/()A-Za-z0-9.:,_]+", '',  multi_params[empty])
+          param = re.sub("[^/()A-Za-z0-9.:,_]+", '',  str(multi_params[empty]))
           if "(" and ")" in param:
             param = re.findall(r'\((.*)\)', param)
             for value in param[0].split(","):
@@ -1502,8 +1628,8 @@ def is_empty(multi_parameters, http_request_method):
           elif len(str(multi_params[empty])) == 0 :
             empty_parameters.append(empty)
         except TypeError:
-          warn_msg = "The provided value for parameter '" + str(empty) + "' seems unusable."
-          print(settings.print_warning_msg(warn_msg))
+          # warn_msg = "The provided value for parameter '" + str(empty) + "' seems unusable."
+          # print(settings.print_warning_msg(warn_msg))
           pass
       elif settings.IS_XML:
         if re.findall(r'>(.*)<', empty)[0] == "" or \
@@ -1652,15 +1778,15 @@ def generate_char_pool(num_of_chars):
   if menu.options.charset:
     char_pool = [ord(c) for c in menu.options.charset]
   else:
-    # if num_of_chars == 1:
-    #   # Checks {A..Z},{a..z},{0..9},{Symbols}
-    #   char_pool = list(range(65, 90)) + list(range(96, 122))
-    # else:
-    #   # Checks {a..z},{A..Z},{0..9},{Symbols}
-    char_pool = list(range(96, 122)) + list(range(65, 90))
+    # Source for letter frequency: http://en.wikipedia.org/wiki/Letter_frequency#Relative_frequencies_of_letters_in_the_English_language
+    if num_of_chars == 1:
+      char_pool = [69, 84, 65, 79, 73, 78, 83, 72, 82, 68, 76, 67, 85, 77, 87, 70, 71, 89, 80, 66, 86, 75, 74, 88, 81, 90] + \
+                  [101, 116, 97, 111, 105, 110, 115, 104, 114, 100, 108, 99, 117, 109, 119, 102, 103, 121, 112, 98, 118, 107, 106, 120, 113, 122]
+    else:
+      char_pool = [101, 116, 97, 111, 105, 110, 115, 104, 114, 100, 108, 99, 117, 109, 119, 102, 103, 121, 112, 98, 118, 107, 106, 120, 113, 122] + \
+                  [69, 84, 65, 79, 73, 78, 83, 72, 82, 68, 76, 67, 85, 77, 87, 70, 71, 89, 80, 66, 86, 75, 74, 88, 81, 90]
     char_pool = char_pool + list(range(49, 57)) + list(range(32, 48)) + list(range(91, 96)) + list(range(58, 64))  + list(range(123, 127))
   return char_pool
-
 """
 Print powershell version
 """

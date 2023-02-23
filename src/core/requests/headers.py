@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,6 +46,8 @@ from src.thirdparty.six.moves import urllib as _urllib
 Checking the HTTP response content.
 """
 def http_response_content(content):
+  if type(content) is bytes:
+    content = content.decode(settings.DEFAULT_CODEC)
   if settings.VERBOSITY_LEVEL >= 4:
     content = checks.remove_empty_lines(content)
     print(settings.print_http_response_content(content))
@@ -105,6 +107,10 @@ def check_http_traffic(request):
       unique_request_http_headers = []
       [unique_request_http_headers.append(item) for item in request_http_headers if item not in unique_request_http_headers]
       request_http_headers = [x for x in unique_request_http_headers if x]
+      if menu.options.data and \
+         len(request_http_headers) == 1 and \
+         settings.VERBOSITY_LEVEL >= 2:
+        print(settings.SINGLE_WHITESPACE)
       for header in request_http_headers:
         if settings.VERBOSITY_LEVEL >= 2:
           print(settings.print_traffic(header))
@@ -132,7 +138,7 @@ def check_http_traffic(request):
         self.do_open(connection, req)
         return super(connection_handler, self).http_open(req)
       except (SocketError, _urllib.error.HTTPError, _urllib.error.URLError, _http_client.BadStatusLine, _http_client.InvalidURL, Exception) as err_msg:
-        checks.connection_exceptions(err_msg, url=req)
+        checks.connection_exceptions(err_msg)
 
     def https_open(self, req):
       try:
@@ -140,13 +146,15 @@ def check_http_traffic(request):
         self.do_open(connection, req)
         return super(connection_handler, self).https_open(req)
       except (SocketError, _urllib.error.HTTPError, _urllib.error.URLError, _http_client.BadStatusLine, _http_client.InvalidURL, Exception) as err_msg:
-        checks.connection_exceptions(err_msg, url=req)
+        checks.connection_exceptions(err_msg)
 
   opener = _urllib.request.build_opener(connection_handler())
+
   if len(settings.HTTP_METHOD) != 0:
     request.get_method = lambda: settings.HTTP_METHOD
 
   _ = False
+  response = False
   unauthorized = False
   while not _ and settings.TOTAL_OF_REQUESTS <= settings.MAX_RETRIES and unauthorized is False: 
     if settings.MULTI_TARGETS:
@@ -155,7 +163,6 @@ def check_http_traffic(request):
         menu.options.tamper = settings.USER_SUPPLIED_TAMPER
     try:
       response = opener.open(request, timeout=settings.TIMEOUT)
-      page = checks.page_encoding(response, action="encode")
       _ = True
       settings.MAX_RETRIES = settings.TOTAL_OF_REQUESTS * 2
       if (settings.INIT_TEST == True and not settings.UNAUTHORIZED) or \
@@ -164,8 +171,6 @@ def check_http_traffic(request):
           settings.VALID_URL = True
         if not settings.CHECK_INTERNET:
           settings.INIT_TEST = False
-        if settings.VERBOSITY_LEVEL < 2:
-          print(settings.SINGLE_WHITESPACE)
 
     except ValueError as err:
       if settings.VERBOSITY_LEVEL < 2:
@@ -178,13 +183,11 @@ def check_http_traffic(request):
       raise SystemExit() 
 
     except _urllib.error.HTTPError as err_msg:
-      if settings.TOTAL_OF_REQUESTS == 1 and settings.VERBOSITY_LEVEL < 2:
-        if (settings.CRAWLING and settings.CRAWLED_URLS_NUM != 0 and settings.CRAWLED_SKIPPED_URLS_NUM != 0) or \
-        not settings.CRAWLING:
-          print(settings.SINGLE_WHITESPACE)
       if settings.UNAUTHORIZED_ERROR in str(err_msg):
         settings.UNAUTHORIZED = unauthorized = True
         settings.MAX_RETRIES = settings.TOTAL_OF_REQUESTS
+      else:
+        settings.MAX_RETRIES = settings.TOTAL_OF_REQUESTS * 2
       if [True for err_code in settings.HTTP_ERROR_CODES if err_code in str(err_msg)]:
         break
       
@@ -193,16 +196,20 @@ def check_http_traffic(request):
         pass
       else:
         if not settings.INIT_TEST:
-          checks.connection_exceptions(err_msg, url=request)
+          checks.connection_exceptions(err_msg)
         break
 
   try:
-    response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
+    if response is False:
+      response = _urllib.request.urlopen(request, timeout=settings.TIMEOUT)
     code = response.getcode()
     response_headers = response.info()
     page = checks.page_encoding(response, action="encode")
     response_headers[settings.URI_HTTP_HEADER] = response.geturl()
     response_headers = str(response_headers).strip("\n")
+    # Checks for not declared cookie(s), while server wants to set its own.
+    if not menu.options.drop_set_cookie:
+      checks.not_declared_cookies(response)
     if settings.VERBOSITY_LEVEL > 2 or menu.options.traffic_file:
       print_http_response(response_headers, code, page)
     # Checks regarding a potential CAPTCHA protection mechanism.
@@ -211,24 +218,30 @@ def check_http_traffic(request):
     checks.browser_verification(page)
     # Checks regarding recognition of generic "your ip has been blocked" messages.
     checks.blocked_ip(page)
-    # Checks for not declared cookie(s), while server wants to set its own.
-    if menu.options.cookie == None and not menu.options.drop_set_cookie:
-      checks.not_declared_cookies(response)
 
   # This is useful when handling exotic HTTP errors (i.e requests for authentication).
   except _urllib.error.HTTPError as err:
+    # Checks for not declared cookie(s), while server wants to set its own.
+    if not menu.options.drop_set_cookie:
+      checks.not_declared_cookies(err)
+    try:
+      page = checks.page_encoding(err, action="encode")
+    except Exception as ex:
+      page = err.read()
     if settings.VERBOSITY_LEVEL != 0:
-      print_http_response(err.info(), err.code, err.read())
-
+      print_http_response(err.info(), err.code, page)
+    
     if (not settings.PERFORM_CRACKING and \
     not settings.IS_JSON and \
     not settings.IS_XML and \
     not str(err.code) == settings.INTERNAL_SERVER_ERROR and \
     not str(err.code) == settings.BAD_REQUEST and \
-    not settings.CRAWLED_URLS_NUM != 0) and settings.CRAWLED_SKIPPED_URLS_NUM != 0:
+    not settings.CRAWLED_URLS_NUM != 0 and \
+    not settings.MULTI_TARGETS) and settings.CRAWLED_SKIPPED_URLS_NUM != 0:
       print(settings.SINGLE_WHITESPACE)
     # Check for 3xx, 4xx, 5xx HTTP error codes.
     if str(err.code).startswith(('3', '4', '5')):
+      settings.HTTP_ERROR_CODES_SUM.append(err.code)
       if settings.VERBOSITY_LEVEL >= 2:
         if len(str(err).split(": ")[1]) == 0:
           error_msg = "Non-standard HTTP status code" 
@@ -239,6 +252,7 @@ def check_http_traffic(request):
         err_msg = error_msg + "Non-standard HTTP status code" 
       else:
         err_msg = error_msg
+      
       print(settings.print_critical_msg(err_msg + ")."))
       raise SystemExit()
     

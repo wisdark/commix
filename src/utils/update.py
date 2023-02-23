@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2022 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -91,11 +91,12 @@ def updater():
       if requirments.do_check(requirment) == True :
         if settings.VERBOSITY_LEVEL != 0:
           debug_msg = "commix will try to update itself using '" + requirment + "' command."
+          print(settings.SINGLE_WHITESPACE)
           print(settings.print_debug_msg(debug_msg))
         # Check if ".git" exists!
+        else:
+          print(settings.SINGLE_WHITESPACE)
         if os.path.isdir("./.git"):
-          sys.stdout.write(settings.SUCCESS_STATUS + "\n")
-          sys.stdout.flush()
           info_msg = "Updating " + settings.APPLICATION + " to the latest (dev) " 
           info_msg += "version. "
           sys.stdout.write(settings.print_info_msg(info_msg))
