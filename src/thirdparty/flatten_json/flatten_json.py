@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Flattens JSON objects in Python. 
+Flattens JSON objects in Python.
 flatten_json flattens the hierarchy in your object which can be useful if you want to force your objects into a table.
 
 https://github.com/amirziai/flatten
@@ -46,10 +46,10 @@ def flatten(nested_dict, separator="_", root_keys_to_ignore=""):
     :return: flattened dictionary
     """
     try:
-        assert isinstance(nested_dict, dict), "The flatten() requires a dictionary input."
         assert isinstance(separator, str), "Separator must be a string"
+        # assert isinstance(nested_dict, dict), "The flatten() requires a dictionary input."
     except AssertionError as err_msg:
-        print(settings.print_critical_msg(err_msg))
+        settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
     # This global dictionary stores the flattened keys and values and is ultimately returned
@@ -80,11 +80,11 @@ flatten_json = flatten
 
 def _unflatten_asserts(flat_dict, separator):
     try:
-        assert isinstance(flat_dict, dict), "The unflatten() requires a dictionary input."
         assert isinstance(separator, str), "Separator must be a string."
+        # assert isinstance(flat_dict, dict), "The unflatten() requires a dictionary input."
         # assert all(isinstance(value, (bool, float, int, str)) for value in flat_dict.values()), "The provided dictionary is not flat."
     except AssertionError as err_msg:
-        print(settings.print_critical_msg(err_msg))
+        settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
         raise SystemExit()
 
 def unflatten(flat_dict, separator='_'):

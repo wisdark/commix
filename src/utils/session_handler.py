@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import sqlite3
 from src.utils import menu
 from src.utils import settings
 from src.utils import common
+from src.core.injections.controller import checks
 from src.thirdparty.six.moves import input as _input
 from src.thirdparty.colorama import Fore, Back, Style, init
 
@@ -44,11 +45,11 @@ def ignore(url):
   if os.path.isfile(settings.SESSION_FILE):
     if settings.VERBOSITY_LEVEL != 0:
       debug_msg = "Ignoring the stored session from the session file due to '--ignore-session' switch."
-      print(settings.print_debug_msg(debug_msg))
+      settings.print_data_to_stdout(settings.print_debug_msg(debug_msg))
   else:
     if settings.VERBOSITY_LEVEL != 0:
       warn_msg = "Skipping ignoring the stored session, as the session file not exist."
-      print(settings.print_warning_msg(warn_msg))
+      settings.print_data_to_stdout(settings.print_warning_msg(warn_msg))
 
 """
 Flush session.
@@ -57,7 +58,7 @@ def flush(url):
   if os.path.isfile(settings.SESSION_FILE):
     if settings.VERBOSITY_LEVEL != 0:
       debug_msg = "Flushing the stored session from the session file."
-      print(settings.print_debug_msg(debug_msg))
+      settings.print_data_to_stdout(settings.print_debug_msg(debug_msg))
     try:
       conn = sqlite3.connect(settings.SESSION_FILE)
       tables = list(conn.execute("SELECT name FROM sqlite_master WHERE type is 'table'"))
@@ -65,16 +66,16 @@ def flush(url):
       conn.commit()
       conn.close()
     except sqlite3.OperationalError as err_msg:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
       err_msg = "Unable to flush the session file." + str(err_msg).title()
-      print(settings.print_critical_msg(err_msg))
+      settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
   else:
     if settings.VERBOSITY_LEVEL != 0:
       warn_msg = "Skipping flushing the stored session, as the session file not exist."
-      print(settings.print_warning_msg(warn_msg))
+      settings.print_data_to_stdout(settings.print_warning_msg(warn_msg))
 
 """
-Clear injection point records 
+Clear injection point records
 except latest for every technique.
 """
 def clear(url):
@@ -87,7 +88,7 @@ def clear(url):
       conn.commit()
       conn.close()
   except sqlite3.OperationalError as err_msg:
-    print(settings.print_critical_msg(err_msg))
+    settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
   except:
     settings.LOAD_SESSION = False
     return False
@@ -96,7 +97,7 @@ def clear(url):
 Import successful injection points to session file.
 """
 def injection_point_importation(url, technique, injection_type, separator, shell, vuln_parameter, prefix, suffix, TAG, alter_shell, payload, http_request_method, url_time_response, timesec, how_long, output_length, is_vulnerable):
-  try:  
+  try:
     conn = sqlite3.connect(settings.SESSION_FILE)
     conn.execute("CREATE TABLE IF NOT EXISTS " + table_name(url) + "_ip" + \
                  "(id INTEGER PRIMARY KEY, url VARCHAR, technique VARCHAR, injection_type VARCHAR, separator VARCHAR," \
@@ -117,19 +118,15 @@ def injection_point_importation(url, technique, injection_type, separator, shell
     conn.close()
     if settings.INJECTION_CHECKER == False:
       settings.INJECTION_CHECKER = True
-      
+
   except sqlite3.OperationalError as err_msg:
     err_msg = str(err_msg)[:1].upper() + str(err_msg)[1:] + "."
     err_msg += " You are advised to rerun with switch '--flush-session'."
-    print(settings.print_critical_msg(err_msg))
+    settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
     raise SystemExit()
 
   except sqlite3.DatabaseError as err_msg:
-    err_msg = "An error occurred while accessing session file ('"
-    err_msg += settings.SESSION_FILE + "'). "
-    err_msg += "If the problem persists use the '--flush-session' option."
-    print("\n" + settings.print_critical_msg(err_msg))
-    raise SystemExit()
+    checks.error_loading_session_file()
 
 """
 Export successful applied techniques from session file.
@@ -141,7 +138,7 @@ def applied_techniques(url, http_request_method):
       applied_techniques = conn.execute("SELECT technique FROM " + table_name(url) + "_ip "\
                                         "ORDER BY id DESC;")
 
-    if settings.TESTABLE_PARAMETER: 
+    if settings.TESTABLE_PARAMETER:
       applied_techniques = conn.execute("SELECT technique FROM " + table_name(url) + "_ip WHERE "\
                                         "url = '" + url + "' AND "\
                                         "vuln_parameter = '" + settings.TESTABLE_PARAMETER + "' AND "\
@@ -160,12 +157,12 @@ def applied_techniques(url, http_request_method):
         session = session[0][4:]
       elif "dynamic" in session[0][:7]:
         settings.EVAL_BASED_STATE = True
-        session = session[0][13:]  
+        session = session[0][13:]
       values += session[0][:1]
     applied_techniques = ''.join(list(set(values)))
     return applied_techniques
   except sqlite3.OperationalError as err_msg:
-    #print(settings.print_critical_msg(err_msg))
+    #settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
     settings.LOAD_SESSION = False
     return False
   except:
@@ -178,7 +175,7 @@ Export successful applied techniques from session file.
 def applied_levels(url, http_request_method):
   try:
     conn = sqlite3.connect(settings.SESSION_FILE)
-    if settings.TESTABLE_PARAMETER: 
+    if settings.TESTABLE_PARAMETER:
       applied_level = conn.execute("SELECT is_vulnerable FROM " + table_name(url) + "_ip WHERE "\
                                     "url = '" + url + "' AND "\
                                     "vuln_parameter = '" + settings.TESTABLE_PARAMETER + "' AND "\
@@ -190,12 +187,12 @@ def applied_levels(url, http_request_method):
                                     "vuln_parameter = '" + settings.INJECT_TAG + "' AND "\
                                     "http_request_method = '" + http_request_method + "' "\
                                     "ORDER BY id DESC;")
-    
+
     for session in applied_level:
       return session[0]
 
   except sqlite3.OperationalError as err_msg:
-    #print(settings.print_critical_msg(err_msg))
+    #settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
     settings.LOAD_SESSION = False
     return False
   except:
@@ -220,7 +217,7 @@ def injection_point_exportation(url, http_request_method):
         elif menu.options.tech[:1] == "t":
           select_injection_type = "B"
         else:
-          select_injection_type = "S" 
+          select_injection_type = "S"
         if settings.TEMPFILE_BASED_STATE and select_injection_type == "S":
           check_injection_technique = "t"
         elif settings.EVAL_BASED_STATE and select_injection_type == "R":
@@ -269,7 +266,7 @@ def injection_point_exportation(url, http_request_method):
       no_such_table = True
       pass
   except sqlite3.OperationalError as err_msg:
-    #print(settings.print_critical_msg(err_msg))
+    #settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
     settings.LOAD_SESSION = False
     return False
   except:
@@ -286,10 +283,11 @@ def notification(url, technique, injection_type):
         message = "A previously stored session has been held against that target. "
         message += "Do you want to resume to "
         message += "(" + injection_type.split(settings.SINGLE_WHITESPACE)[0] + ") "
-        message += technique.rsplit(' ', 2)[0] 
+        message += technique.rsplit(' ', 2)[0]
         message += " injection point? [Y/n] > "
         settings.LOAD_SESSION = common.read_input(message, default="Y", check_batch=True)
         if settings.LOAD_SESSION in settings.CHOICE_YES:
+          settings.INJECTION_CHECKER = True
           return True
         elif settings.LOAD_SESSION in settings.CHOICE_NO:
           settings.LOAD_SESSION = False
@@ -307,27 +305,27 @@ def notification(url, technique, injection_type):
                 elif proceed_option.lower() == "n":
                   raise SystemExit()
                 else:
-                  pass  
+                  pass
               else:
-                common.invalid_option(proceed_option)   
-                pass   
+                common.invalid_option(proceed_option)
+                pass
           if settings.SESSION_APPLIED_TECHNIQUES:
             menu.options.tech = ''.join(settings.AVAILABLE_TECHNIQUES)
           return False
         elif settings.LOAD_SESSION in settings.CHOICE_QUIT:
           raise SystemExit()
         else:
-          common.invalid_option(settings.LOAD_SESSION)  
+          common.invalid_option(settings.LOAD_SESSION)
           pass
   except sqlite3.OperationalError as err_msg:
-    print(settings.print_critical_msg(err_msg))
+    settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
   except (KeyboardInterrupt, SystemExit):
     raise
 
 """
 Check for specific stored parameter.
 """
-def check_stored_parameter(url, http_request_method): 
+def check_stored_parameter(url, http_request_method):
   if injection_point_exportation(url, http_request_method):
     if injection_point_exportation(url, http_request_method)[16] == str(menu.options.level):
       # Check for stored alternative shell
@@ -344,7 +342,7 @@ Import successful command execution outputs to session file.
 """
 def store_cmd(url, cmd, shell, vuln_parameter):
   if any(type(_) is str for _ in (url, cmd, shell, vuln_parameter)):
-    try:  
+    try:
       conn = sqlite3.connect(settings.SESSION_FILE)
       conn.execute("CREATE TABLE IF NOT EXISTS " + table_name(url) + "_ir" + \
                    "(cmd VARCHAR, output VARCHAR, vuln_parameter VARCHAR);")
@@ -361,9 +359,9 @@ def store_cmd(url, cmd, shell, vuln_parameter):
                       str(base64.b64encode(shell.encode(settings.DEFAULT_CODEC)).decode()), \
                       str(settings.HTTP_HEADER)))
       conn.commit()
-      conn.close() 
+      conn.close()
     except sqlite3.OperationalError as err_msg:
-      print(settings.print_critical_msg(err_msg))
+      settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
     except (TypeError, AttributeError) as err_msg:
       pass
 
@@ -390,10 +388,10 @@ def export_stored_cmd(url, cmd, vuln_parameter):
 
       for session in cursor:
         output = base64.b64decode(session[0])
-      try:  
+      try:
         return output.decode(settings.DEFAULT_CODEC)
       except AttributeError:
-        return output  
+        return output
     else:
       no_such_table = True
       pass
@@ -417,20 +415,15 @@ def import_valid_credentials(url, authentication_type, admin_panel, username, pa
     conn.commit()
     conn.close()
   except sqlite3.OperationalError as err_msg:
-    print(settings.print_critical_msg(err_msg))
+    settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
   except sqlite3.DatabaseError as err_msg:
-    err_msg = "An error occurred while accessing session file ('"
-    err_msg += settings.SESSION_FILE + "'). "
-    err_msg += "If the problem persists use the '--flush-session' option."
-    print("\n" + settings.print_critical_msg(err_msg))
-    raise SystemExit()
-
+    checks.error_loading_session_file()
 
 """
 Export valid credentials from session file.
 """
 def export_valid_credentials(url, authentication_type):
-  try:  
+  try:
     if not menu.options.flush_session:
       conn = sqlite3.connect(settings.SESSION_FILE)
       output = None

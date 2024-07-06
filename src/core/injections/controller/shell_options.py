@@ -3,13 +3,13 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
 
@@ -36,16 +36,16 @@ def check_established_connection():
   while True:
     time.sleep(1)
     if settings.VERBOSITY_LEVEL == 1:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     warn_msg = "Something went wrong with the reverse TCP connection."
     warn_msg += " Please wait while checking state."
-    print(settings.print_warning_msg(warn_msg))
+    settings.print_data_to_stdout(settings.print_warning_msg(warn_msg))
     lines = os.popen('netstat -anta').read().split("\n")
     for line in lines:
       if settings.LHOST + ":" + settings.LPORT in line and "ESTABLISHED" in line:
         pass
       else:
-        return 
+        return
 
 """
 Execute the bind / reverse TCP shell
@@ -67,7 +67,7 @@ def execute_shell(separator, TAG, cmd, prefix, suffix, whitespace, http_request_
     else:
       whitespace = settings.WHITESPACES[0]
       if whitespace == settings.SINGLE_WHITESPACE:
-        whitespace = _urllib.parse.quote(whitespace) 
+        whitespace = _urllib.parse.quote(whitespace)
       response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     end = time.time()
     diff = end - start
@@ -78,11 +78,11 @@ def execute_shell(separator, TAG, cmd, prefix, suffix, whitespace, http_request_
     check_established_connection()
   else:
     if settings.VERBOSITY_LEVEL == 1:
-      print(settings.SINGLE_WHITESPACE)
+      settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
 
   err_msg = "The " + os_shell_option.split("_")[0] + " "
   err_msg += os_shell_option.split("_")[1].upper() + " connection has failed."
-  print(settings.print_critical_msg(err_msg))
+  settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
 
 """
 Configure the bind TCP shell
@@ -100,7 +100,7 @@ def bind_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_reques
   while True:
     if settings.RHOST and settings.LPORT in settings.SHELL_OPTIONS:
       result = checks.check_bind_tcp_options(settings.RHOST)
-    else:  
+    else:
       cmd = bind_tcp.bind_tcp_options(separator)
       result = checks.check_bind_tcp_options(cmd)
     if result != None:
@@ -111,10 +111,10 @@ def bind_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_reques
         settings.BIND_TCP = False
       elif result == 3:
         settings.BIND_TCP = False
-        reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, go_back, go_back_again, payload, OUTPUT_TEXTFILE)  
+        reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, go_back, go_back_again, payload, OUTPUT_TEXTFILE)
       return go_back, go_back_again
 
-    # execute bind TCP shell 
+    # execute bind TCP shell
     execute_shell(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, payload, OUTPUT_TEXTFILE)
 
 """
@@ -133,7 +133,7 @@ def reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_req
   while True:
     if settings.LHOST and settings.LPORT in settings.SHELL_OPTIONS:
       result = checks.check_reverse_tcp_options(settings.LHOST)
-    else:  
+    else:
       cmd = reverse_tcp.reverse_tcp_options(separator)
       result = checks.check_reverse_tcp_options(cmd)
     if result != None:
@@ -145,17 +145,17 @@ def reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_req
       elif result == 3:
         settings.REVERSE_TCP = False
         bind_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, go_back, go_back_again, payload, OUTPUT_TEXTFILE)
-        #reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, go_back, go_back_again)  
+        #reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, go_back, go_back_again)
       return go_back, go_back_again
 
-    # execute reverse TCP shell  
+    # execute reverse TCP shell
     execute_shell(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, payload, OUTPUT_TEXTFILE)
 
 """
 Check commix shell options
 """
 def check_option(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, technique, go_back, no_result, timesec, go_back_again, payload, OUTPUT_TEXTFILE):
-  os_shell_option = checks.check_os_shell_options(cmd.lower(), technique, go_back, no_result) 
+  os_shell_option = checks.check_os_shell_options(cmd.lower(), technique, go_back, no_result)
 
   if os_shell_option == "back" or os_shell_option == True or os_shell_option == False:
     go_back = True
@@ -164,9 +164,9 @@ def check_option(separator, TAG, cmd, prefix, suffix, whitespace, http_request_m
     return go_back, go_back_again
 
   # The "os_shell" option
-  elif os_shell_option == "os_shell": 
+  elif os_shell_option == "os_shell":
     warn_msg = "You are into the '" + os_shell_option + "' mode."
-    print(settings.print_warning_msg(warn_msg))
+    settings.print_data_to_stdout(settings.print_warning_msg(warn_msg))
     return go_back, go_back_again
 
   # The "bind_tcp" option
@@ -179,10 +179,9 @@ def check_option(separator, TAG, cmd, prefix, suffix, whitespace, http_request_m
     go_back, go_back_again = reverse_tcp_config(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, os_shell_option, go_back, go_back_again, payload, OUTPUT_TEXTFILE)
     return go_back, go_back_again
 
-  # The "quit" option
-  elif os_shell_option == "quit": 
-    logs.print_logs_notification(filename, url)                  
-    raise SystemExit()
+  # The "quit" / "exit" options
+  elif os_shell_option == "quit" or os_shell_option == "exit":
+    checks.quit(filename, url, _ = True)
 
   else:
     return go_back, go_back_again

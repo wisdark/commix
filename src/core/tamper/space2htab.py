@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ def tamper(payload):
   if settings.WHITESPACES[0] == "%20":
     settings.WHITESPACES[0] = space2htab
   elif space2htab not in settings.WHITESPACES:
-    settings.WHITESPACES.append(space2htab) 
+    settings.WHITESPACES.append(space2htab)
   return payload
 
-# eof 
+# eof

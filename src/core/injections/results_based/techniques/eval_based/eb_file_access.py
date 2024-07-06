@@ -3,19 +3,20 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
 import re
 import os
 import sys
 from src.utils import menu
+from src.utils import common
 from src.utils import settings
 from src.utils import session_handler
 from src.core.injections.controller import checks
@@ -33,16 +34,16 @@ Write to a file on the target host.
 """
 def file_write(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
   file_to_write, dest_to_write, content = checks.check_file_to_write()
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     cmd = checks.change_dir(dest_to_write)
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     fname, tmp_fname, cmd = checks.find_filename(dest_to_write, content)
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     cmd = checks.win_decode_b64_enc(fname, tmp_fname)
-    response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)  
+    response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     eb_injector.injection_results(response, TAG, cmd)
     cmd = checks.delete_tmp(tmp_fname)
-    response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)  
+    response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     eb_injector.injection_results(response, TAG, cmd)
   else:
     cmd = checks.write_content(content, dest_to_write)
@@ -54,7 +55,7 @@ def file_write(separator, TAG, prefix, suffix, whitespace, http_request_method, 
   shell = eb_injector.injection_results(response, TAG, cmd)
   shell = "".join(str(p) for p in shell)
   checks.file_write_status(shell, dest_to_write)
-   
+
 """
 Upload a file on the target host.
 """
@@ -73,7 +74,7 @@ def file_upload(separator, TAG, prefix, suffix, whitespace, http_request_method,
 Read a file from the target host.
 """
 def file_read(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
-  cmd, file_to_read = checks.file_content_to_read() 
+  cmd, file_to_read = checks.file_content_to_read()
   if session_handler.export_stored_cmd(url, cmd, vuln_parameter) == None or menu.options.ignore_session:
     response = eb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     if settings.URL_RELOAD:
@@ -94,7 +95,7 @@ def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
     settings.FILE_ACCESS_DONE = True
 
   if menu.options.file_upload:
-    if settings.TARGET_OS == "win":
+    if settings.TARGET_OS == settings.OS.WINDOWS:
       check_option = "--file-upload"
       checks.unavailable_option(check_option)
     else:
@@ -103,6 +104,30 @@ def do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, ur
 
   if menu.options.file_read:
     file_read(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
-    settings.FILE_ACCESS_DONE = True 
+    settings.FILE_ACCESS_DONE = True
+
+"""
+Check stored session
+"""
+def stored_session(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec):
+  if settings.FILE_ACCESS_DONE == True :
+    while True:
+      message = "Do you want to ignore stored session and access files again? [y/N] > "
+      file_access_again = common.read_input(message, default="N", check_batch=True)
+      if file_access_again in settings.CHOICE_YES:
+        if not menu.options.ignore_session:
+          menu.options.ignore_session = True
+        do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
+        break
+      elif file_access_again in settings.CHOICE_NO:
+        break
+      elif file_access_again in settings.CHOICE_QUIT:
+        raise SystemExit()
+      else:
+        common.invalid_option(file_access_again)
+        pass
+  else:
+    if menu.file_access_options():
+      do_check(separator, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename, timesec)
 
 # eof

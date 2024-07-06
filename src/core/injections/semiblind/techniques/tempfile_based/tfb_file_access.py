@@ -3,13 +3,13 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
- 
+
 For more see the file 'readme/COPYING' for copying permission.
 """
 
@@ -17,6 +17,7 @@ import re
 import os
 import sys
 from src.utils import menu
+from src.utils import common
 from src.utils import settings
 from src.utils import session_handler
 from src.core.injections.controller import checks
@@ -35,7 +36,7 @@ Write to a file on the target host.
 def file_write(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
   _ = False
   file_to_write, dest_to_write, content = checks.check_file_to_write()
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     _ = True
     from src.core.injections.results_based.techniques.classic import cb_injector
     whitespace = settings.WHITESPACES[0]
@@ -44,23 +45,23 @@ def file_write(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec,
     fname, tmp_fname, cmd = checks.find_filename(dest_to_write, content)
     response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     cmd = checks.win_decode_b64_enc(fname, tmp_fname)
-    response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)  
+    response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     cb_injector.injection_results(response, TAG, cmd)
     cmd = checks.delete_tmp(tmp_fname)
-    response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)  
+    response = cb_injector.injection(separator, TAG, cmd, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, alter_shell, filename)
     cb_injector.injection_results(response, TAG, cmd)
   else:
-    cmd = checks.write_content(content, dest_to_write) 
+    cmd = checks.write_content(content, dest_to_write)
     cmd = cmd + _urllib.parse.quote(separator) + settings.FILE_READ + dest_to_write
     check_how_long, shell = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     shell = "".join(str(p) for p in shell)
   cmd = checks.check_file(dest_to_write)
   if settings.VERBOSITY_LEVEL == 0 and not _:
-    print(settings.SINGLE_WHITESPACE)
+    settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   check_how_long, shell = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
   shell = "".join(str(p) for p in shell)
   if settings.VERBOSITY_LEVEL == 0:
-    print(settings.SINGLE_WHITESPACE)
+    settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   checks.file_write_status(shell, dest_to_write)
 
 """
@@ -74,9 +75,9 @@ def file_upload(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec
   check_how_long, shell = tfb_injector.injection(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
   shell = "".join(str(p) for p in shell)
   if settings.VERBOSITY_LEVEL == 0:
-    print(settings.SINGLE_WHITESPACE)
+    settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   checks.file_upload_status(shell, dest_to_upload)
-  
+
 """
 Read a file from the target host.
 """
@@ -91,7 +92,7 @@ def file_read(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, 
     shell = session_handler.export_stored_cmd(url, cmd, vuln_parameter)
   shell = "".join(str(p) for p in shell)
   if settings.VERBOSITY_LEVEL == 0 and _ and len(shell) != 0:
-    print(settings.SINGLE_WHITESPACE)
+    settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
   checks.file_read_status(shell, file_to_read, filename)
 
 """
@@ -104,7 +105,7 @@ def do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, h
       settings.FILE_ACCESS_DONE = True
 
   if menu.options.file_upload:
-    if settings.TARGET_OS == "win":
+    if settings.TARGET_OS == settings.OS.WINDOWS:
       check_option = "--file-upload"
       checks.unavailable_option(check_option)
     else:
@@ -112,9 +113,34 @@ def do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, h
     if settings.FILE_ACCESS_DONE == False:
       settings.FILE_ACCESS_DONE = True
 
-  if menu.options.file_read:  
+  if menu.options.file_read:
     file_read(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
     if settings.FILE_ACCESS_DONE == False:
       settings.FILE_ACCESS_DONE = True
 
+"""
+Check stored session
+"""
+def stored_session(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response):
+  if settings.FILE_ACCESS_DONE == True :
+    while True:
+      message = "Do you want to ignore stored session and access files again? [y/N] > "
+      file_access_again = common.read_input(message, default="N", check_batch=True)
+      if file_access_again in settings.CHOICE_YES:
+        if not menu.options.ignore_session:
+          menu.options.ignore_session = True
+        do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
+        break
+      elif file_access_again in settings.CHOICE_NO:
+        break
+      elif file_access_again in settings.CHOICE_QUIT:
+        # Delete previous shell (text) files (output) from temp.
+        tfb_injector.delete_previous_shell(separator, payload, TAG, prefix, suffix, whitespace, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename)
+        raise SystemExit()
+      else:
+        common.invalid_option(file_access_again)
+        pass
+  else:
+    if menu.file_access_options():
+      do_check(separator, maxlen, TAG, cmd, prefix, suffix, whitespace, timesec, http_request_method, url, vuln_parameter, OUTPUT_TEXTFILE, alter_shell, filename, url_time_response)
 # eof

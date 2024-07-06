@@ -3,7 +3,7 @@
 
 """
 This file is part of Commix Project (https://commixproject.com).
-Copyright (c) 2014-2023 Anastasios Stasinopoulos (@ancst).
+Copyright (c) 2014-2024 Anastasios Stasinopoulos (@ancst).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,15 +27,15 @@ if not settings.TAMPER_SCRIPTS[__tamper__]:
   settings.TAMPER_SCRIPTS[__tamper__] = True
 
 def tamper(payload):
-  if settings.TARGET_OS == "win":
+  if settings.TARGET_OS == settings.OS.WINDOWS:
     settings.TAMPER_SCRIPTS[__tamper__] = True
     if settings.WHITESPACES[0] == "%20":
       settings.WHITESPACES[0] = space2vtab
     elif space2vtab not in settings.WHITESPACES:
-      settings.WHITESPACES.append(space2vtab) 
+      settings.WHITESPACES.append(space2vtab)
   else:
     if space2vtab in settings.WHITESPACES:
       settings.WHITESPACES.remove(space2vtab)
   return payload
-  
-# eof 
+
+# eof
