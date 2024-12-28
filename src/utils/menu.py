@@ -486,11 +486,11 @@ injection.add_option("--delay",
                 help="Seconds to delay between each HTTP request.")
 
 injection.add_option("--time-sec",
-                default=1,
+                default=0,
                 action="store",
                 type="int",
                 dest="timesec",
-                help="Seconds to delay the OS response (Default: 1).")
+                help="Seconds to delay the OS response.")
 
 injection.add_option("--tmp-path",
                 action="store",
@@ -539,9 +539,9 @@ detection = OptionGroup(parser, Style.BRIGHT + Style.UNDERLINE + "Detection" + S
                         "used to customize the detection phase.")
 
 detection.add_option("--level",
-                dest="level",
                 type="int",
-                default=1,
+                dest="level",
+                default=False,
                 help="Level of tests to perform (1-3, Default: " + str(settings.DEFAULT_INJECTION_LEVEL) + ").")
 
 detection.add_option("--skip-calc",

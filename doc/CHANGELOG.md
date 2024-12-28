@@ -1,4 +1,9 @@
-## Version 4.0 (TBA)
+## Version 4.0 (2024-12-20)
+* Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.
+* Revised: Minor bug-fix regarding tamper script "backticks.py"
+* Revised: Improvements regarding shell options `reverse_tcp`, `bind_tcp`.
+* Revised: Major code refactoring regarding session handler.
+* Revised: Minor improvement regarding options `--prefix`, `--suffix`.
 * Revised: Improvement regarding writing text to the stdout (console) stream.
 * Fixed: Minor bug-fix regarding combining custom injection marker (i.e. asterisk `*`) with `-p` option.
 * Revised: Improvement regarding specifying multiple injection points by appending custom injection marker (i.e. asterisk `*`).
@@ -18,6 +23,8 @@
 * Revised: Improvement regarding option `--ignore-code` for ignoring multiple (problematic) HTTP error codes.
 * Added: New option `--abort-code` for aborting on (problematic) HTTP error code(s) (e.g. 401)
 * Added: New option `--time-limit` for running with a time limit in seconds (e.g. 3600).
+
+_Note: For more check the [detailed changeset](https://github.com/commixproject/commix/compare/v3.9...v4.0)._
 
 ## Version 3.9 (2024-01-19)
 * Fixed: Multiple bug-fixes regarding several reported unhandled exceptions.

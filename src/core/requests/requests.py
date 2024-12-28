@@ -73,7 +73,6 @@ def crawler_request(url, http_request_method):
       else:
         request_failed(err_msg)
 
-
 """
 Estimating the response time (in seconds).
 """
@@ -154,9 +153,9 @@ def estimate_response_time(url, timesec, http_request_method):
             stored_auth_creds = False
           if stored_auth_creds and not menu.options.ignore_session:
             menu.options.auth_cred = stored_auth_creds
-            info_msg = "Identified a previously stored valid pair of credentials '"
-            info_msg += menu.options.auth_cred + Style.RESET_ALL + Style.BRIGHT  + "'."
-            settings.print_data_to_stdout(settings.print_bold_info_msg(info_msg))
+            info_msg = "Setting pair of credentials '"
+            info_msg += menu.options.auth_cred + "' from stored session."
+            settings.print_data_to_stdout(settings.print_info_msg(info_msg))
           else:
             # Basic authentication
             if menu.options.auth_type.lower() == settings.AUTH_TYPE.BASIC:
@@ -170,7 +169,7 @@ def estimate_response_time(url, timesec, http_request_method):
                   if do_update in settings.CHOICE_YES:
                     auth_creds = authentication.http_auth_cracker(url, realm, http_request_method)
                     if auth_creds != False:
-                      menu.options.auth_cred = auth_creds
+                      # menu.options.auth_cred = auth_creds
                       settings.REQUIRED_AUTHENTICATION = True
                       break
                     else:
@@ -199,7 +198,7 @@ def estimate_response_time(url, timesec, http_request_method):
                   if do_update in settings.CHOICE_YES:
                     auth_creds = authentication.http_auth_cracker(url, realm, http_request_method)
                     if auth_creds != False:
-                      menu.options.auth_cred = auth_creds
+                      # menu.options.auth_cred = auth_creds
                       settings.REQUIRED_AUTHENTICATION = True
                       break
                     else:
@@ -229,9 +228,6 @@ def estimate_response_time(url, timesec, http_request_method):
 
   end = time.time()
   diff = end - start
-
-  # if settings.VERBOSITY_LEVEL != 0 and _:
-  #   settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     
   if int(diff) < 1:
     url_time_response = int(diff)
@@ -257,15 +253,15 @@ def estimate_response_time(url, timesec, http_request_method):
     timesec = int(timesec)
 
   # Against windows targets (for more stability), add one extra second delay.
-  if settings.TARGET_OS == settings.OS.WINDOWS :
-    timesec = timesec + 1
-
+  # if settings.TARGET_OS == settings.OS.WINDOWS :
+  #   timesec = timesec + 1
   return timesec, url_time_response
 
 """
 Exceptions regarding requests failure(s)
 """
 def request_failed(err_msg):
+
   settings.VALID_URL = False
 
   try:
@@ -331,7 +327,7 @@ def request_failed(err_msg):
           err_msg += " or rerun without providing them, in order to perform a dictionary-based attack. "
       else:
         err_msg += " or rerun by providing option '--ignore-code=" + settings.UNAUTHORIZED_ERROR +"'. "
-      if settings.MULTI_TARGETS or settings.CRAWLING:
+      if settings.CRAWLING:
         err_msg += "Skipping to the next target."
       settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
     if not settings.CRAWLING:
@@ -380,17 +376,13 @@ def request_failed(err_msg):
     return False
 
   elif settings.IGNORE_ERR_MSG == False:
-    # if menu.options.skip_heuristics and settings.VERBOSITY_LEVEL == 0:
-    #   settings.print_data_to_stdout(settings.SINGLE_WHITESPACE)
     continue_tests = checks.continue_tests(err_msg)
-    if continue_tests == True:
+    if continue_tests:
       settings.IGNORE_ERR_MSG = True
-      return True
     else:
       if not settings.CRAWLING:
         raise SystemExit()
-      else:
-        return False
+    return False
 
   else:
     if settings.VERBOSITY_LEVEL >= 1:
@@ -421,6 +413,60 @@ def get_request_response(request):
   return response
 
 """
+Check if target host is vulnerable.
+"""
+def init_injection(payload, http_request_method, url):
+  if settings.TIME_RELATIVE_ATTACK:
+    start = 0
+    end = 0
+    start = time.time()
+
+  if not settings.USER_DEFINED_POST_DATA or settings.IGNORE_USER_DEFINED_POST_DATA:
+    payload = payload.replace("#","%23")
+    vuln_parameter = parameters.vuln_GET_param(url)
+    target = checks.process_injectable_value(payload, url)
+    # if settings.TESTABLE_VALUE in url.replace(settings.INJECT_TAG, ""):
+    #   target = url.replace(settings.INJECT_TAG, "").replace(settings.TESTABLE_VALUE, payload)
+    # else:
+    #   target = url.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload)
+    if settings.USER_DEFINED_POST_DATA:
+      request = _urllib.request.Request(target, settings.USER_DEFINED_POST_DATA.encode(settings.DEFAULT_CODEC), method=http_request_method)
+    else:
+      request = _urllib.request.Request(target, method=http_request_method)
+  else:
+    parameter = menu.options.data
+    parameter = parameters.do_POST_check(parameter, http_request_method)
+    parameter = ''.join(str(e) for e in parameter).replace("+","%2B")
+    vuln_parameter = parameters.vuln_POST_param(parameter, url)
+    if settings.IS_JSON:
+      data = checks.process_injectable_value(_urllib.parse.unquote(payload.replace("\"", "\\\"")), menu.options.data)
+      # data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, _urllib.parse.unquote(payload.replace("\"", "\\\"")))
+      try:
+        data = checks.json_data(data)
+      except ValueError:
+        pass
+    elif settings.IS_XML:
+      data = checks.process_injectable_value(_urllib.parse.unquote(payload), menu.options.data)
+      #data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, _urllib.parse.unquote(payload))
+    else:
+      data = checks.process_injectable_value(payload, menu.options.data)
+      # if settings.TESTABLE_VALUE in parameter.replace(settings.INJECT_TAG, ""):
+      #   data = parameter.replace(settings.INJECT_TAG, "").replace(settings.TESTABLE_VALUE, payload)
+      # else:
+      #   data = parameter.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload)
+    request = _urllib.request.Request(url, data.encode(settings.DEFAULT_CODEC), method=http_request_method)
+  headers.do_check(request)
+  response = get_request_response(request)
+
+  if settings.TIME_RELATIVE_ATTACK:
+    end = time.time()
+    response = int(end - start)
+  else:
+    exec_time = response
+
+  return response, vuln_parameter
+
+"""
 Check if target host is vulnerable. (Cookie-based injection)
 """
 def cookie_injection(url, vuln_parameter, payload, http_request_method):
@@ -439,9 +485,11 @@ def cookie_injection(url, vuln_parameter, payload, http_request_method):
     payload = checks.payload_fixation(payload)
     # payload = payload.replace("+", "%2B")
     if settings.INJECT_TAG in menu.options.cookie:
-      request.add_header(settings.COOKIE, menu.options.cookie.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload))
-    else:
-      request.add_header(settings.COOKIE, menu.options.cookie.replace(settings.INJECT_TAG, payload))
+      cookie = checks.process_injectable_value(payload, menu.options.cookie)
+      # if settings.TESTABLE_VALUE in menu.options.cookie.replace(settings.INJECT_TAG, ""):
+      #   request.add_header(settings.COOKIE, menu.options.cookie.replace(settings.INJECT_TAG, "").replace(settings.TESTABLE_VALUE, payload))
+      # else:
+      request.add_header(settings.COOKIE, cookie)
     try:
       headers.check_http_traffic(request)
       if menu.options.proxy or menu.options.ignore_proxy or menu.options.tor: 
@@ -464,8 +512,8 @@ def cookie_injection(url, vuln_parameter, payload, http_request_method):
 
   if settings.TIME_RELATIVE_ATTACK :
     end  = time.time()
-    how_long = int(end - start)
-    return how_long
+    exec_time = int(end - start)
+    return exec_time
   else:
     return response
 
@@ -507,8 +555,8 @@ def user_agent_injection(url, vuln_parameter, payload, http_request_method):
 
   if settings.TIME_RELATIVE_ATTACK :
     end = time.time()
-    how_long = int(end - start)
-    return how_long
+    exec_time = int(end - start)
+    return exec_time
   else:
     return response
 
@@ -550,8 +598,8 @@ def referer_injection(url, vuln_parameter, payload, http_request_method):
 
   if settings.TIME_RELATIVE_ATTACK :
     end  = time.time()
-    how_long = int(end - start)
-    return how_long
+    exec_time = int(end - start)
+    return exec_time
   else:
     return response
 
@@ -593,8 +641,8 @@ def host_injection(url, vuln_parameter, payload, http_request_method):
 
   if settings.TIME_RELATIVE_ATTACK :
     end  = time.time()
-    how_long = int(end - start)
-    return how_long
+    exec_time = int(end - start)
+    return exec_time
   else:
     return response
 
@@ -613,10 +661,10 @@ def custom_header_injection(url, vuln_parameter, payload, http_request_method):
     #Check if defined extra headers.
     headers.do_check(request)
     payload = checks.newline_fixation(payload)
-    if settings.INJECT_TAG in settings.CUSTOM_HEADER_VALUE:
-      request.add_header(settings.CUSTOM_HEADER_NAME, settings.CUSTOM_HEADER_VALUE.replace(settings.TESTABLE_VALUE + settings.INJECT_TAG, settings.INJECT_TAG).replace(settings.INJECT_TAG, payload))
-    else:
-      request.add_header(settings.CUSTOM_HEADER_NAME, settings.CUSTOM_HEADER_VALUE + payload)
+    # if settings.CUSTOM_HEADER_VALUE in settings.CUSTOM_HEADER_VALUE.replace(settings.INJECT_TAG, ""):
+    #   request.add_header(settings.CUSTOM_HEADER_NAME, settings.CUSTOM_HEADER_VALUE.replace(settings.INJECT_TAG, "").replace(settings.CUSTOM_HEADER_VALUE, payload))
+    # else:
+    request.add_header(settings.CUSTOM_HEADER_NAME, payload)
     try:
       headers.check_http_traffic(request)
       if menu.options.proxy or menu.options.ignore_proxy or menu.options.tor: 
@@ -639,8 +687,8 @@ def custom_header_injection(url, vuln_parameter, payload, http_request_method):
 
   if settings.TIME_RELATIVE_ATTACK :
     end  = time.time()
-    how_long = int(end - start)
-    return how_long
+    exec_time = int(end - start)
+    return exec_time
   else:
     return response
 
@@ -824,10 +872,55 @@ def os_identification(response):
 Perform target page reload (if it is required).
 """
 def url_reload(url, timesec):
-  if timesec <= "5":
+  if int(timesec) <= 5:
     timesec = 5
     time.sleep(timesec)
   response = urllib.urlopen(url)
   return response
 
+"""
+Calculate the time relative execution time
+"""
+def perform_injection(prefix, suffix, whitespace, payload, vuln_parameter, http_request_method, url):
+  # Fix prefixes / suffixes
+  payload, prefix = parameters.prefixes(payload, prefix)
+  payload, suffix = parameters.suffixes(payload, suffix)
+  
+  payload = payload.replace(settings.SINGLE_WHITESPACE, whitespace)
+  payload = checks.perform_payload_modification(payload)
+  
+  # Check if defined "--verbose" option.
+  if settings.VERBOSITY_LEVEL != 0:
+    payload_msg = payload.replace("\n", "\\n")
+    settings.print_data_to_stdout(settings.print_payload(payload_msg))
+
+  # Check if defined cookie with "INJECT_HERE" tag
+  if menu.options.cookie and settings.INJECT_TAG in menu.options.cookie or settings.COOKIE_INJECTION:
+    if not vuln_parameter:
+      vuln_parameter = parameters.specify_cookie_parameter(menu.options.cookie)
+    exec_time = cookie_injection(url, vuln_parameter, payload, http_request_method)
+  # Check if defined custom header with "INJECT_HERE" tag
+  elif settings.CUSTOM_HEADER_INJECTION:
+    if not vuln_parameter:
+      vuln_parameter = parameters.specify_custom_header_parameter("")
+    exec_time = custom_header_injection(url, vuln_parameter, payload, http_request_method)
+  # Check if defined user-agent with "INJECT_HERE" tag
+  elif (menu.options.agent and settings.INJECT_TAG in menu.options.agent) or settings.USER_AGENT_INJECTION:
+    if not vuln_parameter:
+      vuln_parameter = parameters.specify_user_agent_parameter(settings.USER_AGENT.lower())
+    exec_time = user_agent_injection(url, vuln_parameter, payload, http_request_method)
+  # Check if defined referer with "INJECT_HERE" tag
+  elif (menu.options.referer and settings.INJECT_TAG in menu.options.referer) or settings.REFERER_INJECTION:
+    if not vuln_parameter:
+      vuln_parameter = parameters.specify_referer_parameter(settings.REFERER.lower())
+    exec_time = referer_injection(url, vuln_parameter, payload, http_request_method)
+  # Check if defined host with "INJECT_HERE" tag
+  elif (menu.options.host and settings.INJECT_TAG in menu.options.host) or settings.HOST_INJECTION:
+    if not vuln_parameter:
+      vuln_parameter = parameters.specify_host_parameter(settings.HOST.lower())
+    exec_time = host_injection(url, vuln_parameter, payload, http_request_method)
+  else:
+    exec_time, vuln_parameter = init_injection(payload, http_request_method, url)
+
+  return exec_time, vuln_parameter, payload, prefix, suffix
 # eof

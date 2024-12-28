@@ -187,9 +187,6 @@ Execute the bind / reverse TCP shell
 """
 def execute_shell(url, cmd, cve, check_header, filename, os_shell_option):
   shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
-  err_msg = "The " + os_shell_option.split("_")[0] + " "
-  err_msg += os_shell_option.split("_")[1].upper() + " connection has failed."
-  settings.print_data_to_stdout(settings.print_critical_msg(err_msg))
 
 """
 Configure the bind TCP shell
@@ -440,9 +437,6 @@ def shellshock_handler(url, http_request_method, filename):
                         break
                       if go_back and go_back_again:
                         return True 
-                    # else:
-                    #   logs.logs_notification(filename)
-                    #   return True
                   else: 
                     shell, payload = cmd_exec(url, cmd, cve, check_header, filename)
                     if shell != "":

@@ -262,8 +262,8 @@ DESCRIPTION_FULL = "Automated All-in-One OS Command Injection Exploitation Tool"
 DESCRIPTION = "The command injection exploiter"
 AUTHOR  = "Anastasios Stasinopoulos"
 VERSION_NUM = "4.0"
-REVISION = "86"
-STABLE_RELEASE = False
+REVISION = "121"
+STABLE_RELEASE = True
 VERSION = "v"
 if STABLE_RELEASE:
   VERSION = VERSION + VERSION_NUM + "-stable"
@@ -290,11 +290,14 @@ RANDOM_STRING_GENERATOR = ''.join(random.choice(string.ascii_uppercase + string.
 
 START_TIME = time.time()
 
+# Maximum number of lines to save in history file
+MAX_HISTORY_LENGTH = 1000
+
 # Readline
 READLINE_ERROR = False
 
-# User-supplied operating system command
-USER_SUPPLIED_CMD = ""
+# User-applied operating system command
+USER_APPLIED_CMD = ""
 
 # Random Tag
 RANDOM_TAG = ""
@@ -378,7 +381,7 @@ CODE_INJECTION_WARNINGS = ["eval()'d code", "runtime-created function", "usort()
 SKIP_CODE_INJECTIONS = False
 SKIP_COMMAND_INJECTIONS = False
 
-USER_DEFINED_URL_DATA = True
+USER_DEFINED_URL_DATA = False
 # User-defined stored POST data.
 USER_DEFINED_POST_DATA = ""
 # Ignore user-defined stored POST data.
@@ -388,8 +391,9 @@ IGNORE_USER_DEFINED_POST_DATA = False
 CUSTOM_INJECTION_MARKER_CHAR = "*"
 CUSTOM_INJECTION_MARKER = False
 ASTERISK_MARKER = "__ASTERISK__"
-PRE_CUSTOM_INJECTION_MARKER_CHAR = ""
 CUSTOM_INJECTION_MARKER_PARAMETERS_LIST = []
+PRE_CUSTOM_INJECTION_MARKER_CHAR = ""
+POST_CUSTOM_INJECTION_MARKER_CHAR = ""
 
 class INJECTION_MARKER_LOCATION(object):
   URL = False
@@ -403,6 +407,7 @@ SKIP_NON_CUSTOM = None
 # Testable parameter(s) - comma separated.
 TESTABLE_PARAMETERS_LIST = []
 TESTABLE_PARAMETERS = None
+NOT_TESTABLE_PARAMETERS = True
 
 # Skip testing for given parameter(s) - comma separated.
 SKIP_PARAMETER = ""
@@ -420,7 +425,7 @@ TARGET_OS = OS.UNIX
 IDENTIFIED_TARGET_OS = False
 IGNORE_IDENTIFIED_OS = None
 
-# Verbosity level: 0-1 (default 0)
+# Verbosity level (0-4, Default: 0)
 VERBOSITY_LEVEL = 0
 
 # Local HTTP server ip
@@ -496,7 +501,7 @@ EXTRA_HTTP_HEADERS = False
 
 # The command injection separators.
 SEPARATORS = []
-DEFAULT_SEPARATORS = ["", ";", "%26", "|"]
+DEFAULT_SEPARATORS = [";", "%26", "|", ""]
 SPECIAL_SEPARATORS = ["%26%26", "||", "%0a", "%0d%0a", "%1a"]
 SEPARATORS_LVL1 = DEFAULT_SEPARATORS + SPECIAL_SEPARATORS
 SEPARATORS_LVL3 = SEPARATORS_LVL2 = SEPARATORS_LVL1
@@ -504,15 +509,14 @@ SEPARATORS_LVL3 = SEPARATORS_LVL2 = SEPARATORS_LVL1
 # The command injection prefixes.
 PREFIXES = []
 PREFIXES_LVL1 = [""]
-PREFIXES_LVL2 = SEPARATORS_LVL1
+PREFIXES_LVL2 = PREFIXES_LVL1 + SEPARATORS_LVL1
 PREFIXES_LVL3 = PREFIXES_LVL2 + ["'", "\""]
 
 # The command injection suffixes.
 SUFFIXES = []
 SUFFIXES_LVL1 = [""]
-SUFFIXES_LVL2 = SEPARATORS_LVL1
+SUFFIXES_LVL2 = SUFFIXES_LVL1 + SEPARATORS_LVL1
 SUFFIXES_LVL3 = SUFFIXES_LVL2 + ["'", "\"", " #", "//", "\\\\"]
-
 
 # Bad combination of prefix and separator
 JUNK_COMBINATION = [SEPARATORS_LVL1[i] + SEPARATORS_LVL1[j] for i in range(len(SEPARATORS_LVL1)) for j in range(len(SEPARATORS_LVL1))]
@@ -544,10 +548,11 @@ EVAL_SUFFIXES_LVL3 = EVAL_SUFFIXES_LVL2 + [".\"", "\\\\", "//", ")}", "#"]
 # Raw payload (without tampering)
 RAW_PAYLOAD = ""
 
-# The default (url-ecoded) white-space.
-WHITESPACES = ["%20"]
-
+# Single whitespace
 SINGLE_WHITESPACE = " "
+
+# The default (url-ecoded) white-space.
+WHITESPACES = [_urllib.parse.quote(SINGLE_WHITESPACE)]
 
 # Reference: http://www.w3.org/Protocols/HTTP/Object_Headers.html#uri
 URI_HTTP_HEADER = "URI"
@@ -555,18 +560,24 @@ URI_HTTP_HEADER = "URI"
 # Seconds to delay between each HTTP request.
 DELAY = 0
 
-# Seconds to delay the OS response. (Default 1)
-TIMESEC = 1
+# Seconds to delay the OS response.
+TIMESEC = 0
 
 # Seconds to delay between each HTTP retry.
 DELAY_RETRY = 1
 
-#Level (Default: 1)
 DEFAULT_INJECTION_LEVEL = 1
 COOKIE_INJECTION_LEVEL = 2
 HTTP_HEADER_INJECTION_LEVEL = 3
-USER_SUPPLIED_LEVEL = DEFAULT_INJECTION_LEVEL
+
+# Level of tests to perform.
+# The higher the value is, the higher the number of HTTP(s) requests are. (Default: 1)
+INJECTION_LEVEL = 0
+USER_APPLIED_LEVEL = False
 PERFORM_BASIC_SCANS = True
+
+# Start scanning state
+START_SCANNING = None
 
 # Default Temp Directory
 TMP_PATH = ""
@@ -652,16 +663,16 @@ WIN_REPLACE_WHITESPACE = r"-replace('\s+',' '))"
 CHOICE_YES = ['YES','YE','Y','yes','ye','y']
 
 # Accepts 'NO','N','no','n'
-CHOICE_NO = ['NO','N','no','n']
+CHOICE_NO = ['NO','no','N','n']
 
 # Accepts 'QUIT','Q','quit','q'
-CHOICE_QUIT = ['QUIT','Q','quit','q']
+CHOICE_QUIT = ['QUIT','quit','Q','q']
 
 # Accepts 'W','w','U','u','Q','q'
 CHOICE_OS = ['W','w','U','u','Q','q','N','n']
 
-# Accepts 'C','c','S','s','Q','q','a','A','n','N'
-CHOICE_PROCEED = ['C','c','S','s','Q','q','a','A','n','N']
+# Accepts 'C','c','S','s','Q','q','A','a'
+CHOICE_PROCEED = ['C','c','S','s','Q','q','A','a']
 
 # Available alternative shells
 AVAILABLE_SHELLS = ["python"]
@@ -684,7 +695,7 @@ class INJECTION_TECHNIQUE(object):
   FILE_BASED = "file-based command injection technique"
   TEMP_FILE_BASED = "tempfile-based injection technique"
 
-USER_SUPPLIED_TECHNIQUE = False
+USER_APPLIED_TECHNIQUE = False
 SKIP_TECHNIQUES = False
 
 # User Agent List
@@ -1028,7 +1039,7 @@ WIN_DEL = "powershell.exe Remove-Item "
 DEL = "rm "
 
 # Time-based Variables
-FOUND_HOW_LONG = ""
+FOUND_EXEC_TIME = ""
 FOUND_DIFF = ""
 
 # Check for PowerShell
@@ -1050,9 +1061,6 @@ SRVPORT = 8080
 # Session Handler
 SESSION_FILE = ""
 LOAD_SESSION = None
-
-# Retest all techniques
-RETEST = False
 
 # Define the default credentials files
 USERNAMES_TXT_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'txt')) + "/" + "default_usernames.txt"
@@ -1077,7 +1085,7 @@ class AUTH_TYPE(object):
 
 RAW_HTTP_HEADERS = ""
 
-USER_SUPPLIED_TAMPER = ""
+USER_APPLIED_TAMPER = ""
 
 # Tamper scripts dict
 TAMPER_SCRIPTS = {
@@ -1308,6 +1316,8 @@ SHELLSHOCK_HTTP_HEADERS =[ COOKIE, USER_AGENT, REFERER ]
 IGNORE_SPECIAL_CHAR_REGEX = "[^/()A-Za-z0-9.:,_+]"
 IGNORE_JSON_CHAR_REGEX = r"[{}\"\[\]]"
 
+FLATTEN_JSON_SEPARATOR = ''.join(random.choice("{}") for _ in range(10)) + "_"
+
 PERFORM_CRACKING = False
 
 PAGE_COMPRESSION = None
@@ -1360,5 +1370,6 @@ ALERT = False
 
 USE_PCRE_E_MODIFIER = None
 PCRE_MODIFIER = "/e"
+
 
 # eof
